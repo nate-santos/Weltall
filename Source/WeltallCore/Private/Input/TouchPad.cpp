@@ -97,6 +97,7 @@ namespace Weltall
 		if (const std::optional<ETouchControl> Control = Layout.Hit(Point))
 		{
 			Fingers.push_back({Pointer, *Control, Point});
+			QueuePress(Pointer, FingerHeld(Fingers.back()).Buttons);
 			return true;
 		}
 		return false;
@@ -109,7 +110,22 @@ namespace Weltall
 		{
 			return false;
 		}
+		const uint16 Before = FingerHeld(*Finger).Buttons;
 		Finger->Point = Point;
+		const uint16 After = FingerHeld(*Finger).Buttons;
+		const uint16 Newly = static_cast<uint16>(After & ~Before);
+		if (Finger->Control == ETouchControl::DPad && After != 0 && After != Before)
+		{
+			// A quick sweep keeps its latest direction, rather than combining opposite directions.
+			constexpr uint16 Directions = FPadState::Bit(EPadButton::Up) | FPadState::Bit(EPadButton::Down)
+				| FPadState::Bit(EPadButton::Left) | FPadState::Bit(EPadButton::Right);
+			for (FPress& Press : Presses)
+			{
+				if (Press.Pointer == Pointer) { Press.Buttons &= static_cast<uint16>(~Directions); }
+			}
+			QueuePress(Pointer, After);
+		}
+		else { QueuePress(Pointer, Newly); }
 		return true;
 	}
 
@@ -118,37 +134,67 @@ namespace Weltall
 		return std::erase_if(Fingers, [Pointer](const FFinger& Held) { return Held.Pointer == Pointer; }) != 0;
 	}
 
+	bool FTouchPad::Cancel(int32 Pointer)
+	{
+		// Slate also reports capture release after an ordinary End; that must keep the completed tap.
+		if (!End(Pointer)) { return false; }
+		std::erase_if(Presses, [Pointer](const FPress& Press) { return Press.Pointer == Pointer; });
+		return true;
+	}
+
+	void FTouchPad::QueuePress(int32 Pointer, uint16 PressedButtons)
+	{
+		if (PressedButtons == 0) { return; }
+		for (FPress& Press : Presses)
+		{
+			if (Press.Pointer == Pointer) { Press.Buttons |= PressedButtons; return; }
+		}
+		Presses.push_back({Pointer, PressedButtons});
+	}
+
+	FPadState FTouchPad::FingerHeld(const FFinger& Finger) const
+	{
+		FPadState Result;
+		const FTouchRect& Rect = Layout.Controls[static_cast<std::size_t>(Finger.Control)];
+		if (Finger.Control == ETouchControl::DPad)
+		{
+			// A thumb owns the D-pad until lifted, including dragging beyond its visible outline.
+			// A square dead zone and angular threshold allow clean diagonals without opposite directions.
+			const FTouchPoint Center = Rect.Center();
+			const float X = Finger.Point.X - Center.X;
+			const float Y = Finger.Point.Y - Center.Y;
+			const float Dead = Rect.Width * 0.08f;
+			if (std::max(std::abs(X), std::abs(Y)) >= Dead)
+			{
+				if (std::abs(X) >= std::max(Dead, std::abs(Y) * 0.45f))
+				{
+					Result.Buttons |= FPadState::Bit(X < 0 ? EPadButton::Left : EPadButton::Right);
+				}
+				if (std::abs(Y) >= std::max(Dead, std::abs(X) * 0.45f))
+				{
+					Result.Buttons |= FPadState::Bit(Y < 0 ? EPadButton::Up : EPadButton::Down);
+				}
+			}
+		}
+		else if (Contains(Finger.Control, Rect, Finger.Point))
+		{
+			Result.Buttons |= FPadState::Bit(Buttons[static_cast<std::size_t>(Finger.Control) - 1]);
+		}
+		return Result;
+	}
+
 	FPadState FTouchPad::Held() const
 	{
 		FPadState Result;
-		for (const FFinger& Finger : Fingers)
-		{
-			const FTouchRect& Rect = Layout.Controls[static_cast<std::size_t>(Finger.Control)];
-			if (Finger.Control == ETouchControl::DPad)
-			{
-				// A thumb owns the D-pad until lifted, including dragging beyond its visible outline.
-				// A square dead zone and angular threshold allow clean diagonals without opposite directions.
-				const FTouchPoint Center = Rect.Center();
-				const float X = Finger.Point.X - Center.X;
-				const float Y = Finger.Point.Y - Center.Y;
-				const float Dead = Rect.Width * 0.08f;
-				if (std::max(std::abs(X), std::abs(Y)) >= Dead)
-				{
-					if (std::abs(X) >= std::max(Dead, std::abs(Y) * 0.45f))
-					{
-						Result.Buttons |= FPadState::Bit(X < 0 ? EPadButton::Left : EPadButton::Right);
-					}
-					if (std::abs(Y) >= std::max(Dead, std::abs(X) * 0.45f))
-					{
-						Result.Buttons |= FPadState::Bit(Y < 0 ? EPadButton::Up : EPadButton::Down);
-					}
-				}
-			}
-			else if (Contains(Finger.Control, Rect, Finger.Point))
-			{
-				Result.Buttons |= FPadState::Bit(Buttons[static_cast<std::size_t>(Finger.Control) - 1]);
-			}
-		}
+		for (const FFinger& Finger : Fingers) { Result.Buttons |= FingerHeld(Finger).Buttons; }
+		return Result;
+	}
+
+	FPadState FTouchPad::TakeForTick()
+	{
+		FPadState Result = Held();
+		for (const FPress& Press : Presses) { Result.Buttons |= Press.Buttons; }
+		Presses.clear();
 		return Result;
 	}
 

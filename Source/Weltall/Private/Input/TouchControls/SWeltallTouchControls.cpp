@@ -326,7 +326,7 @@ void SWeltallTouchControls::OnMouseCaptureLost(const FCaptureLostEvent& Event)
 {
 	// Slate releases capture per pointer. Clearing every finger here would break multi-touch
 	// whenever the player lifted one action finger while still holding the D-pad.
-	Pad.End(Event.PointerIndex);
+	Pad.Cancel(Event.PointerIndex);
 	if (DragPointer.IsSet() && Event.PointerIndex >= 0 && *DragPointer == static_cast<uint32>(Event.PointerIndex))
 	{
 		DragPointer.Reset();

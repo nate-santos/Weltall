@@ -62,14 +62,22 @@ namespace Weltall
 		WELTALLCORE_API bool Begin(int32 Pointer, FTouchPoint Point);
 		WELTALLCORE_API bool Move(int32 Pointer, FTouchPoint Point);
 		WELTALLCORE_API bool End(int32 Pointer);
-		void Reset() { Fingers.clear(); }
+		/** Capture cancellation drops this active pointer's queued presses; an ordinary lift keeps its tap. */
+		WELTALLCORE_API bool Cancel(int32 Pointer);
+		void Reset() { Fingers.clear(); Presses.clear(); }
 		WELTALLCORE_API FPadState Held() const;
+		/** Retains quick down/up events until one game sample, independently of visual held state. */
+		WELTALLCORE_API FPadState TakeForTick();
 		WELTALLCORE_API bool IsTouched(ETouchControl Control) const;
 
 	private:
 		struct FFinger { int32 Pointer; ETouchControl Control; FTouchPoint Point; };
+		struct FPress { int32 Pointer; uint16 Buttons; };
+		FPadState FingerHeld(const FFinger& Finger) const;
+		void QueuePress(int32 Pointer, uint16 PressedButtons);
 		FTouchLayout Layout;
 		std::vector<FFinger> Fingers;
+		std::vector<FPress> Presses;
 	};
 
 	/** Input sources are combined, never injected as key-up events into one another. */

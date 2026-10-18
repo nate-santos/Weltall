@@ -58,6 +58,53 @@ TEST_CASE("Repeated button touches and hardware holds do not release each other"
 	CHECK_FALSE(MergePads({}, Pad.Held()).IsHeld(EPadButton::Circle));
 }
 
+TEST_CASE("Short touch taps survive until sampled while capture cancellation preserves other fingers", "[Input][Touch]")
+{
+	const FTouchLayout Layout = FTouchLayout::Build(1600.0f, 720.0f, {});
+	FTouchPad Pad;
+	Pad.SetLayout(Layout);
+	for (const auto Control : {ETouchControl::Cross, ETouchControl::Circle, ETouchControl::Square, ETouchControl::Triangle,
+		ETouchControl::L1, ETouchControl::R1, ETouchControl::L2, ETouchControl::R2, ETouchControl::Start, ETouchControl::Select, ETouchControl::L3, ETouchControl::R3})
+	{
+		REQUIRE(Pad.Begin(0, Center(Layout, Control)));
+		const FPadState Pressed = Pad.Held();
+		REQUIRE(Pressed.Buttons != 0);
+		REQUIRE(Pad.End(0));
+		CHECK_FALSE(Pad.Cancel(0)); // Slate's normal release-capture callback follows End.
+		CHECK(Pad.Held().Buttons == 0);
+		CHECK(Pad.TakeForTick() == Pressed);
+		CHECK(Pad.TakeForTick().Buttons == 0);
+	}
+	FTouchPoint Left = Center(Layout, ETouchControl::DPad);
+	Left.X -= 60.0f;
+	REQUIRE(Pad.Begin(0, Left));
+	REQUIRE(Pad.Begin(1, Center(Layout, ETouchControl::Cross)));
+	REQUIRE(Pad.End(1));
+	REQUIRE(Pad.Begin(2, Center(Layout, ETouchControl::Square)));
+	REQUIRE(Pad.Cancel(2));
+	const auto Mixed = Pad.TakeForTick();
+	CHECK(Mixed.IsHeld(EPadButton::Left));
+	CHECK(Mixed.IsHeld(EPadButton::Cross));
+	CHECK_FALSE(Mixed.IsHeld(EPadButton::Square));
+	CHECK(Pad.TakeForTick() == Pad.Held());
+	REQUIRE(Pad.End(0));
+	CHECK(Pad.TakeForTick().Buttons == 0);
+	FTouchPoint Up = Center(Layout, ETouchControl::DPad);
+	Up.Y -= 60.0f;
+	FTouchPoint Down = Up;
+	Down.Y += 120.0f;
+	REQUIRE(Pad.Begin(0, Up));
+	REQUIRE(Pad.Move(0, Down));
+	REQUIRE(Pad.End(0));
+	CHECK(Pad.TakeForTick().Buttons == FPadState::Bit(EPadButton::Down));
+	REQUIRE(Pad.Begin(0, Center(Layout, ETouchControl::Cross)));
+	Pad.Reset();
+	CHECK(Pad.TakeForTick().Buttons == 0);
+	REQUIRE(Pad.Begin(0, Center(Layout, ETouchControl::Cross)));
+	Pad.SetLayout(Layout);
+	CHECK(Pad.TakeForTick().Buttons == 0);
+}
+
 TEST_CASE("Android Back taps survive a full press and release between game samples", "[Input][Touch]")
 {
 	FPadLatch Back;

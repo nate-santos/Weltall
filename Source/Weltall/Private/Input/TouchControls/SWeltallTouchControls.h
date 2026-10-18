@@ -17,7 +17,7 @@ public:
 	void Construct(const FArguments& Arguments);
 	void ApplyOptions(const Weltall::FTouchOptions& InOptions);
 	void ResetTouches();
-	Weltall::FPadState HeldPad() const { return Pad.Held(); }
+	Weltall::FPadState HeldPad() { return Pad.TakeForTick(); }
 	bool BlocksGameInput() const { return bSettingsOpen || bEditing; }
 	bool HandleBack();
 

@@ -18,6 +18,10 @@ The overlay is installed only on Android and is wrapped in `SSafeZone`. Layout c
 
 ## Validation status
 
+The latest phone build revealed that a touch which begins and ends between game updates can be missed. The correction retains per-pointer presses until one game sample while keeping visual held state immediate; capture cancellation removes only that active pointer's pending press. Reset/layout/lifecycle changes discard all pending touches. The new native regression covers every button, ordinary release-capture notifications, cancellation with other fingers held, directional sweeps and reset. Windows: 11 touch cases, 415 assertions, zero failures/skips (`out/testing/touch-quick-tap-windows.xml`). Android compilation and quick-tap device confirmation are pending for this correction.
+
+Device checks already observed: appearance settings open, idle/pressed transparency and size adjust, reserved side areas move the controls beside the picture, Android Back closes the panel, and the resulting settings remain byte-identical through a signed APK update. A short background/resume preserves the process and restores the game's own keep-screen-on flag. These checks do not replace simultaneous-finger, rotation, controller or extended-gameplay testing.
+
 Engine-independent tests in `Tests/WeltallCore/Input/TouchPadTests.cpp` cover diagonal movement with two action fingers, independent releases, hardware/touch merging, all buttons, pointer reuse, dragging outside a button, rotation/layout resets, safe-area geometry, unobstructed default side-area placement, zero-opacity hit testing and settings persistence/clamping. They contain only synthetic coordinates and authored settings.
 
 The complete core and test runner compile for Android ARM64 with NDK Clang and warnings treated as errors. On October 17, 2026, all 10 touch tests passed on the connected Android phone with no failures or skips, including Back gesture retention and locale-independent float parsing. This validates the input/layout model on ARM64; the Slate overlay itself still needs the Unreal build below.
