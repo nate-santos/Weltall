@@ -1,6 +1,7 @@
 #include "Menu/MenuSavePages.h"
 
 #include "Game/SaveStore.h"
+#include "Game/SaveDocuments.h"
 #include "Menu/MenuSaveCards.h"
 #include "Menu/OptionsText.h"
 
@@ -120,6 +121,26 @@ namespace Weltall
 	{
 	}
 
+	FMenuSavePages::~FMenuSavePages()
+	{
+		if (bDocumentPending && Saves.SaveDocuments()) { Saves.SaveDocuments()->Cancel(); }
+	}
+
+	bool FMenuSavePages::FollowDocuments()
+	{
+		if (!bDocumentPending || !Saves.SaveDocuments()) { return false; }
+		FSaveDocumentResult Result = Saves.SaveDocuments()->Poll();
+		if (Result.Status == ESaveDocumentStatus::Pending) { return false; }
+		bDocumentPending = false;
+		const int32 Row = bDocumentExport ? SavesRow::Export : SavesRow::Import;
+		if (Result.Status == ESaveDocumentStatus::Imported && !bDocumentExport) { PickBytes(Result.Bytes, Row); }
+		else if (Result.Status == ESaveDocumentStatus::Exported && bDocumentExport) { Tell(Row, OptionsText::Fill(Text::DocumentExported)); }
+		else if (Result.Status == ESaveDocumentStatus::Cancelled) { Tell(Row, OptionsText::Fill(Text::DocumentCancelled)); }
+		else if (Result.Status == ESaveDocumentStatus::TooLarge) { Tell(Row, OptionsText::Fill(Text::DocumentTooLarge)); }
+		else { Tell(Row, OptionsText::Fill(bDocumentExport ? Text::WriteFailed : Text::Unreadable)); }
+		return true;
+	}
+
 	std::string FMenuSavePages::Title() const
 	{
 		switch (Shown)
@@ -141,7 +162,7 @@ namespace Weltall
 		{
 		case ESavesPage::Saves:
 			Rows.push_back(RowOfWords(Text::Import));
-			Rows.push_back(RowOfWords(Text::Export, CardName(ExportStore)));
+			Rows.push_back(RowOfWords(Saves.SaveDocuments() ? Text::DocumentExport : Text::Export, CardName(ExportStore)));
 			break;
 		case ESavesPage::Browse:
 			for (const FBrowserEntry& Entry : Browser->Entries())
@@ -198,6 +219,7 @@ namespace Weltall
 
 	bool FMenuSavePages::Step(int32 Row, int32 Direction)
 	{
+		if (bDocumentPending) { return false; }
 		int32* Store = nullptr;
 		if (Shown == ESavesPage::Saves && Row == SavesRow::Export)
 		{
@@ -219,6 +241,7 @@ namespace Weltall
 
 	bool FMenuSavePages::Activate(int32 Row)
 	{
+		if (bDocumentPending) { return false; }
 		switch (Shown)
 		{
 		case ESavesPage::Saves:
@@ -261,6 +284,13 @@ namespace Weltall
 
 	bool FMenuSavePages::Back()
 	{
+		if (bDocumentPending && Saves.SaveDocuments())
+		{
+			Saves.SaveDocuments()->Cancel();
+			bDocumentPending = false;
+			Tell(bDocumentExport ? SavesRow::Export : SavesRow::Import, OptionsText::Fill(Text::DocumentCancelled));
+			return true;
+		}
 		ToldRow = -1;
 		bReplaceAsked = false;
 		switch (Shown)
@@ -272,7 +302,7 @@ namespace Weltall
 			++Views;
 			return true;
 		case ESavesPage::Import:
-			Shown = ESavesPage::Browse;
+			Shown = Saves.SaveDocuments() ? ESavesPage::Saves : ESavesPage::Browse;
 			++Views;
 			return true;
 		}
@@ -287,6 +317,13 @@ namespace Weltall
 
 	void FMenuSavePages::Browse()
 	{
+		if (ISaveDocuments* Documents = Saves.SaveDocuments())
+		{
+			bDocumentExport = false;
+			bDocumentPending = Documents->Import();
+			Tell(SavesRow::Import, OptionsText::Fill(bDocumentPending ? Text::DocumentPick : Text::DocumentUnavailable));
+			return;
+		}
 		Browser.emplace(Saves.ImportFolder().value_or(Home()));
 		Shown = ESavesPage::Browse;
 		++Views;
@@ -313,7 +350,13 @@ namespace Weltall
 			Tell(Row, OptionsText::Fill(Text::Unreadable));
 			return;
 		}
-		TResult<std::vector<FOriginalSave>> Read = ReadCardImageSaves(*Bytes);
+		PickBytes(*Bytes, Row);
+		if (Shown == ESavesPage::Import) { Saves.KeepImportFolder(Browser->Folder()); }
+	}
+
+	void FMenuSavePages::PickBytes(std::span<const uint8> Bytes, int32 Row)
+	{
+		TResult<std::vector<FOriginalSave>> Read = ReadCardImageSaves(Bytes);
 		if (!Read)
 		{
 			Tell(Row, OptionsText::Fill(Text::NotACard));
@@ -324,7 +367,6 @@ namespace Weltall
 			Tell(Row, OptionsText::Fill(Text::NoSaves));
 			return;
 		}
-		Saves.KeepImportFolder(Browser->Folder());
 		Picked = std::move(*Read);
 		// The first card with room for every save at its number, else the first.
 		IntoStore = 0;
@@ -362,6 +404,13 @@ namespace Weltall
 		if (!Image)
 		{
 			Tell(SavesRow::Export, OptionsText::Fill(Text::DamagedCard));
+			return;
+		}
+		if (ISaveDocuments* Documents = Saves.SaveDocuments())
+		{
+			bDocumentExport = true;
+			bDocumentPending = Documents->Export(*Image, CardName(ExportStore) + ".mcr");
+			Tell(SavesRow::Export, OptionsText::Fill(bDocumentPending ? Text::DocumentDestination : Text::DocumentUnavailable));
 			return;
 		}
 		if (!Saves.WriteCardImage(ExportStore, *Image))

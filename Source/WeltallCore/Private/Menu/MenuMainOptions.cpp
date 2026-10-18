@@ -294,6 +294,15 @@ namespace Weltall
 			{
 				bChanged = true;
 			}
+			if (OnSavesPages())
+			{
+				const uint32 Was = State.SavePages->View();
+				if (State.SavePages->FollowDocuments())
+				{
+					ShowOptionsPage(State.SavePages->View() != Was);
+					bChanged = true;
+				}
+			}
 			if (bChanged)
 			{
 				DrawOptionsPage();

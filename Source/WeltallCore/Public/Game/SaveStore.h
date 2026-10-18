@@ -5,12 +5,14 @@
 #include "Game/OriginalSave.h"
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <vector>
 
 namespace Weltall
 {
+	class ISaveDocuments;
 	/**
 	 * The port's saves: 120 slots in eight stores of 15, each store standing for a memory card, so that slot
 	 * 15k + n is No. n + 1 on card k + 1. A save is a file of its game data as the game writes it, in its
@@ -53,6 +55,10 @@ namespace Weltall
 		WELTALLCORE_API std::optional<std::filesystem::path> ImportFolder() const;
 		WELTALLCORE_API void KeepImportFolder(const std::filesystem::path& Folder);
 
+		/** Optional platform document picker; desktop builds retain the existing file browser. */
+		void SetDocuments(std::shared_ptr<ISaveDocuments> InDocuments) { Documents = std::move(InDocuments); }
+		ISaveDocuments* SaveDocuments() const { return Documents.get(); }
+
 	private:
 		std::filesystem::path SlotFile(int32 Slot) const;
 		std::filesystem::path LastSavedFile() const;
@@ -61,5 +67,6 @@ namespace Weltall
 		static std::optional<FError> Replace(const std::filesystem::path& Path, std::span<const uint8> Bytes);
 
 		std::filesystem::path Root;
+		std::shared_ptr<ISaveDocuments> Documents;
 	};
 }

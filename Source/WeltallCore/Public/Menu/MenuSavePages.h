@@ -7,6 +7,7 @@
 
 #include <array>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,9 @@ namespace Weltall
 	public:
 		/** Browsing starts in the folder last imported from, else in the user's home. Both must outlive the pages. */
 		WELTALLCORE_API FMenuSavePages(FSaveStore& InSaves, const FMenuResources& InResources);
+		WELTALLCORE_API ~FMenuSavePages();
+		/** Consumes a completed system-picker operation; true when the displayed rows changed. */
+		WELTALLCORE_API bool FollowDocuments();
 
 		ESavesPage Page() const { return Shown; }
 		/** Counts the pages and folders shown: a new one shows its rows from the top. */
@@ -54,6 +58,7 @@ namespace Weltall
 	private:
 		void Browse();
 		void Pick(const std::filesystem::path& File);
+		void PickBytes(std::span<const uint8> Bytes, int32 Row);
 		void Import();
 		void Export();
 		/** How many of the file's saves would replace one in the card. */
@@ -72,6 +77,8 @@ namespace Weltall
 		std::vector<FOriginalSave> Picked;
 		int32 IntoStore = 0;
 		bool bReplaceAsked = false;
+		bool bDocumentPending = false;
+		bool bDocumentExport = false;
 		int32 ToldRow = -1;
 		std::array<std::string, 3> Told;
 	};

@@ -8,4 +8,145 @@
         <copyFile src="$S(PluginDir)/res/xml/weltall_backup_rules.xml" dst="$S(BuildDir)/res/xml/weltall_backup_rules.xml" />
         <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
     </resourceCopies>
+    <gameActivityClassAdditions>
+        <insert><![CDATA[
+    // Save documents use Android's picker and resolver; they never expose a URI as a native filename.
+    private static final int WELTALL_SAVE_IMPORT = 0x5749;
+    private static final int WELTALL_SAVE_EXPORT = 0x5745;
+    private static final int WELTALL_MAX_SAVE_BYTES = 1024 * 1024;
+    private final Object weltallSaveLock = new Object();
+    private long weltallSaveGeneration = 0;
+    // Mirrors ESaveDocumentStatus: Idle, Pending, Imported, Exported, Cancelled, Failed, TooLarge.
+    private int weltallSaveStatus = 0;
+    private byte[] weltallSaveBytes = null;
+    private boolean weltallSaveExporting = false;
+
+    private void weltallSaveComplete(long generation, int status, byte[] bytes) {
+        synchronized (weltallSaveLock) {
+            if (generation != weltallSaveGeneration || weltallSaveStatus != 1) return;
+            weltallSaveBytes = bytes;
+            weltallSaveStatus = status;
+        }
+    }
+
+    private boolean weltallBeginSaveDocument(final boolean exporting, byte[] bytes, final String name) {
+        final long generation;
+        synchronized (weltallSaveLock) {
+            if (weltallSaveStatus == 1) return false;
+            generation = ++weltallSaveGeneration;
+            weltallSaveExporting = exporting;
+            weltallSaveBytes = bytes == null ? null : bytes.clone();
+            weltallSaveStatus = 1;
+        }
+        runOnUiThread(() -> {
+            synchronized (weltallSaveLock) {
+                if (generation != weltallSaveGeneration || weltallSaveStatus != 1) return;
+            }
+            try {
+                Intent picker = new Intent(exporting ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
+                picker.addCategory(Intent.CATEGORY_OPENABLE);
+                picker.setType(exporting ? "application/octet-stream" : "*/*");
+                if (exporting) picker.putExtra(Intent.EXTRA_TITLE, name);
+                startActivityForResult(picker, exporting ? WELTALL_SAVE_EXPORT : WELTALL_SAVE_IMPORT);
+            } catch (RuntimeException error) {
+                weltallSaveComplete(generation, 5, null);
+            }
+        });
+        return true;
+    }
+
+    public boolean AndroidThunkJava_WeltallImportSaveDocument() {
+        return weltallBeginSaveDocument(false, null, null);
+    }
+
+    public boolean AndroidThunkJava_WeltallExportSaveDocument(byte[] bytes, String name) {
+        if (bytes == null || bytes.length > WELTALL_MAX_SAVE_BYTES) return false;
+        return weltallBeginSaveDocument(true, bytes, name);
+    }
+
+    public byte[] AndroidThunkJava_WeltallPollSaveDocument() {
+        synchronized (weltallSaveLock) {
+            int size = weltallSaveStatus == 2 && weltallSaveBytes != null ? weltallSaveBytes.length : 0;
+            byte[] result = new byte[size + 1];
+            result[0] = (byte)weltallSaveStatus;
+            if (size != 0) System.arraycopy(weltallSaveBytes, 0, result, 1, size);
+            if (weltallSaveStatus != 1) {
+                weltallSaveStatus = 0;
+                weltallSaveBytes = null;
+            }
+            return result;
+        }
+    }
+
+    public void AndroidThunkJava_WeltallCancelSaveDocument() {
+        synchronized (weltallSaveLock) {
+            ++weltallSaveGeneration;
+            weltallSaveStatus = 0;
+            weltallSaveBytes = null;
+        }
+    }
+
+    private void weltallSaveDocumentResult(int request, int result, Intent data) {
+        final long generation;
+        final boolean exporting;
+        final byte[] bytes;
+        synchronized (weltallSaveLock) {
+            if (weltallSaveStatus != 1) return;
+            exporting = weltallSaveExporting;
+            if (request != (exporting ? WELTALL_SAVE_EXPORT : WELTALL_SAVE_IMPORT)) return;
+            generation = weltallSaveGeneration;
+            bytes = weltallSaveBytes;
+        }
+        if (result != android.app.Activity.RESULT_OK || data == null || data.getData() == null) {
+            weltallSaveComplete(generation, 4, null);
+            return;
+        }
+        final android.net.Uri uri = data.getData();
+        new Thread(() -> {
+            try {
+                if (exporting) {
+                    try (java.io.OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                        if (output == null || bytes == null) throw new java.io.IOException();
+                        output.write(bytes);
+                        output.flush();
+                    }
+                    weltallSaveComplete(generation, 3, null);
+                } else {
+                    try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+                        if (input == null) throw new java.io.IOException();
+                        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+                        byte[] block = new byte[8192];
+                        int count;
+                        while ((count = input.read(block)) != -1) {
+                            if (count > WELTALL_MAX_SAVE_BYTES - output.size()) {
+                                weltallSaveComplete(generation, 6, null);
+                                return;
+                            }
+                            synchronized (weltallSaveLock) {
+                                if (generation != weltallSaveGeneration) return;
+                            }
+                            output.write(block, 0, count);
+                        }
+                        weltallSaveComplete(generation, 2, output.toByteArray());
+                    }
+                }
+            } catch (java.io.IOException | RuntimeException error) {
+                weltallSaveComplete(generation, 5, null);
+            }
+        }, "WeltallSaveDocument").start();
+    }
+        ]]></insert>
+    </gameActivityClassAdditions>
+    <gameActivityOnActivityResultAdditions>
+        <insert><![CDATA[
+        if (requestCode == WELTALL_SAVE_IMPORT || requestCode == WELTALL_SAVE_EXPORT) {
+            weltallSaveDocumentResult(requestCode, resultCode, data);
+        }
+        ]]></insert>
+    </gameActivityOnActivityResultAdditions>
+    <gameActivityOnDestroyAdditions>
+        <insert><![CDATA[
+        AndroidThunkJava_WeltallCancelSaveDocument();
+        ]]></insert>
+    </gameActivityOnDestroyAdditions>
 </root>

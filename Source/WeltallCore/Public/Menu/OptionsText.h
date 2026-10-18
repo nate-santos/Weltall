@@ -270,6 +270,13 @@ namespace Weltall::OptionsText
 	{
 		inline constexpr FRow Import{"Import saves", {"Copy saves from a memory", "card image or save file into", "one of your cards."}};
 		inline constexpr FRow Export{"Export card", {"Saves a card as a memory card", "image for emulators, in the", "Cards folder."}};
+		inline constexpr FRow DocumentExport{"Export card", {"Save a memory card image", "using the system file picker.", "Choose where it is kept."}};
+		inline constexpr std::array<std::string_view, 3> DocumentPick{"Choose a memory card image", "or save file in the picker.", ""};
+		inline constexpr std::array<std::string_view, 3> DocumentDestination{"Choose where to save the", "memory card image.", ""};
+		inline constexpr std::array<std::string_view, 3> DocumentUnavailable{"Couldn't open the file picker.", "Please try again.", ""};
+		inline constexpr std::array<std::string_view, 3> DocumentCancelled{"Cancelled. Your game saves", "are unchanged.", ""};
+		inline constexpr std::array<std::string_view, 3> DocumentTooLarge{"That file is too large.", "Choose a memory card image", "or save file up to 1 MiB."};
+		inline constexpr std::array<std::string_view, 3> DocumentExported{"Memory card image exported.", "Your game saves are kept.", ""};
 		/** A card's name: its number. */
 		inline constexpr std::string_view Card = "Card {}";
 

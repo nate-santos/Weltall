@@ -1,10 +1,12 @@
 #include "Menu/MenuSavePages.h"
 #include "Game/GameState.h"
 #include "Game/SaveStore.h"
+#include "Game/SaveDocuments.h"
 #include "Game/SaveWrite.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
 #include "Menu/MenuFileBrowser.h"
+#include "Menu/MenuSaveCards.h"
 #include "Menu/MenuResources.h"
 #include "Menu/OptionsText.h"
 #include "Support/GameDiscs.h"
@@ -239,7 +241,8 @@ TEST_CASE("Everything the saves pages tell is in the game's font and fits the he
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const FMesResident Resident = Testing::LoadMesResident(*Disc);
 	std::vector<FSettingsRow> Told;
-	for (const std::array<std::string_view, 3>& Lines : {Text::Unreadable, Text::NotACard, Text::NoSaves, Text::CopyFailed, Text::DamagedCard, Text::WriteFailed})
+	for (const std::array<std::string_view, 3>& Lines : {Text::Unreadable, Text::NotACard, Text::NoSaves, Text::CopyFailed, Text::DamagedCard, Text::WriteFailed,
+		Text::DocumentPick, Text::DocumentDestination, Text::DocumentUnavailable, Text::DocumentCancelled, Text::DocumentTooLarge, Text::DocumentExported})
 	{
 		Told.push_back({"", "", OptionsText::Fill(Lines)});
 	}
@@ -250,4 +253,110 @@ TEST_CASE("Everything the saves pages tell is in the game's font and fits the he
 		OptionsText::Fill(Text::OverwriteHelp, {"Card 4"})});
 	Told.push_back({std::string(Text::NoFolders), std::string(Text::Drive), OptionsText::Fill(Text::OverwriteAsked, {"Card 4"})});
 	CHECK(AllFit(Told, Resident.Font));
+}
+
+TEST_CASE("System save documents preserve saves until import confirmation and report asynchronous results", "[Menu][Content][SaveDocuments]")
+{
+	struct FDocuments final : ISaveDocuments
+	{
+		FSaveDocumentResult Result;
+		std::vector<uint8> Exported;
+		std::string Name;
+		int Imports = 0;
+		int Cancels = 0;
+		bool bAvailable = true;
+		bool Import() override { ++Imports; Result = {ESaveDocumentStatus::Pending, {}}; return bAvailable; }
+		bool Export(std::span<const uint8> Bytes, const std::string& Suggested) override
+		{
+			Exported.assign(Bytes.begin(), Bytes.end());
+			Name = Suggested;
+			Result = {ESaveDocumentStatus::Pending, {}};
+			return bAvailable;
+		}
+		FSaveDocumentResult Poll() override
+		{
+			if (Result.Status == ESaveDocumentStatus::Pending) { return Result; }
+			FSaveDocumentResult Taken = std::move(Result);
+			Result = {};
+			return Taken;
+		}
+		void Cancel() override { ++Cancels; Result = {}; }
+	};
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const FMesResident Resident = Testing::LoadMesResident(*Disc);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	const auto Index = FGameFileIndex::Read(*Executable);
+	REQUIRE(Index);
+	const auto Resources = FMenuResources::Load(Disc->Image(), *Index, *Executable);
+	REQUIRE(Resources);
+	auto NewGame = LoadNewGameState(Disc->Image(), *Index, Resident.NameTables);
+	REQUIRE(NewGame);
+	FScratchFolder Scratch("WeltallSaveDocuments");
+	FSaveStore Store(Scratch.Path / "Saves");
+	FSaveStore Donor(Scratch.Path / "Donor");
+	const FOriginalSave Original = WriteOriginalSave(*NewGame, 0, 0, Resident.NameTables, Resident.Font.LeadByte());
+	NewGame->SetPlayTime(120);
+	const FOriginalSave Imported = WriteOriginalSave(*NewGame, 0, 0, Resident.NameTables, Resident.Font.LeadByte());
+	const auto InitialWrite = Store.Write(0, Original);
+	INFO((InitialWrite ? InitialWrite->Message : "Initial save written"));
+	REQUIRE_FALSE(InitialWrite);
+	REQUIRE_FALSE(Donor.Write(0, Imported));
+	const auto Card = ExportStoreCard(Donor, 0, *Resources);
+	REQUIRE(Card);
+	const auto Documents = std::make_shared<FDocuments>();
+	Store.SetDocuments(Documents);
+	FMenuSavePages Pages(Store, *Resources);
+	const auto Before = Store.ReadBytes(0);
+	REQUIRE(Before);
+	const auto Unchanged = [&] { CHECK(Store.ReadBytes(0).Value() == Before.Value()); };
+
+	REQUIRE(Pages.Activate(0));
+	CHECK(Pages.Page() == ESavesPage::Saves);
+	CHECK_FALSE(Pages.FollowDocuments());
+	CHECK_FALSE(Pages.Activate(0));
+	CHECK(Documents->Imports == 1);
+	REQUIRE(Pages.Back());
+	CHECK(Documents->Cancels == 1);
+	Unchanged();
+	for (const auto Status : {ESaveDocumentStatus::Cancelled, ESaveDocumentStatus::Failed, ESaveDocumentStatus::TooLarge})
+	{
+		REQUIRE(Pages.Activate(0));
+		Documents->Result = {Status, {}};
+		REQUIRE(Pages.FollowDocuments());
+		CHECK_FALSE(Pages.FollowDocuments());
+		CHECK(AllFit(Pages.Rows(), Resident.Font));
+		Unchanged();
+	}
+	REQUIRE(Pages.Activate(0));
+	Documents->Result = {ESaveDocumentStatus::Imported, {1, 2, 3}};
+	REQUIRE(Pages.FollowDocuments());
+	CHECK(Pages.Rows()[0].Help == OptionsText::Fill(Text::NotACard));
+	Unchanged();
+	REQUIRE(Pages.Activate(0));
+	Documents->Result = {ESaveDocumentStatus::Imported, *Card};
+	REQUIRE(Pages.FollowDocuments());
+	REQUIRE(Pages.Page() == ESavesPage::Import);
+	CHECK(Pages.Rows()[0].Value == "Card 2");
+	REQUIRE(Pages.Step(0, -1));
+	REQUIRE(Pages.Activate(1));
+	Unchanged();
+	REQUIRE(Pages.Activate(1));
+	const std::vector<uint8> Expected(Imported.Data().begin(), Imported.Data().end());
+	CHECK(Store.ReadBytes(0).Value() == std::optional<std::vector<uint8>>(Expected));
+	REQUIRE(Pages.Back());
+	CHECK(Pages.Page() == ESavesPage::Saves);
+	REQUIRE(Pages.Activate(1));
+	CHECK(Documents->Name == "Card 1.mcr");
+	CHECK(Documents->Exported == ExportStoreCard(Store, 0, *Resources).Value());
+	CHECK_FALSE(std::filesystem::exists(Scratch.Path / "Saves" / "Cards"));
+	Documents->Result = {ESaveDocumentStatus::Exported, {}};
+	REQUIRE(Pages.FollowDocuments());
+	CHECK(Pages.Rows()[1].Help == OptionsText::Fill(Text::DocumentExported));
+	CHECK(AllFit(Pages.Rows(), Resident.Font));
+	{
+		FMenuSavePages Abandoned(Store, *Resources);
+		REQUIRE(Abandoned.Activate(0));
+	}
+	CHECK(Documents->Cancels == 2);
 }
