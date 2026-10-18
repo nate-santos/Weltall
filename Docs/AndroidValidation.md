@@ -24,13 +24,13 @@ An earlier broad ARM64 run also passed 807 cases and 682,258 assertions. It incl
 
 The development machine has Unreal Engine 5.8.4 source, Visual Studio 2022 Build Tools with the .NET Framework 4.8 SDK, Android SDK/build tools, JDK 21 and NDK r27c. The full native core/test harness builds with MSVC and Android Clang with warnings treated as errors. The core keeps exceptions disabled; the Catch2 harness enables them to report optional-disc skips correctly.
 
-The first Unreal source build is compiling the Windows editor/cook tools and Android runtime. Its local exported project contains both BIN/CUE pairs, staged through the explicit `--include-discs` path. No APK has passed packaging or installation yet. Native decoder tests do not establish screen rendering or speaker output.
+The first full Development APK built successfully on October 18, 2026, after correcting host ZenStore cooking and enabling Unreal's Android permission helper. Both BIN/CUE pairs were staged through the explicit `--include-discs` path. The archived APK is `out/android/packages/Development/20261018T170835Z-1329a339/Weltall-arm64.apk` (1,573,857,611 bytes). Final package-content/signature/alignment checks and installation remain pending. Native decoder tests do not establish screen rendering or speaker output.
 
-The [October 18 handoff](AndroidHandoff.md) records the active build log, tool locations and resume command. The running export predates the newest backup receipt/resources, so refresh it with the normal incremental packager only after the current build exits.
+The [October 18 handoff](AndroidHandoff.md) records the successful build log, tool locations and next steps. The successful export includes the newest backup receipt/resources. Gradle could not parse the locally named NDK folder as a version and skipped debug-symbol stripping; investigate that warning before preparing a smaller package. No build remains running at this handoff.
 
 ## Next device gates
 
-1. Finish Unreal compilation and mobile Vulkan shader cooking; verify the local APK contains both bundled discs.
+1. Verify the successful local APK contains both bundled discs, valid signatures, expected manifest/resources and compatible native/ZIP alignment.
 2. Install over USB, verify first-launch extraction/progress and restart recovery, then reach title/new game.
 3. Check actual picture/movie/audio output and transparent touch composition, simultaneous controls, layout persistence and both landscape sides.
 4. Check Android Back, controller unplugging, suspend/resume, saves and representative field/battle/world-map/disc-switch scenarios.

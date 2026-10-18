@@ -1,19 +1,41 @@
 # Android port handoff — October 18, 2026
 
-The user requested a clean handoff while the current machine build finishes. Leave that build running. Resume development after checking its actual result; do not start a second build against the same exported project.
+The user requested another graceful stop because their usage is about to end. **Current state: the first full game APK built successfully; no build is running and no game APK has been installed.** Resume with package inspection and Moto testing. The older build snapshot below is retained as history.
+
+## Latest continuation — October 18, 2026, 13:13 EDT / 17:13 UTC
+
+- The original build finished compilation and cooking, then failed staging because the host cooker used ZenStore while Android requested legacy pak staging.
+- Pushed `44c109b`: explicitly disable Android ZenStore and pass `-AdditionalCookerOptions=-SkipZenStore` to the host cooker. The 28 synthetic packaging/device-runner tests passed again, and remote repository checks passed for this commit.
+- The next build passed cooking/staging but failed Java compilation: UE's activity imports `PermissionHelper`, which was missing because the project disables engine plugins by default.
+- Pushed `435bacd`: enable Unreal's own `AndroidPermission` plugin for Android only. Its native module and Java code compiled successfully. No startup permission requests were added.
+- **Successful build:** `out/android/logs/Development-20261018T170835Z-1329a339.log`, AutomationTool exit 0, `BUILD SUCCESSFUL`; complete pipeline took 238.31 seconds. Unified exec session `64683` also exited 0 and is finished. Session `49317` was the earlier failed Java build; the original `13121` is no longer available.
+- **Actual game APK:** `out/android/packages/Development/20261018T170835Z-1329a339/Weltall-arm64.apk`, **1,573,857,611 bytes**. This export includes the latest backup receipt/resources and both supplied discs via `--include-discs ../bin`.
+- A ZIP-directory inspection found seven ARM64 libraries and `assets/main.obb.png` (973,575,112 bytes). The payload's two-disc contents, signature, resource wiring and final alignment have **not** been fully verified. No game install/launch has been attempted.
+- The Moto was reauthorized by the user during this continuation. ADB then reported it as connected/authorized, with approximately 40 GB free. No existing `org.weltall` package was reported at that check. Recheck current state before installing; preserve any subsequently created saves.
+- A local-only inspection helper was prepared at `out/android/validation/inspect_package.py`. It has **not been run**; review it before use. It checks signature, manifest/backup resources, ZIP/native alignment, extracts the embedded OBB/pak locally, lists both disc filenames and tests pak integrity. Invocation from the checkout:
+
+```powershell
+& 'C:/Users/baldr/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -u out/android/validation/inspect_package.py out/android/packages/Development/20261018T170835Z-1329a339
+```
+
+Use elevated tool access if required by the Android/Unreal tools. The helper and all extracted verification files/reports remain ignored under `out/`. First complete package checks, then install/update and launch the real game APK on the authorized Moto.
+
+### Packaging warning to investigate
+
+Gradle reported `[CXX1103] Requested NDK version 'android-ndk-r27c' could not be parsed` and packaged the libraries without stripping their debug symbols. The actual archived `libUnreal.so` is 773,296,648 bytes uncompressed (577,602,483 bytes compressed). This did not fail packaging, but increases APK/install size. UE's `UEDeployAndroid.cs` around lines 3841–3843 derives `NDK_VERSION` from the NDK folder basename; the installed NDK's `source.properties` correctly says `Pkg.Revision = 27.2.12479018`. Investigate a Gradle-side version correction while retaining the compiler path/caches, rather than immediately renaming the NDK and invalidating engine objects. No correction has been implemented yet. There is also an engine-generated duplicate resizability-property manifest warning; Java compilation and packaging succeeded despite it.
 
 ## Project and authorized scope
 
 - Fork: <https://github.com/nate-santos/Weltall>, branch `android-port`, upstream `Roman215/Weltall`.
 - Checkout: `C:/Users/baldr/Documents/code/xenogears/Weltall`.
-- Last implementation commit at handoff: `67654f440835edf4c3c795a6c360b17479059f6f` (Android backup rules). The handoff itself is a later documentation commit.
+- Last implementation commit at this handoff: `435bacd` (Android permission helper), following `44c109b` (cooking/staging fix). The handoff itself is a later documentation commit.
 - Continue pushing reviewed source changes to this branch. The user authorized Unreal's source build, the Epic/GitHub link, tool installation, Android SDK license acceptance and USB installation/testing.
 - Test phone: **Moto G Stylus 2025**, Android 16, ARM64, Adreno 710. This replaces the earlier Pixel 7a target. USB debugging was authorized; check its current connection before device work.
 - Intended deliverable: a local APK containing both supplied USA discs, with rotation between both landscape sides and transparent, adjustable controls that obscure as little of the picture as possible.
 - Both BIN/CUE pairs are in `C:/Users/baldr/Documents/code/xenogears/bin`, outside the checkout. Keep all discs, extracted game content, packages, captures and generated test/build output local and ignored. Never upload the bundled APK or game-dependent reports to GitHub/CI.
 - Existing `.gitignore`, `.githooks` and `Scripts/repo_guard.py` protect staged source and outgoing history. Stage explicit source/documentation paths, inspect their diffs and run the guard before committing. These protections do not replace reviewing what is being published.
 
-## Running build: inspect before doing anything else
+## Historical first-build snapshot — superseded by the successful APK above
 
 Snapshot: **2026-10-18 15:01 UTC**. The first full Unreal build was still running, beyond action **1,764 of 4,395**, with no compiler error observed. The action count is not an overall progress percentage or ETA. It is compiling both Windows editor/cooking tools and the Android runtime; low parallelism on this machine makes the initial engine build slow.
 
@@ -34,7 +56,9 @@ Get-Content -LiteralPath out/android/logs/Development-20261018T133325Z-resume.lo
 
 If the tool session is available, poll it without sending input. If it is unavailable, inspect the relevant Unreal/AutomationTool/compiler processes as well as the log. A quiet log alone does not establish that the build stopped. Do not terminate the build, refresh/delete its project, run `--prepare-only`, or start another UAT invocation while it is active. No game APK existed in the current archive at this snapshot.
 
-### Important: the live export predates the newest source
+### Historical export discrepancy — resolved in the successful build
+
+The transition described in this subsection has already been completed. Use the latest continuation above for the next action; do not repeat a build just to resolve this historical discrepancy.
 
 The active export started from `f5473f6`. Later touch/input/storage C++ compile fixes were copied into it and individually compiled against UE's generated Android and Windows response files. **The `Weltall.Build.cs` Android receipt and backup UPL/XML added in `67654f4` are not in the live export.** They were deliberately left alone while the build was running.
 
@@ -73,7 +97,7 @@ The six skips require optional undub disc editions, not either supplied USA disc
 
 ## Resume checklist, in order
 
-1. Establish whether the active build is still running, failed or finished. Preserve the current caches and logs. Resolve a build failure in source if needed, then run the incremental command above to include the newest committed backup integration.
+1. Read the latest continuation above. The full build is finished and its latest export includes backup integration. Preserve compiled caches and logs; another rebuild is needed only for intended source/configuration changes. Investigate the NDK/Gradle stripping warning when preparing the next package.
 2. Verify the new archive contains the actual signed game APK and both intended disc payloads. Check the generated manifest/resources, ARM64 libraries, native/ZIP alignment including 16 KiB compatibility, sensor landscape, SDK settings and backup references. Do not accept an old archive or the resource-only probe as success.
 3. Check the connected Moto and any existing app/signing identity. Install/update through ADB using the matching key. Preserve existing saves; do not uninstall or clear app data as a routine workaround.
 4. Test first-launch progress, successful extraction and both-disc discovery, title/new game, actual picture/movie/speaker output, restart reuse and interrupted-copy recovery. Check storage failure behavior without destructively filling the user's phone.
