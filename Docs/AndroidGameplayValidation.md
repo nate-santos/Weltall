@@ -11,11 +11,13 @@ Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pa
 | Disc and core baseline | Both USA discs identified; Windows and Moto each passed 1,358 cases with the same six optional-undub skips | Counts and local report paths in [AndroidValidation.md](AndroidValidation.md). These are not gameplay passes. |
 | Isolated ARM64 synthetic baseline | 731 cases and 269,420 assertions passed without disc access | Existing device report, recorded in AndroidValidation.md. |
 | Packaged APK inspection | Signature, SDK settings, compiled landscape orientations, backup XML, ZIP alignment, seven ARM64 ELF libraries with 16 KiB load alignment, pak listing and pak integrity passed | `out/android/validation/20261018T170835Z-1329a339/summary.json` and adjacent tool reports. Pak listing contains both BIN/CUE pairs; runtime extraction must still verify every copied file. |
-| APK installation | Installed successfully through ADB; subsequent updates preserve app data | Latest installed archive `20261018T185807Z-300fdc83` passed the same package inspection. |
+| APK installation | Installed successfully through ADB; subsequent updates preserve app data | Latest installed source `ca17c38`, archive `20261018T191746Z-4ffe3f1c`, passed the same package inspection. Save/update retention still needs a populated-save round trip. |
 | Vulkan selection | Passed after enabling AndroidDeviceProfileSelector | Device selects Android_Adreno7xx_Vulkan and initializes its Vulkan RHI/swapchain. `out/testing/android-app/20261018-first-launch/logcat-profile-fix.txt`. |
-| First app startup | Fails while loading default engine materials, before disc preparation | Runtime requests a mobile shader variant absent from the cooked WorldGridMaterial. Local-light removal alone did not resolve it. A temporary app-local CSM diagnostic advanced to a default decal mismatch; the override was removed. Shared cooker/runtime mobile settings are being rebuilt and remain unverified. |
+| First app startup | Passed with shared mobile renderer settings; title and opening new-game movie render | UE 5.8 defaults the cooker's mobile path to HDR/deferred, while the former Android-only HDR override selected forward rendering at runtime. `ca17c38` makes both agree. Normal launch uses no diagnostic command line. Local captures/logs: `out/testing/android-app/shared-mobile-running`, `title-touch-confirm`, `new-game-touch`. |
+| Bundled disc preparation / restart | Both discs copied and verified on first launch; a restart discovered both without repeating the copy | `shared-mobile-startup/logcat.txt` records readiness; `restart-normal/logcat.txt` records rediscovery. Interrupted-copy and insufficient-space cases remain pending. |
 | Windows synthetic GPU baseline | All 57 rendering cases passed; zero failed or unrun, including a repeat after moving tests into a shared Development module | `out/testing/unreal/windows-render-baseline/report/index.json` and `windows-render-shared/report/index.json`, D3D12 SM6 on AMD Radeon. One case produced two expected malformed-texture warnings. This is not the real-content gameplay reference. |
-| Android synthetic GPU tests | Pending | Exercise actual mobile Vulkan render passes and read back expected pixels, including blending, depth/stencil, palette lookup, copies and movie conversion. |
+| Android synthetic GPU tests | All 53 currently available cases passed, zero failed or unrun, 8.53 seconds | `out/testing/android-app/rendering-tests-complete/report/index.json`, Vulkan ES3.1 on Adreno 710. Four additional editor-only tests are being enabled for matching coverage. Driver pipeline-cache messages need further assessment despite successful pixel checks. HTML report template is absent from the APK; the JSON result is complete. |
+| Basic touch / screen awake | Confirm and D-pad Up navigate the title and start a new game; Android logs confirm the game's keep-screen-on flag | Direct single-touch injection through the phone's touch input path. Multi-touch, rotations, configuration and lifecycle checks remain pending. |
 | Broader GPU comparison | Pending | No Mali/Immortalis device result exists; do not claim cross-family portability. |
 
 ## Gameplay matrix
@@ -24,7 +26,7 @@ Each pending cell requires a recorded run on that platform/disc. For a save-base
 
 | Scenario | PC Disc 1 | Android Disc 1 | PC Disc 2 | Android Disc 2 |
 | --- | --- | --- | --- | --- |
-| Title, new game / appropriate disc entry | Pending | Pending | Pending | Pending |
+| Title, new game / appropriate disc entry | Title reference rendered; new game pending | Title and opening movie entered through touch; later progression pending | Pending | Pending |
 | Field walking, exits and collision | Pending | Pending | Pending | Pending |
 | Dialogue, choices and scripted progression | Pending | Pending | Pending | Pending |
 | Field camera and required shoulder actions | Pending | Pending | Pending | Pending |

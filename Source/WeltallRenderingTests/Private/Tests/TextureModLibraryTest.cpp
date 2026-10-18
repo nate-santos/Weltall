@@ -49,7 +49,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModLibraryTest, "Weltall.Rendering.TextureCapturesAndHighResolutionReplacements",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModLibraryTest::RunTest(const FString&)
 {
@@ -160,7 +160,7 @@ bool FTextureModLibraryTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModBudgetTest, "Weltall.Rendering.TextureBudgetsKeepPinnedImagesAndDeferDecoding",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModBudgetTest::RunTest(const FString&)
 {
@@ -207,7 +207,7 @@ bool FTextureModBudgetTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModLinkTest, "Weltall.Rendering.TextureCaptureRefusesPartialFileLinks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModLinkTest::RunTest(const FString&)
 {
