@@ -27,6 +27,9 @@ public:
 	/** The game is to stand still: its window is not the one in use, and the settings pause it there. */
 	bool IsHeldInBackground() const;
 
+	/** Drops the first mobile frame after resuming instead of simulating time spent suspended. */
+	bool ConsumeResumeFrame();
+
 	/** The window's icon becomes the game's own, read from the player's disc (Windows; elsewhere the window keeps its own). */
 	void ShowGameIcon(const Weltall::FIso9660& Disc);
 
@@ -36,8 +39,20 @@ private:
 	 * otherwise after), and the sound is heard in the background or not.
 	 */
 	void Follow();
+	void ApplicationBackgrounded();
+	void ApplicationForegrounded();
+	void ApplicationDeactivated();
+	void ApplicationReactivated();
+	void HoldMobileAudio();
 
 	FDelegateHandle SettingsChanged;
+	FDelegateHandle BackgroundedHandle;
+	FDelegateHandle ForegroundedHandle;
+	FDelegateHandle DeactivatedHandle;
+	FDelegateHandle ReactivatedHandle;
+	bool bApplicationForeground = true;
+	bool bApplicationActive = true;
+	bool bResumeFrame = false;
 	Weltall::FDisplaySize Followed;
 	bool bFollowedFullScreen = false;
 };

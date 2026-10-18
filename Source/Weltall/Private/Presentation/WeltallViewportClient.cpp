@@ -1,6 +1,8 @@
 #include "Presentation/WeltallViewportClient.h"
 
 #include "Engine/GameInstance.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Input/TouchPad.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "RenderingThread.h"
@@ -27,7 +29,28 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 	const UPlayerSettingsSubsystem* Settings = Game != nullptr ? Game->GetSubsystem<UPlayerSettingsSubsystem>() : nullptr;
 	const Weltall::EDisplayAspect Aspect = Settings != nullptr ? Settings->Settings().Display.Aspect : Weltall::EDisplayAspect::Window;
 	const FIntPoint Size = InViewport->GetSizeXY();
-	ENQUEUE_RENDER_COMMAND(DrawGameScreen)([InViewport, Frame = MoveTemp(Frame), Size, Aspect](FRHICommandListImmediate& RHICmdList)
+	if (Size.X <= 0 || Size.Y <= 0)
+	{
+		// Android can briefly have no drawable surface while rotating or resuming.
+		return;
+	}
+	FIntRect Display(FIntPoint::ZeroValue, Size);
+#if PLATFORM_ANDROID
+	// Match Slate's safe area. Both the notch side and navigation insets may change after a flip.
+	FMargin Safe;
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().GetSafeZoneSize(Safe, FVector2D(Size));
+	}
+	const FIntPoint SafeMin(FMath::RoundToInt(Safe.Left), FMath::RoundToInt(Safe.Top));
+	const FIntPoint SafeSize(FMath::Max(1, Size.X - SafeMin.X - FMath::RoundToInt(Safe.Right)),
+		FMath::Max(1, Size.Y - SafeMin.Y - FMath::RoundToInt(Safe.Bottom)));
+	const Weltall::FTouchOptions Touch = Settings != nullptr ? Settings->Settings().Touch : Weltall::FTouchOptions{};
+	const Weltall::FTouchRect Picture = Weltall::FTouchLayout::Build(static_cast<float>(SafeSize.X), static_cast<float>(SafeSize.Y), Touch).Picture;
+	const FIntPoint PictureMin = SafeMin + FIntPoint(FMath::RoundToInt(Picture.X), FMath::RoundToInt(Picture.Y));
+	Display = FIntRect(PictureMin, PictureMin + FIntPoint(FMath::RoundToInt(Picture.Width), FMath::RoundToInt(Picture.Height)));
+#endif
+	ENQUEUE_RENDER_COMMAND(DrawGameScreen)([InViewport, Frame = MoveTemp(Frame), Size, Display, Aspect](FRHICommandListImmediate& RHICmdList)
 	{
 		FRHITexture* Target = InViewport->GetRenderTargetTexture();
 		if (Target == nullptr)
@@ -37,7 +60,13 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 		FRDGBuilder GraphBuilder(RHICmdList);
 		FRDGTextureRef Output = RegisterExternalTexture(GraphBuilder, Target, TEXT("GameViewport"));
 		GraphBuilder.SetTextureAccessFinal(Output, ERHIAccess::RTV);
-		AddDisplayFramePasses(GraphBuilder, Output, FIntRect(FIntPoint::ZeroValue, Size.ComponentMin(Output->Desc.Extent)), Aspect, Frame.Get());
+		const FIntPoint Extent = Size.ComponentMin(Output->Desc.Extent);
+		const FIntRect Picture(Display.Min.ComponentMin(Extent), Display.Max.ComponentMin(Extent));
+		if (Picture != FIntRect(FIntPoint::ZeroValue, Extent))
+		{
+			AddClearRenderTargetPass(GraphBuilder, Output, FLinearColor::Black);
+		}
+		AddDisplayFramePasses(GraphBuilder, Output, Picture, Aspect, Frame.Get());
 		GraphBuilder.Execute();
 	});
 }

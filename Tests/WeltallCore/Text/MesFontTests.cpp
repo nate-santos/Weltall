@@ -31,7 +31,7 @@ TEST_CASE("A glyph's cell holds its body a pixel in and an outline around it", "
 	const FMesFont::FCell Cell = Font.Cell({0, 0x10});
 	const auto At = [&Cell](int32 X, int32 Y) { return Cell[static_cast<std::size_t>(Y * FMesFont::CellWidth + X)]; };
 	CHECK(At(1, 1) == 1);
-	for (const auto [X, Y] : {std::pair{0, 0}, std::pair{1, 0}, std::pair{2, 0}, std::pair{0, 1}, std::pair{2, 1}, std::pair{0, 2}, std::pair{1, 2}, std::pair{2, 2}})
+	for (const auto& [X, Y] : {std::pair{0, 0}, std::pair{1, 0}, std::pair{2, 0}, std::pair{0, 1}, std::pair{2, 1}, std::pair{0, 2}, std::pair{1, 2}, std::pair{2, 2}})
 	{
 		CHECK(At(X, Y) == 2);
 	}

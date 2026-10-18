@@ -66,7 +66,7 @@ namespace Weltall
 		Session->Songs = std::make_unique<FFieldGameSongs>(*Session->Music, *Session->GameSound);
 		Session->Effects = std::make_unique<FFieldGameSoundEffects>(*Session->GameSound, *Session->ResidentSound, Disc.Image(), *Session->Index);
 		Session->WorldMap = std::make_unique<FWorldMapMusic>(*Session->GameSound, *Session->Music, Disc.Image(), *Session->Index);
-		Session->Music->SetBankRoomRelease([WorldMap = Session->WorldMap.get()](FSoundDriver& Driver) { WorldMap->ReleaseBank(Driver); });
+		Session->Music->SetBankRoomRelease([BankOwner = Session->WorldMap.get()](FSoundDriver& Driver) { BankOwner->ReleaseBank(Driver); });
 		return Session;
 	}
 

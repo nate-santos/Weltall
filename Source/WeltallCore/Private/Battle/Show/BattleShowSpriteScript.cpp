@@ -309,7 +309,7 @@ namespace Weltall
 			case 0x9E:
 				// Waits for Select on pad 1 as the development hardware reads it: on a retail console, for ever.
 				Sprite.Wait = 1;
-				if ((RetailDebugPad & SelectButton) == 0)
+				if constexpr ((RetailDebugPad & SelectButton) == 0)
 				{
 					return;
 				}

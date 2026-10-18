@@ -32,6 +32,14 @@ public:
 
 	virtual bool HandleKeyDownEvent(FSlateApplication& Application, const FKeyEvent& Event) override
 	{
+#if PLATFORM_ANDROID
+		// The controller reserves system Back for cancellation. Do not enqueue it ahead of
+		// the Escape cancellation the controller sends to the hardware-binding prompt.
+		if (Event.GetKey() == EKeys::Android_Back)
+		{
+			return false;
+		}
+#endif
 		if (!Event.IsRepeat())
 		{
 			Hear(Event.GetKey(), 0);

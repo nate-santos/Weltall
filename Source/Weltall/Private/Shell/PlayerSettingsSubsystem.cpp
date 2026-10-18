@@ -32,6 +32,13 @@ void UPlayerSettingsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 	else
 	{
+#if PLATFORM_ANDROID
+		// Start with the simplest custom render path; MSAA/upscalers need mobile GPU validation.
+		Current.Field.AntiAliasing = Weltall::EFieldAntiAliasing::None;
+		Current.Field.Filter = Weltall::EFieldTextureFilter::Nearest;
+		Current.Field.SpriteFilter = Weltall::EFieldTextureFilter::Nearest;
+		Current.Field.MovieFilter = Weltall::EMovieFilter::Smooth;
+#endif
 		// The first start writes the defaults, so the file lists every setting there is.
 		Save();
 	}

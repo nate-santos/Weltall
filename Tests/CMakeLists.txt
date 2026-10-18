@@ -39,6 +39,10 @@ add_library(Catch2 STATIC "${CATCH2_DIR}/catch_amalgamated.cpp")
 target_include_directories(Catch2 SYSTEM PUBLIC "${CATCH2_DIR}")
 target_compile_options(Catch2 PRIVATE ${WELTALL_LANGUAGE_OPTIONS})
 target_compile_definitions(Catch2 PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
+if(ANDROID)
+	# Catch2's Android diagnostic stream writes to logcat.
+	target_link_libraries(Catch2 PUBLIC log)
+endif()
 
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/WeltallCore/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/Support/*.cpp")
 add_executable(WeltallCoreTests ${TEST_SOURCES})

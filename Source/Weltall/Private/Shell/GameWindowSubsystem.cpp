@@ -1,5 +1,6 @@
 #include "Shell/GameWindowSubsystem.h"
 
+#include "Audio/GameSoundSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -10,6 +11,7 @@
 #include "Media/PsxExecutable.h"
 #include "Menu/MenuResources.h"
 #include "Misc/App.h"
+#include "Misc/CoreDelegates.h"
 #include "RHI.h"
 #include "Shell/PlayerSettingsSubsystem.h"
 #include "UnrealClient.h"
@@ -112,11 +114,21 @@ void UGameWindowSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 	UPlayerSettingsSubsystem* Settings = Collection.InitializeDependency<UPlayerSettingsSubsystem>();
 	SettingsChanged = Settings->OnSettingsChanged.AddUObject(this, &UGameWindowSubsystem::Follow);
+#if PLATFORM_ANDROID
+	BackgroundedHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationBackgrounded);
+	ForegroundedHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationForegrounded);
+	DeactivatedHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationDeactivated);
+	ReactivatedHandle = FCoreDelegates::ApplicationHasReactivatedDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationReactivated);
+#endif
 	Follow();
 }
 
 void UGameWindowSubsystem::Deinitialize()
 {
+	FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundedHandle);
+	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundedHandle);
+	FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedHandle);
+	FCoreDelegates::ApplicationHasReactivatedDelegate.Remove(ReactivatedHandle);
 	if (UPlayerSettingsSubsystem* Settings = GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>())
 	{
 		Settings->OnSettingsChanged.Remove(SettingsChanged);
@@ -158,15 +170,64 @@ Weltall::FDisplayModes UGameWindowSubsystem::Modes() const
 
 bool UGameWindowSubsystem::IsHeldInBackground() const
 {
+#if PLATFORM_ANDROID
+	// A phone must stop simulation/audio when suspended, regardless of desktop preferences.
+	return !bApplicationActive || !bApplicationForeground;
+#else
 	// A run nobody attends has no window to be in use.
 	return HasOwnWindow() && !FApp::IsUnattended() && GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>()->Settings().Display.bPauseInBackground
 		&& !FPlatformApplicationMisc::IsThisApplicationForeground();
+#endif
+}
+
+bool UGameWindowSubsystem::ConsumeResumeFrame()
+{
+	const bool bDrop = bResumeFrame;
+	bResumeFrame = false;
+	return bDrop;
+}
+
+void UGameWindowSubsystem::HoldMobileAudio()
+{
+	if (UGameSoundSubsystem* Sound = GetGameInstance()->GetSubsystem<UGameSoundSubsystem>())
+	{
+		Sound->SetHeld(true);
+	}
+	bResumeFrame = true;
+}
+
+void UGameWindowSubsystem::ApplicationBackgrounded()
+{
+	bApplicationForeground = false;
+	HoldMobileAudio();
+}
+
+void UGameWindowSubsystem::ApplicationForegrounded()
+{
+	bApplicationForeground = true;
+	bResumeFrame = true;
+}
+
+void UGameWindowSubsystem::ApplicationDeactivated()
+{
+	bApplicationActive = false;
+	HoldMobileAudio();
+}
+
+void UGameWindowSubsystem::ApplicationReactivated()
+{
+	bApplicationActive = true;
+	bResumeFrame = true;
 }
 
 void UGameWindowSubsystem::Follow()
 {
 	const Weltall::FDisplayOptions& Display = GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>()->Settings().Display;
 	FApp::SetUnfocusedVolumeMultiplier(Display.bSoundInBackground ? 1.0f : 0.0f);
+#if PLATFORM_ANDROID
+	FApp::SetUnfocusedVolumeMultiplier(0.0f);
+	// Android owns the surface size and orientation; desktop window preferences do not apply.
+#else
 	const Weltall::FDisplaySize Chosen = Display.WindowSize;
 	UGameUserSettings* Window = GEngine != nullptr ? GEngine->GetGameUserSettings() : nullptr;
 	if ((Chosen == Followed && Display.bFullScreen == bFollowedFullScreen) || Window == nullptr || !HasOwnWindow())
@@ -192,4 +253,5 @@ void UGameWindowSubsystem::Follow()
 	Window->ApplyResolutionSettings(false);
 	// Kept with the engine's own window settings too, so the next start opens the window at this size.
 	Window->SaveSettings();
+#endif
 }

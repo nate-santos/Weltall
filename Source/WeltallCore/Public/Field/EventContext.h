@@ -8,6 +8,7 @@
 #include "Field/FieldCamera.h"
 #include "Field/FieldControls.h"
 #include "Field/FieldGears.h"
+#include "Field/FieldMap.h"
 #include "Field/FieldMessages.h"
 #include "Field/FieldMovement.h"
 #include "Field/FieldParticles.h"
@@ -32,7 +33,6 @@ namespace Weltall
 	class FSprite;
 	class FSpriteSystem;
 	struct FFieldWalkmesh;
-	struct FFieldZone;
 	struct FGteArctangents;
 
 	/** Where an actor's sprite comes from: one of the map's sprite files, or a party member's. */

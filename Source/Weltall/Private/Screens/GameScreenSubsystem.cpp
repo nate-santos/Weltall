@@ -54,14 +54,17 @@ void UGameScreenSubsystem::Deinitialize()
 void UGameScreenSubsystem::Tick(float DeltaTime)
 {
 	// In the background, when the settings say so, the whole game stands still: no frame runs, no time passes, no sound is made.
-	const UGameWindowSubsystem* Window = GetGameInstance()->GetSubsystem<UGameWindowSubsystem>();
-	const bool bHeld = Window != nullptr && Window->IsHeldInBackground();
+	UGameWindowSubsystem* Window = GetGameInstance()->GetSubsystem<UGameWindowSubsystem>();
+	AWeltallPlayerController* Controller = Cast<AWeltallPlayerController>(GetGameInstance()->GetFirstLocalPlayerController());
+	const bool bHeld = (Window != nullptr && Window->IsHeldInBackground()) || (Controller != nullptr && Controller->IsTouchMenuOpen());
+	// Keep audio paused too while discarding a delta that may include time spent suspended.
+	const bool bResumeFrame = !bHeld && Window != nullptr && Window->ConsumeResumeFrame();
 	if (UGameSoundSubsystem* Sound = GetGameInstance()->GetSubsystem<UGameSoundSubsystem>())
 	{
-		Sound->SetHeld(bHeld);
+		Sound->SetHeld(bHeld || bResumeFrame);
 	}
 	UPadPortsSubsystem* Ports = GetGameInstance()->GetSubsystem<UPadPortsSubsystem>();
-	if (bHeld)
+	if (bHeld || bResumeFrame)
 	{
 		// A motor running as the game is held would run on.
 		if (Ports != nullptr)
@@ -70,7 +73,6 @@ void UGameScreenSubsystem::Tick(float DeltaTime)
 		}
 		return;
 	}
-	AWeltallPlayerController* Controller = Cast<AWeltallPlayerController>(GetGameInstance()->GetFirstLocalPlayerController());
 	if (Controller != nullptr)
 	{
 		Screen->AddViewInput(Controller->ReadView(DeltaTime));

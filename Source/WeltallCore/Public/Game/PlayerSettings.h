@@ -12,6 +12,7 @@
 #include "Game/BattleSpeed.h"
 #include "Game/SaveLoad.h"
 #include "Input/ControlBindings.h"
+#include "Input/TouchPad.h"
 #include "Menu/MenuOptions.h"
 #include "Media/VoiceLanguage.h"
 #include "Presentation/DisplayOptions.h"
@@ -65,6 +66,8 @@ namespace Weltall
 		/** How fast battles are fought, which L1 and R1 step during one. */
 		EBattleSpeed BattleSpeed = EBattleSpeed::Normal;
 		FControlBindings Controls = FControlBindings::Defaults();
+		/** Android's original touch overlay; desktop input is unaffected. */
+		FTouchOptions Touch;
 	};
 
 	/**

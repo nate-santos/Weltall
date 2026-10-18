@@ -4,8 +4,11 @@
 #include <charconv>
 #include <cmath>
 #include <initializer_list>
+#include <locale>
+#include <limits>
 #include <map>
 #include <optional>
+#include <sstream>
 #include <system_error>
 #include <vector>
 
@@ -42,6 +45,37 @@ namespace Weltall
 				At = End;
 			}
 			return Result;
+		}
+
+		/** Android's libc++ lacks floating from_chars. Keep decimal parsing strict and locale independent. */
+		bool ReadDecimal(const std::string& Text, float& Value)
+		{
+			if (Text.empty() || Text.front() == '+')
+			{
+				return false;
+			}
+			std::istringstream Input(Text);
+			Input.imbue(std::locale::classic());
+			long double Read = 0.0L;
+			Input >> std::noskipws >> Read;
+			const long double Largest = std::numeric_limits<float>::max();
+			const long double Overflow = Largest + std::ldexp(1.0L, std::numeric_limits<float>::max_exponent - std::numeric_limits<float>::digits - 1);
+			if (Input.fail() || !Input.eof() || !std::isfinite(Read) || std::abs(Read) >= Overflow)
+			{
+				return false;
+			}
+			// Some standard libraries silently round an underflow to zero; from_chars rejects it.
+			const std::size_t Exponent = Text.find_first_of("eE");
+			const std::string_view Mantissa(Text.data(), std::min(Exponent, Text.size()));
+			// Values just beyond the largest float can still round to that finite float. Clamp
+			// before converting so the conversion never receives an out-of-range value.
+			const float Converted = static_cast<float>(std::clamp(Read, -Largest, Largest));
+			if (Converted == 0.0f && Mantissa.find_first_of("123456789") != std::string_view::npos)
+			{
+				return false;
+			}
+			Value = Converted;
+			return true;
 		}
 
 		/** Writes each setting as a line. */
@@ -138,13 +172,9 @@ namespace Weltall
 			{
 				const std::string* Text = Find(Key);
 				float Read = 0.0f;
-				if (Text != nullptr)
+				if (Text != nullptr && ReadDecimal(*Text, Read))
 				{
-					const std::from_chars_result Parsed = std::from_chars(Text->data(), Text->data() + Text->size(), Read);
-					if (Parsed.ec == std::errc() && Parsed.ptr == Text->data() + Text->size() && std::isfinite(Read))
-					{
-						Value = std::clamp(Read, Min, Max);
-					}
+					Value = std::clamp(Read, Min, Max);
 				}
 			}
 
@@ -312,6 +342,16 @@ namespace Weltall
 			Visitor.Flag("controls.original_button_icons", Settings.Controls.bOriginalButtonIcons);
 			Visitor.Level("controls.mouse_sensitivity", Settings.Controls.MouseSensitivity, LowestSensitivity, HighestSensitivity);
 			Visitor.Level("controls.stick_sensitivity", Settings.Controls.StickSensitivity, LowestSensitivity, HighestSensitivity);
+			Visitor.Number("touch.idle_opacity", Settings.Touch.IdleOpacity, 0.0f, 1.0f);
+			Visitor.Number("touch.pressed_opacity", Settings.Touch.PressedOpacity, 0.0f, 1.0f);
+			Visitor.Number("touch.scale", Settings.Touch.Scale, 0.7f, 1.4f);
+			Visitor.Flag("touch.reserve_sides", Settings.Touch.bReserveSides);
+			for (std::size_t Control = 0; Control < TouchControlCount; ++Control)
+			{
+				const std::string Key = std::string("touch.") + TouchControlNames[Control];
+				Visitor.Number(Key + ".offset_x", Settings.Touch.Offsets[Control].X, -1.0f, 1.0f);
+				Visitor.Number(Key + ".offset_y", Settings.Touch.Offsets[Control].Y, -1.0f, 1.0f);
+			}
 			constexpr std::array<std::string_view, ControlActionCount> ActionKeys{"controls.up", "controls.down", "controls.left", "controls.right",
 				"controls.cross", "controls.circle", "controls.square", "controls.triangle", "controls.l1", "controls.r1", "controls.l2", "controls.r2",
 				"controls.start", "controls.select", "controls.view_turn", "controls.view_tilt", "controls.view_zoom", "controls.view_reset"};
