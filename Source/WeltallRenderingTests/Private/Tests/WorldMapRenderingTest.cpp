@@ -60,7 +60,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapRenderingTest, "Weltall.Rendering.WorldMapFollowsTheOriginalsScreen",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapRenderingTest::RunTest(const FString&)
 {
@@ -135,7 +135,7 @@ bool FWorldMapRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapPortRowsRenderingTest, "Weltall.Rendering.WorldMapGearsTakeTheirTexelsFromThePortsRows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapPortRowsRenderingTest::RunTest(const FString&)
 {
@@ -191,7 +191,7 @@ bool FWorldMapPortRowsRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapOneSidedRenderingTest, "Weltall.Rendering.WorldMapOneSidedPolygonsFaceTheEye",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapOneSidedRenderingTest::RunTest(const FString&)
 {
@@ -239,7 +239,7 @@ bool FWorldMapOneSidedRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapWaverRenderingTest, "Weltall.Rendering.WorldMapWaverMovesItsRows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapWaverRenderingTest::RunTest(const FString&)
 {
@@ -281,7 +281,7 @@ bool FWorldMapWaverRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapSceneryDepthRenderingTest, "Weltall.Rendering.WorldMapSceneryIsSortedByDepth",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapSceneryDepthRenderingTest::RunTest(const FString&)
 {
@@ -365,7 +365,7 @@ bool FWorldMapSceneryDepthRenderingTest::RunTest(const FString&)
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FArenaDepthRenderingTest, "Weltall.Rendering.ArenaGearsAreSortedAndStandInFrontOfTheirShadows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FArenaDepthRenderingTest::RunTest(const FString&)
 {
@@ -450,7 +450,7 @@ bool FArenaDepthRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapDrawingMoveTest, "Weltall.Rendering.WorldMapDrawingMovesBetweenTicks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapDrawingMoveTest::RunTest(const FString&)
 {

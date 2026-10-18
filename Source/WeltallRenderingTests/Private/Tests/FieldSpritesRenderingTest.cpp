@@ -110,7 +110,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldSpritesRenderingTest, "Weltall.Rendering.FieldSpritesFollowTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldSpritesRenderingTest::RunTest(const FString&)
 {
@@ -173,7 +173,7 @@ bool FFieldSpritesRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldSpritePartsMeetRenderingTest, "Weltall.Rendering.FieldSpritePartsMeetUnderMultisampling",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldSpritePartsMeetRenderingTest::RunTest(const FString&)
 {
@@ -214,7 +214,7 @@ bool FFieldSpritePartsMeetRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldCrispTexelsRenderingTest, "Weltall.Rendering.FieldCrispTexelsAreSharpButWhereTheirEdgesCrossAPixel",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldCrispTexelsRenderingTest::RunTest(const FString&)
 {
@@ -258,7 +258,7 @@ bool FFieldCrispTexelsRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldUpscaledTexelsRenderingTest, "Weltall.Rendering.FieldUpscaledTexelsSmoothAStaircase",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldUpscaledTexelsRenderingTest::RunTest(const FString&)
 {
@@ -294,7 +294,7 @@ bool FFieldUpscaledTexelsRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldPortRowsRenderingTest, "Weltall.Rendering.FieldSpritesDrawFromThePortsRowsOfVram",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldPortRowsRenderingTest::RunTest(const FString&)
 {

@@ -91,7 +91,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldSpriteModelRenderingTest, "Weltall.Rendering.FieldSpriteModelsFollowTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldSpriteModelRenderingTest::RunTest(const FString&)
 {

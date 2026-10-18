@@ -122,7 +122,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldSceneJoinsRenderingTest, "Weltall.Rendering.FieldSceneryPiecesMeetWhereJoined",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldSceneJoinsRenderingTest::RunTest(const FString&)
 {

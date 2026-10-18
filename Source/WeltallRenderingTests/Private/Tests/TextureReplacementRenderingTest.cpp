@@ -74,7 +74,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureReplacementRenderingTest, "Weltall.Rendering.PngReplacementsKeepHighResolutionAndOriginalBlendClasses",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureReplacementRenderingTest::RunTest(const FString&)
 {
@@ -220,7 +220,7 @@ bool FTextureReplacementRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureRegionReplacementTest, "Weltall.Rendering.ReplacementsFollowTheirRegionsAndTheOriginalsColours",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureRegionReplacementTest::RunTest(const FString&)
 {
@@ -351,7 +351,7 @@ bool FTextureRegionReplacementTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModelSeedsTest, "Weltall.Rendering.ModelsTeachTheirReplacementsTheColoursTheyWereLoadedWith",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModelSeedsTest::RunTest(const FString&)
 {
@@ -400,7 +400,7 @@ bool FTextureModelSeedsTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModelAnimationsTest, "Weltall.Rendering.ModelsKeepTheirReplacementsThroughTheirOwnTexelAnimations",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModelAnimationsTest::RunTest(const FString&)
 {
@@ -453,7 +453,7 @@ bool FTextureModelAnimationsTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTexturePartsTest,"Weltall.Rendering.PartsOfALargerPictureTakeItsReplacement",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTexturePartsTest::RunTest(const FString&)
 {
@@ -504,7 +504,7 @@ bool FTexturePartsTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureAtlasGrowthTest,"Weltall.Rendering.ReplacementAtlasGrowsKeepingItsPictures",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureAtlasGrowthTest::RunTest(const FString&)
 {
@@ -562,7 +562,7 @@ bool FTextureAtlasGrowthTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTextureModSourcesTest,"Weltall.Rendering.TextureSourcesTakeSpriteCellsAndWholePages",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTextureModSourcesTest::RunTest(const FString&)
 {
@@ -611,7 +611,7 @@ bool FTextureModSourcesTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTexturePictureReplacementTest, "Weltall.Rendering.PicturesTakeTheReplacementsOfTheirOwnColours",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FTexturePictureReplacementTest::RunTest(const FString&)
 {

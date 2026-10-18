@@ -254,7 +254,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldGearsRenderingTest, "Weltall.Rendering.FieldGearsFollowTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldGearsRenderingTest::RunTest(const FString&)
 {
@@ -307,7 +307,7 @@ bool FFieldGearsRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldGearShadowRenderingTest, "Weltall.Rendering.FieldGearsStandInFrontOfTheirFloorShadows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldGearShadowRenderingTest::RunTest(const FString&)
 {
@@ -353,7 +353,7 @@ bool FFieldGearShadowRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldGearPartsDepthRenderingTest, "Weltall.Rendering.FieldGearPartsAreSortedByDepth",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldGearPartsDepthRenderingTest::RunTest(const FString&)
 {
@@ -402,7 +402,7 @@ bool FFieldGearPartsDepthRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldGearSceneryDepthRenderingTest, "Weltall.Rendering.FieldGearsAreSortedAgainstTheScenery",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldGearSceneryDepthRenderingTest::RunTest(const FString&)
 {
@@ -551,7 +551,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldPlacedGearRenderingTest, "Weltall.Rendering.PlacedGearsDrawFromThePortsRowsWhereTheirHostPutsThem",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldPlacedGearRenderingTest::RunTest(const FString&)
 {

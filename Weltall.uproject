@@ -5,6 +5,11 @@
 	"Description": "",
 	"Modules": [
 		{
+			"Name": "WeltallRenderingTests",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "PostEngineInit"
+		},
+		{
 			"Name": "Weltall",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"

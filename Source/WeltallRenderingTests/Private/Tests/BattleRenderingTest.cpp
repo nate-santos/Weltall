@@ -98,7 +98,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleRenderingTest, "Weltall.Rendering.BattleFollowsTheOriginalsScreen",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleRenderingTest::RunTest(const FString&)
 {
@@ -233,7 +233,7 @@ bool FBattleRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleLayersRenderingTest, "Weltall.Rendering.BattleDrawsItsLayersInTheOrderingTablesOrder",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleLayersRenderingTest::RunTest(const FString&)
 {
@@ -308,7 +308,7 @@ bool FBattleLayersRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleShatterRenderingTest, "Weltall.Rendering.BattleShatterBreaksThePictureOfTheScreen",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleShatterRenderingTest::RunTest(const FString&)
 {
@@ -364,7 +364,7 @@ bool FBattleShatterRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleSetupTransitionRenderingTest, "Weltall.Rendering.BattleSetupTransitionsDrawThePictureAsTheirMesh",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleSetupTransitionRenderingTest::RunTest(const FString&)
 {
@@ -432,7 +432,7 @@ bool FBattleSetupTransitionRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleBlendRenderingTest, "Weltall.Rendering.BattleIsDrawnBetweenTwoOfTheShowsFrames",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleBlendRenderingTest::RunTest(const FString&)
 {
@@ -572,7 +572,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleDepthRenderingTest, "Weltall.Rendering.BattleGearsAreSortedAndStandInFrontOfTheirShadows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattleDepthRenderingTest::RunTest(const FString&)
 {

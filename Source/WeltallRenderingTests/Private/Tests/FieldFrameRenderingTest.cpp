@@ -176,7 +176,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldParticlesRenderingTest, "Weltall.Rendering.FieldParticlesFollowTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldParticlesRenderingTest::RunTest(const FString&)
 {
@@ -224,7 +224,7 @@ bool FFieldParticlesRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldModelChangesRenderingTest, "Weltall.Rendering.FieldModelChangesFollowTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldModelChangesRenderingTest::RunTest(const FString&)
 {
@@ -281,7 +281,7 @@ bool FFieldModelChangesRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldScreenWaveRenderingTest, "Weltall.Rendering.FieldScreenWaveRedrawsTheScene",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldScreenWaveRenderingTest::RunTest(const FString&)
 {
@@ -342,7 +342,7 @@ bool FFieldScreenWaveRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldSceneryDepthRenderingTest, "Weltall.Rendering.FieldSceneryByDepthKeepsItsDecals",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldSceneryDepthRenderingTest::RunTest(const FString&)
 {
@@ -393,7 +393,7 @@ bool FFieldSceneryDepthRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldDepthSortingRenderingTest, "Weltall.Rendering.FieldDepthBufferSortsTheSpritesAndKeepsTheScenery",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldDepthSortingRenderingTest::RunTest(const FString&)
 {
@@ -472,7 +472,7 @@ bool FFieldDepthSortingRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldShadowRenderingTest, "Weltall.Rendering.FieldShadowsHideBehindWhatStandsAboveTheirFloor",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldShadowRenderingTest::RunTest(const FString&)
 {
@@ -522,7 +522,7 @@ bool FFieldShadowRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldPictureRenderingTest, "Weltall.Rendering.FieldPictureOfTheScreenIsDrawnAsTheFieldDrawsIt",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldPictureRenderingTest::RunTest(const FString&)
 {
@@ -578,7 +578,7 @@ bool FFieldPictureRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldViewMoveTest, "Weltall.Rendering.FieldFrameMovesToAnotherView",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldViewMoveTest::RunTest(const FString&)
 {

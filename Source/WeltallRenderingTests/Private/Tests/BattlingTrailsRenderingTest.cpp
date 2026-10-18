@@ -7,7 +7,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattlingTrailsRenderingTest, "Weltall.Rendering.BattlingTrailsDimTheFrameBeforeAndLeaveOutItsBlack",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FBattlingTrailsRenderingTest::RunTest(const FString&)
 {

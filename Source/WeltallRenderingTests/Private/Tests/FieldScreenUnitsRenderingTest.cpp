@@ -15,7 +15,7 @@
 // texture: the colour's 5 bits a channel, the copy's brightness, and black where there is no picture.
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldScreenUnitsRenderingTest, "Weltall.Rendering.FieldScreenPixelsGoIntoVramAsTheirUnits",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldScreenUnitsRenderingTest::RunTest(const FString&)
 {

@@ -8,6 +8,6 @@ public class WeltallEditor : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		// Each test keeps its helpers in an anonymous namespace of its own file.
 		bUseUnity = false;
-		PrivateDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "Weltall", "WeltallCore", "RenderCore", "RHI", "UnrealEd", "ImageWrapper", "ApplicationCore", "InputCore" });
+		PrivateDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "Weltall", "WeltallCore", "WeltallRenderingTests", "RenderCore", "RHI", "UnrealEd", "ImageWrapper", "ApplicationCore", "InputCore" });
 	}
 }

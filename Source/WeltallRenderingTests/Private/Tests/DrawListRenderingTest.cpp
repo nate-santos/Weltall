@@ -38,7 +38,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDrawListRenderingTest, "Weltall.Rendering.DrawListFollowsTheGpusRules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FDrawListRenderingTest::RunTest(const FString&)
 {
@@ -112,7 +112,7 @@ bool FDrawListRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDrawListSpanTest, "Weltall.Rendering.DrawListSpansTheDisplay",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FDrawListSpanTest::RunTest(const FString&)
 {
@@ -152,7 +152,7 @@ bool FDrawListSpanTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDrawListOwnTexelsTest, "Weltall.Rendering.AShrunkPictureKeepsToItsOwnTexels",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FDrawListOwnTexelsTest::RunTest(const FString&)
 {
@@ -206,7 +206,7 @@ bool FDrawListOwnTexelsTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDrawListTexturesRefreshTest, "Weltall.Rendering.DrawListTexturesFollowVramUploads",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FDrawListTexturesRefreshTest::RunTest(const FString&)
 {

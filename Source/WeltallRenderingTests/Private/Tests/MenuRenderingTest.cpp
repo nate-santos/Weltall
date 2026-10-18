@@ -26,7 +26,7 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMenuRenderingTest, "Weltall.Rendering.MenuFrameDrawsItsLayersWithTheGpusBlend",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FMenuRenderingTest::RunTest(const FString&)
 {

@@ -7,7 +7,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FScreenBlurRenderingTest, "Weltall.Rendering.ScreenBlurTakesTheMeanOfTwoByTwoOriginalPixels",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FScreenBlurRenderingTest::RunTest(const FString&)
 {
