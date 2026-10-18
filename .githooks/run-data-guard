@@ -1,0 +1,20 @@
+#!/bin/sh
+# WELTALL_GUARD_PYTHON can select the local bundled Python or a virtualenv.
+# Fail closed if no Python 3 interpreter can run the repository guard.
+if [ -n "${WELTALL_GUARD_PYTHON:-}" ]; then
+    exec "$WELTALL_GUARD_PYTHON" Scripts/repo_guard.py "$@"
+fi
+configured_python=$(git config --get weltall.guardPython || true)
+if [ -n "$configured_python" ]; then
+    exec "$configured_python" Scripts/repo_guard.py "$@"
+fi
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
+        exec "$candidate" Scripts/repo_guard.py "$@"
+    fi
+done
+if command -v py >/dev/null 2>&1; then
+    exec py -3 Scripts/repo_guard.py "$@"
+fi
+echo "Repository data guard requires Python 3.10+. Set weltall.guardPython to its absolute path." >&2
+exit 2

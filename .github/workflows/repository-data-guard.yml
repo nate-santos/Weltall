@@ -1,0 +1,33 @@
+name: Repository data guard
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test with synthetic data only
+        run: python3 -m unittest discover -s Scripts/tests -p 'test_repo_guard.py' -v
+      - name: Inspect current committed source
+        run: python3 Scripts/repo_guard.py --tracked
+      - name: Inspect every introduced commit, including removed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]]; then
+            python3 Scripts/repo_guard.py --commit-range "$BASE_SHA..$GITHUB_SHA"
+          else
+            base=$(git merge-base "$GITHUB_SHA" "origin/$DEFAULT_BRANCH")
+            python3 Scripts/repo_guard.py --commit-range "$base..$GITHUB_SHA"
+          fi

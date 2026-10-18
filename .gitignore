@@ -1,23 +1,94 @@
 # Game images supplied by the player, and everything derived from them
-/Games/
-/Assets/
+[gG][aA][mM][eE][sS]/
+[aA][sS][sS][eE][tT][sS]/
+[bB][iI][nN]/
+# Disc images and disc descriptors are local inputs, wherever they are placed.
+*.[bB][iI][nN]
+*.[cC][uU][eE]
+*.[cC][hH][dD]
+*.[iI][sS][oO]
+*.[iI][mM][gG]
+*.[pP][bB][pP]
+*.[eE][cC][mM]
+*.[mM][dD][fF]
+*.[mM][dD][sS]
+*.[cC][cC][dD]
+*.[sS][uU][bB]
+*.[nN][rR][gG]
+*.[cC][sS][oO]
+*.[zZ][sS][oO]
+# Local saves, captured game content, dumps, and test artifacts.
+*.[mM][cC][rR]
+*.[mM][cC][dD]
+*.[gG][mM][eE]
+*.[sS][rR][mM]
+*.[sS][aA][vV]
+*.[sS][tT][aA][tT][eE]
+*.[sS][sS][tT][aA][tT][eE]
+*.[aA][pP][kK]
+*.[aA][aA][bB]
+*.[aA][pP][kK][sS]
+*.[xX][aA][pP][kK]
+*.[oO][bB][bB]
+*.[pP][aA][kK]
+*.[uU][cC][aA][sS]
+*.[uU][tT][oO][cC]
+*.[lL][oO][gG]
+*.[dD][mM][pP]
+[oO][uU][tT][pP][uU][tT]/
+[oO][uU][tT][pP][uU][tT][sS]/
+[tT][eE][sS][tT][iI][nN][gG]/
+[tT][eE][sS][tT]-[rR][eE][sS][uU][lL][tT][sS]/
+[tT][eE][sS][tT]-[aA][rR][tT][iI][fF][aA][cC][tT][sS]/
+[cC][aA][pP][tT][uU][rR][eE][sS]/
+[sS][cC][rR][eE][eE][nN][sS][hH][oO][tT][sS]/
+[rR][eE][cC][oO][rR][dD][iI][nN][gG][sS]/
+[dD][uU][mM][pP][sS]/
+[lL][oO][gG][sS]/
 
 # Machine-specific configuration
 /local.env
 __pycache__/
 
 # Unreal Engine generated content
-/Binaries/
-/Intermediate/
-/Saved/
-/DerivedDataCache/
-/Plugins/**/Binaries/
-/Plugins/**/Intermediate/
+[bB][iI][nN][aA][rR][iI][eE][sS]/
+[iI][nN][tT][eE][rR][mM][eE][dD][iI][aA][tT][eE]/
+[sS][aA][vV][eE][dD]/
+[dD][eE][rR][iI][vV][eE][dD][dD][aA][tT][aA][cC][aA][cC][hH][eE]/
 *_BuiltData.uasset
 
 # Standalone build output
-/out/
-/build/
+[oO][uU][tT]/
+[bB][uU][iI][lL][dD]/
+[bB][uU][iI][lL][dD][sS]/
+[bB][uU][iI][lL][dD]-*/
+cmake-build-*/
+[dD][iI][sS][tT]/
+[aA][rR][tT][iI][fF][aA][cC][tT][sS]/
+[sS][tT][aA][gG][iI][nN][gG]/
+[pP][aA][cC][kK][aA][gG][eE][dD]/
+.gradle/
+.cxx/
+.externalNativeBuild/
+# Archives can hide disc data; source releases are created under ignored out/.
+*.[zZ][iI][pP]
+*.7[zZ]
+*.[rR][aA][rR]
+*.[tT][aA][rR]
+*.[gG][zZ]
+*.[bB][zZ]2
+*.[xX][zZ]
+*.[zZ][sS][tT]
+# Compiled native output stays local as well.
+*.[eE][xX][eE]
+*.[dD][lL][lL]
+*.[sS][oO]
+*.[dD][yY][lL][iI][bB]
+*.[oO]
+*.[oO][bB][jJ]
+*.[aA]
+*.[lL][iI][bB]
+*.[pP][dD][bB]
 
 # IDE and generated project files
 .vs/

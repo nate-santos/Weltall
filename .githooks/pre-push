@@ -1,0 +1,2 @@
+#!/bin/sh
+exec sh .githooks/run-data-guard --pre-push "$1"
