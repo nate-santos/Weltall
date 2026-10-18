@@ -105,6 +105,8 @@ python -m unittest discover -s Tests/Python -p "test_android*.py" -v
 
 ## Required device checks
 
+Mobile renderer settings live in `Config/DefaultEngine.ini`, including HDR, forward local lights, the no-static-lighting CSM branch and mobile DBuffer/shading path. The Windows cooker initializes global render caches from its own engine config; Android-only overrides can therefore disagree with shader decisions made during cooking. Keep compile-time mobile choices shared between cooker and runtime. Startup validation remains required after changing them; successful cooking alone does not prove that runtime materials are complete.
+
 Install a Development APK with both discs. Confirm that first launch remains responsive, progress completes, both discs are identified, the opening movie has sound and game startup works. Restart the app and confirm the copy is reused. Interrupt preparation, restart it, and test insufficient space. Install an APK update with the same signing key and confirm that settings and saves survive. Then validate shader cooking/rendering, both landscape directions, touch controls and sustained gameplay on a physical ARM64 phone. No automated packaging test replaces these checks.
 
 ## References
