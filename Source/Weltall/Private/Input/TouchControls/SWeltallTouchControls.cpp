@@ -8,7 +8,12 @@
 
 namespace
 {
-	using namespace Weltall;
+	// Unity builds share this namespace with later engine includes. Import only touch names:
+	// Android's std::uint64_t and Unreal's uint64 can be different underlying types.
+	using Weltall::ETouchControl;
+	using Weltall::FTouchPoint;
+	using Weltall::FTouchRect;
+	using Weltall::TouchControlNames;
 
 	FTouchPoint LocalPoint(const FGeometry& Geometry, const FPointerEvent& Event)
 	{

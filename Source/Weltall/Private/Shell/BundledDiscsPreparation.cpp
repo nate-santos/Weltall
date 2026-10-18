@@ -43,7 +43,12 @@ namespace
 
 	std::filesystem::path NativePath(const FString& Path)
 	{
-		return std::filesystem::u8path(TCHAR_TO_UTF8(*Path));
+#if PLATFORM_WINDOWS
+		return std::filesystem::path(*Path);
+#else
+		// Android/POSIX filenames use UTF-8; u8path is deprecated in C++20.
+		return std::filesystem::path(TCHAR_TO_UTF8(*Path));
+#endif
 	}
 
 	FString BundleSource()
@@ -78,7 +83,7 @@ namespace
 		return !Path.Contains(TEXT("\t")) && !Path.Contains(TEXT("\r")) && !Path.Contains(TEXT("\n"));
 	}
 
-	bool ParseManifest(const FString& Text, TArray<FBundledFile>& Files, uint64& Total)
+	bool ParseManifest(const FString& Text, TArray<FBundledFile>& BundledFiles, uint64& Total)
 	{
 		TArray<FString> Lines;
 		Text.ParseIntoArrayLines(Lines, true);
@@ -97,10 +102,10 @@ namespace
 			const FString Name = Fields[2].ToLower();
 			if (Names.Contains(Name)) return false;
 			Names.Add(Name);
-			Files.Add({Fields[2], Fields[0].ToLower(), Size});
+			BundledFiles.Add({Fields[2], Fields[0].ToLower(), Size});
 			Total += Size;
 		}
-		return !Files.IsEmpty();
+		return !BundledFiles.IsEmpty();
 	}
 
 	bool NativeFileMatches(const FString& Path, uint64 Size)
@@ -129,7 +134,7 @@ namespace
 		return !Error;
 	}
 
-	bool Prepare(const TArray<FBundledFile>& Files, const FString& Destination, const FString& Version,
+	bool Prepare(const TArray<FBundledFile>& BundledFiles, const FString& Destination, const FString& Version,
 		const TSharedRef<FBundledDiscsProgress, ESPMode::ThreadSafe>& Progress)
 	{
 		std::error_code Error;
@@ -137,7 +142,7 @@ namespace
 		if (Error) return Progress->Fail(TEXT("The phone could not create game storage."));
 		const FString Stamp = FPaths::GetPath(Destination) / TEXT("Ready.txt");
 		bool bReady = NativeMarkerMatches(Stamp, Version);
-		for (const FBundledFile& File : Files) bReady &= NativeFileMatches(Destination / File.Relative, File.Size);
+		for (const FBundledFile& File : BundledFiles) bReady &= NativeFileMatches(Destination / File.Relative, File.Size);
 		if (bReady)
 		{
 			Progress->Done = Progress->Total;
@@ -147,7 +152,7 @@ namespace
 		// A verified completed file can be reused; it need not occupy another full copy's space.
 		TArray<FBundledFile> Pending;
 		uint64 Required = 0;
-		for (const FBundledFile& File : Files)
+		for (const FBundledFile& File : BundledFiles)
 		{
 			const FString Target = Destination / File.Relative;
 			std::filesystem::remove(NativePath(Target + TEXT(".partial")), Error);
@@ -246,8 +251,8 @@ void FBundledDiscsPreparation::Begin()
 	const FString Text = Manifest();
 	if (Text.IsEmpty()) return;
 	Progress = MakeShared<FBundledDiscsProgress, ESPMode::ThreadSafe>();
-	TArray<FBundledFile> Files;
-	if (!ParseManifest(Text, Files, Progress->Total))
+	TArray<FBundledFile> BundledFiles;
+	if (!ParseManifest(Text, BundledFiles, Progress->Total))
 	{
 		bFailed = true;
 		Progress->Fail(TEXT("Bundled game information is invalid. Rebuild or reinstall the local APK."));
@@ -255,9 +260,9 @@ void FBundledDiscsPreparation::Begin()
 	}
 	const FString Destination = GamesFolder();
 	const FString Version = HashText(Text);
-	Task = Async(EAsyncExecution::ThreadPool, [Files = MoveTemp(Files), Destination, Version, Shared = Progress.ToSharedRef()]()
+	Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), Destination, Version, Shared = Progress.ToSharedRef()]()
 	{
-		return Prepare(Files, Destination, Version, Shared);
+		return Prepare(BundledFiles, Destination, Version, Shared);
 	});
 }
 
