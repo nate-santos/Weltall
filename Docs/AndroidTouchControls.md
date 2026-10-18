@@ -6,6 +6,8 @@ The default layout puts the D-pad at the lower left, four face buttons at the lo
 
 Circle cancels the existing hardware-key binding prompt when it is waiting for a physical key. Touch controls keep their logical game actions independently of those bindings.
 
+A fresh Android install uses the original button symbols so game prompts match the overlay. The on-screen pad remains connected to the game when a physical controller is unplugged.
+
 Android Back closes the touch settings/edit panel first, cancels a hardware-key prompt next, or acts as the game's Circle button. It is consumed by the controller and does not invoke an immediate application exit. A short system gesture is retained for one game input sample even if down/up arrive together; lifecycle resets clear it.
 
 Tap **Controls** to pause the game and open appearance settings. Idle and pressed visibility start at 25% and 55%. The minus/plus targets change visibility in 5% steps; zero opacity keeps touch targets active. The Controls button remains visible for recovery. Size adjusts from 70% to 140%.

@@ -13,7 +13,7 @@ Weltall is a native C++ implementation of Xenogears with an Unreal presentation 
 
 There is still hardware behavior reproduced in software: `FSpu` implements the PS1 sound processor, graphics code preserves GTE arithmetic behavior, and shaders reproduce VRAM/palette and blending rules. Game event/sprite scripts are interpreted; these are game scripting languages, not a general MIPS CPU interpreter. README's emulated-CPU reference describes how original-code oracle digests were produced for testing.
 
-The disc supplies original assets, scripts, audio, movies, and executable-resident data. Reading a PS-X executable for data does not imply executing it as MIPS instructions. Both user-supplied BIN/CUE pairs are now present in `C:/Users/baldr/Documents/code/xenogears/bin`, outside the `Weltall` Git checkout. Each CUE's referenced BIN exists. This is a file-presence check, not verification of disc integrity or successful game loading; validate those in milestone 1.
+The disc supplies original assets, scripts, audio, movies, and executable-resident data. Reading a PS-X executable for data does not imply executing it as MIPS instructions. Both user-supplied BIN/CUE pairs are present in `../bin`, outside the `Weltall` Git checkout. The native core identifies both USA discs on the Moto, and disc-structure/movie-decoder checks pass. See `Docs/AndroidValidation.md` for the measured coverage.
 
 ## Evidence and likely change locations
 
@@ -150,7 +150,7 @@ Keep Unreal for the first feasibility spike because it preserves rendering, audi
 
 ## Current readiness and next action
 
-Both local disc pairs are available, so real-content validation belongs in the initial baseline and renderer work, not at the end of development. Repository protection is implemented, touch/input and local bundle preparation code are drafted, and Windows/ARM64 core builds are underway. The connected Moto will run core tests before the full Unreal APK. Source access/setup for Unreal 5.8 is in progress; shader compilation, visual touch/device testing, sustained gameplay performance and an installable APK are not yet verified. See `Docs/AndroidBuild.md` and `Docs/AndroidTouchControls.md` for implemented interfaces and remaining device checks. No disc bytes or game-derived captures are part of this plan.
+Repository protection, the touch-input model, Android storage/lifecycle integration and local bundled-disc packaging are implemented. The Windows core baseline has 1,358 passing tests and six expected optional-undub skips. The Moto passes all 731 isolated synthetic ARM64 tests, and the complete disc-dependent device run is underway. Unreal 5.8.4 source access, dependencies and Android tools are configured; the first engine/editor/Android build is compiling. Shader cooking, visual touch/device testing, sustained gameplay performance and an installable APK are the remaining build/device gates. See `Docs/AndroidValidation.md`, `Docs/AndroidBuild.md` and `Docs/AndroidTouchControls.md` for evidence and interfaces. Disc bytes and game-derived captures stay in ignored local folders.
 
 ## Sources
 

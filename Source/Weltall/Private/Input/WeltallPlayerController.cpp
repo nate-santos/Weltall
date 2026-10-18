@@ -28,6 +28,11 @@ Weltall::FPadState AWeltallPlayerController::HeldPad() const
 	return Weltall::MergePads(Weltall::MergePads(Hardware, Touch), AndroidBack.TakeForTick());
 }
 
+bool AWeltallPlayerController::HasTouchControls() const
+{
+	return TouchControls.IsValid();
+}
+
 bool AWeltallPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
 #if PLATFORM_ANDROID

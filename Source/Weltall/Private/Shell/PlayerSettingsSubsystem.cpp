@@ -33,6 +33,8 @@ void UPlayerSettingsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	else
 	{
 #if PLATFORM_ANDROID
+		// Match the symbols drawn on the on-screen pad from the first launch.
+		Current.Controls.bOriginalButtonIcons = true;
 		// Start with the simplest custom render path; MSAA/upscalers need mobile GPU validation.
 		Current.Field.AntiAliasing = Weltall::EFieldAntiAliasing::None;
 		Current.Field.Filter = Weltall::EFieldTextureFilter::Nearest;

@@ -80,7 +80,7 @@ void UGameScreenSubsystem::Tick(float DeltaTime)
 	FGamePads Pads;
 	if (const UButtonGlyphSubsystem* Glyphs = GetGameInstance()->GetSubsystem<UButtonGlyphSubsystem>())
 	{
-		Pads.bConnected = Glyphs->HasController();
+		Pads.bConnected = Glyphs->HasController() || (Controller != nullptr && Controller->HasTouchControls());
 	}
 	if (Ports != nullptr)
 	{

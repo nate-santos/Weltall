@@ -25,6 +25,8 @@ class AWeltallPlayerController : public APlayerController
 public:
 	/** The controller buttons the player holds now. */
 	Weltall::FPadState HeldPad() const;
+	/** An on-screen pad stays connected when a hardware controller is unplugged. */
+	bool HasTouchControls() const;
 	/** The Android controls settings/edit panel holds simulation and audio while open. */
 	bool IsTouchMenuOpen() const;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
