@@ -127,7 +127,7 @@ void UGameWindowSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UGameWindowSubsystem::Deinitialize()
 {
 #if PLATFORM_ANDROID
-	FPlatformApplicationMisc::ControlScreensaver(EScreenSaverAction::Enable);
+	FPlatformApplicationMisc::ControlScreensaver(FPlatformApplicationMisc::EScreenSaverAction::Enable);
 #endif
 	FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundedHandle);
 	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundedHandle);
@@ -234,7 +234,7 @@ void UGameWindowSubsystem::FollowMobileScreenAwake()
 	// This changes only the game's window flag, never the phone's timeout or lock settings.
 	// Long movies/preparation must stay visible; an inactive game must allow normal sleep.
 	FPlatformApplicationMisc::ControlScreensaver(bApplicationActive && bApplicationForeground
-		? EScreenSaverAction::Disable : EScreenSaverAction::Enable);
+		? FPlatformApplicationMisc::EScreenSaverAction::Disable : FPlatformApplicationMisc::EScreenSaverAction::Enable);
 #endif
 }
 
