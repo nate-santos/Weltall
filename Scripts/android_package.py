@@ -18,6 +18,7 @@ and an additional uncompressed copy on the phone; these APKs stay local.
 
 import argparse
 from datetime import datetime, timezone
+import filecmp
 import hashlib
 import io
 import os
@@ -27,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import uuid
 
 
@@ -38,6 +40,7 @@ CHUNK_BYTES = 1024 * 1024
 MANIFEST_HEADER = "WELTALL_BUNDLED_DISCS_V1"
 CUE_FILE = re.compile(r'^\s*FILE\s+(?:"([^"]+)"|(\S+))\s+BINARY\s*$', re.IGNORECASE)
 TOOL_ENV_KEYS = ("UE_ROOT", "JAVA_HOME", "ANDROID_HOME", "ANDROID_SDK_ROOT", "NDKROOT", "NDK_ROOT", "ANDROID_NDK_HOME")
+BUILD_CACHE_DIRS = {"Binaries", "Intermediate", "Saved", "DerivedDataCache"}
 
 
 def setting(key):
@@ -123,6 +126,56 @@ def export_revision(revision, destination):
             target.parent.mkdir(parents=True, exist_ok=True)
             with tar.extractfile(entry) as source, target.open("wb") as output:
                 shutil.copyfileobj(source, output, CHUNK_BYTES)
+
+
+def refresh_project(revision, destination):
+    """Refresh committed inputs without destroying the monolithic Android engine cache."""
+    root = destination.resolve()
+
+    def remove(path):
+        if path.is_symlink():
+            path.unlink()  # Remove the link itself, never its target.
+            return
+        resolved = path.resolve()
+        if resolved == root or not resolved.is_relative_to(root):
+            raise ValueError("refusing to remove an export path outside the Android project")
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+
+    def sync(source, target):
+        if target.is_symlink():
+            remove(target)
+        if not target.resolve().is_relative_to(root):
+            raise ValueError("an Android export directory points outside the project")
+        if target.exists() and not target.is_dir():
+            remove(target)
+        target.mkdir(parents=True, exist_ok=True)
+        incoming = {path.name: path for path in source.iterdir()}
+        for old in target.iterdir():
+            if target == root and old.name in BUILD_CACHE_DIRS:
+                if not old.is_dir() or not old.resolve().is_relative_to(root):
+                    raise ValueError("an Android build cache is not a project-local directory")
+                continue
+            if old.name not in incoming:
+                remove(old)
+        for name, new in incoming.items():
+            old = target / name
+            if new.is_dir():
+                sync(new, old)
+            else:
+                if old.is_symlink() or (old.exists() and not old.is_file()):
+                    remove(old)
+                if not old.is_file() or not filecmp.cmp(new, old, shallow=False):
+                    shutil.copyfile(new, old)
+
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    # Complete git archive first: an invalid revision must leave the existing build intact.
+    with tempfile.TemporaryDirectory(prefix="source-", dir=OUTPUT) as temporary:
+        incoming = Path(temporary)
+        export_revision(revision, incoming)
+        sync(incoming, root)
 
 
 def stage_discs(inputs, destination):
@@ -240,6 +293,7 @@ def main(argv=None):
     parser.add_argument("--revision", default="HEAD", help="committed revision to export (default: HEAD)")
     parser.add_argument("--include-discs", type=Path, metavar="FOLDER", help="include both local CUE/BIN pairs in the local APK")
     parser.add_argument("--prepare-only", action="store_true", help="prepare local export without Unreal build tools")
+    parser.add_argument("--clean-export", action="store_true", help="discard compiled caches and prepare a completely fresh project")
     parser.add_argument("--check-toolchain", action="store_true", help="report engine readiness without staging or building")
     parser.add_argument("--print-plan", action="store_true", help="validate inputs and show locations without writing files")
     args = parser.parse_args(argv)
@@ -264,14 +318,14 @@ def main(argv=None):
             problems = toolchain_problems(ue_root)
             if problems:
                 raise ValueError("; ".join(problems))
-        # Guard the absolute target before recursive removal. This one fixed export is disposable.
+        # Guard the absolute target before any export cleanup.
         destination = PROJECT.resolve()
         expected = (REPO.resolve() / "out" / "android" / "project")
         if destination != expected or not destination.is_relative_to(REPO.resolve()):
             raise ValueError("refusing to replace a packaging directory outside out/android/project")
-        if destination.exists():
+        if args.clean_export and destination.exists():
             shutil.rmtree(destination)
-        export_revision(args.revision, destination)
+        refresh_project(args.revision, destination)
         if inputs:
             stage_discs(inputs, destination / "Content" / "BundledDiscs")
             configure_local_discs(destination)

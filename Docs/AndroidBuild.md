@@ -30,7 +30,7 @@ The first command validates and lists the intended locations without writing fil
 
 The exporter includes only the two descriptors and BIN files those descriptors reference. It streams the files into `out/android/project/Content/BundledDiscs/`, writes a transfer-integrity manifest and adds the Unreal packaging setting only to that local export. `bPackageDataInsideApk=True` puts the cooked game data inside the APK. This produces a local APK intended to contain both supplied discs; verify the resulting package and both-disc discovery on the phone before calling it complete. Do not upload this APK or its staging files to Git or CI artifacts.
 
-Without `--include-discs`, the export contains no disc files or bundled-disc manifest. A future system file importer is still required for a usable public build. The existing `-Games=` runtime override remains available for development with device-local files.
+Without `--include-discs`, the refreshed `Content` inputs contain no disc files or bundled-disc manifest. Older bundled packages may remain in ignored build caches; Unreal recreates the staging directory for the new package. Verify package contents before sharing a data-free build. A future system file importer is still required for a usable public build. The existing `-Games=` runtime override remains available for development with device-local files.
 
 | Location | Contents |
 |---|---|
@@ -39,6 +39,8 @@ Without `--include-discs`, the export contains no disc files or bundled-disc man
 | `out/android/packages/<configuration>/<build-id>/` | Local APK and installation output for one build |
 
 Each build uses a fresh archive directory, so an old APK cannot be mistaken for the output of a successful command that produced no APK.
+
+The project refresh preserves `Binaries`, `Intermediate`, `Saved` and `DerivedDataCache`. Unchanged committed files keep their modification times, allowing Unreal to reuse compiled engine/game objects. Deleted source and old bundled-disc staging are removed; discs are staged again only when `--include-discs` is supplied. Unreal still runs cooking, staging and packaging normally. Use `--clean-export` when a completely fresh project and engine rebuild is needed. Do not refresh an export while another build of that export is running.
 
 ## First launch
 

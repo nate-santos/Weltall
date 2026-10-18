@@ -1,8 +1,10 @@
 """Synthetic local APK packaging tests. No original game data is required or read."""
 
 import hashlib
+import os
 from pathlib import Path, PurePosixPath
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -174,6 +176,69 @@ class AndroidPackageTests(unittest.TestCase):
             self.assertEqual(environment["UNRELATED_EXISTING"], "preserved")
             self.assertNotIn("UNREQUESTED_SECRET", environment)
             self.assertNotIn("ANDROID_HOME", package.os.environ)
+
+    def authored_export(self, revision, destination):
+        (destination / "Source").mkdir(parents=True)
+        (destination / "Source/Keep.cpp").write_text("unchanged authored source\n")
+        (destination / "Source/Changed.cpp").write_text("new authored source\n")
+        (destination / "Config/Android").mkdir(parents=True)
+        (destination / "Config/Android/AndroidGame.ini").write_text("authored packaging settings\n")
+        (destination / "Weltall.uproject").write_text("synthetic project descriptor\n")
+
+    def test_refresh_preserves_compilation_cache_and_unchanged_source_timestamps(self):
+        project = self.root / "project"
+        self.authored_export("old", project)
+        kept = project / "Source/Keep.cpp"
+        os.utime(kept, ns=(1600000000000000000, 1600000000000000000))
+        original_time = kept.stat().st_mtime_ns
+        (project / "Source/Changed.cpp").write_text("old authored source\n")
+        (project / "Source/Deleted.cpp").write_text("removed authored source\n")
+        for directory in package.BUILD_CACHE_DIRS:
+            (project / directory).mkdir()
+            (project / directory / "cached-object").write_bytes(b"synthetic compilation cache")
+        stale = project / "Content/BundledDiscs/old.BIN"
+        stale.parent.mkdir(parents=True)
+        stale.write_bytes(b"synthetic old staging marker")
+        (project / "UnselectedPlugin").mkdir()
+        (project / "UnselectedPlugin/extra.txt").write_text("unselected input")
+        with mock.patch.object(package, "OUTPUT", self.root / "out"), \
+                mock.patch.object(package, "export_revision", side_effect=self.authored_export):
+            package.refresh_project("new", project)
+        self.assertEqual(kept.stat().st_mtime_ns, original_time)
+        self.assertEqual((project / "Source/Changed.cpp").read_text(), "new authored source\n")
+        self.assertFalse((project / "Source/Deleted.cpp").exists())
+        self.assertFalse((project / "Content").exists())
+        self.assertFalse((project / "UnselectedPlugin").exists())
+        for directory in package.BUILD_CACHE_DIRS:
+            self.assertEqual((project / directory / "cached-object").read_bytes(), b"synthetic compilation cache")
+
+    def test_invalid_revision_leaves_the_existing_project_intact(self):
+        project = self.root / "project"
+        self.authored_export("old", project)
+        with mock.patch.object(package, "OUTPUT", self.root / "out"), \
+                mock.patch.object(package, "export_revision", side_effect=subprocess.CalledProcessError(1, "git archive")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                package.refresh_project("missing", project)
+        self.assertEqual((project / "Source/Keep.cpp").read_text(), "unchanged authored source\n")
+
+    def test_next_data_free_export_removes_old_disc_staging_and_clean_is_explicit(self):
+        output = self.root / "out/android"
+        project = output / "project"
+        source = self.discs()
+        with mock.patch.object(package, "REPO", self.root), mock.patch.object(package, "OUTPUT", output), \
+                mock.patch.object(package, "PROJECT", project), \
+                mock.patch.object(package, "export_revision", side_effect=self.authored_export):
+            self.assertEqual(package.main(["--include-discs", str(source), "--prepare-only"]), 0)
+            self.assertTrue((project / "Content/BundledDiscs/Manifest.txt").is_file())
+            cached = project / "Intermediate/compiled-engine-object"
+            cached.parent.mkdir()
+            cached.write_bytes(b"synthetic engine compilation cache")
+            self.assertEqual(package.main(["--prepare-only"]), 0)
+            self.assertTrue(cached.is_file())
+            self.assertFalse((project / "Content/BundledDiscs").exists())
+            self.assertNotIn("BundledDiscs", (project / "Config/Android/AndroidGame.ini").read_text())
+            self.assertEqual(package.main(["--prepare-only", "--clean-export"]), 0)
+            self.assertFalse(cached.exists())
 
 
 if __name__ == "__main__":
