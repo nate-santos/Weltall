@@ -7,6 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(WELTALL_GAMES_DIR "${REPO_ROOT}/Games" CACHE PATH "Local disc images (never packaged or committed)")
+file(TO_CMAKE_PATH "${WELTALL_GAMES_DIR}" WELTALL_GAMES_DIR)
+set(WELTALL_STORY_DIR "${REPO_ROOT}/Content/Story" CACHE PATH "Authored story documents available to the test executable")
+file(TO_CMAKE_PATH "${WELTALL_STORY_DIR}" WELTALL_STORY_DIR)
 set(CORE_DIR "${REPO_ROOT}/Source/WeltallCore")
 set(CATCH2_DIR "${REPO_ROOT}/ThirdParty/Catch2")
 
@@ -41,17 +45,19 @@ add_executable(WeltallCoreTests ${TEST_SOURCES})
 target_include_directories(WeltallCoreTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallCoreTests PRIVATE WeltallCore Catch2)
 target_compile_options(WeltallCoreTests PRIVATE ${WELTALL_WARNINGS})
-target_compile_definitions(WeltallCoreTests PRIVATE WELTALL_GAMES_DIR="${REPO_ROOT}/Games" WELTALL_STORY_DIR="${REPO_ROOT}/Content/Story")
+target_compile_definitions(WeltallCoreTests PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}" WELTALL_STORY_DIR="${WELTALL_STORY_DIR}")
 
 enable_testing()
 include("${CATCH2_DIR}/Catch.cmake")
-catch_discover_tests(WeltallCoreTests DISCOVERY_MODE PRE_TEST)
+if(NOT CMAKE_CROSSCOMPILING)
+	catch_discover_tests(WeltallCoreTests DISCOVERY_MODE PRE_TEST)
+endif()
 
 # Prints a disc map as the text a story document that makes a map of its own starts from (Tools/MapText.cpp).
 add_executable(WeltallMapText "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MapText.cpp")
 target_link_libraries(WeltallMapText PRIVATE WeltallCore)
 target_compile_options(WeltallMapText PRIVATE ${WELTALL_WARNINGS})
-target_compile_definitions(WeltallMapText PRIVATE WELTALL_GAMES_DIR="${REPO_ROOT}/Games")
+target_compile_definitions(WeltallMapText PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}")
 
 # Finds where the drawing order and the depth disagree, on the field, the world map and in battle (Tools/SortingAudit.cpp).
 file(GLOB SORTING_AUDIT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Tools/SortingAudit*.cpp")
@@ -61,7 +67,7 @@ add_executable(WeltallSortingAudit ${SORTING_AUDIT_SOURCES} "${CMAKE_CURRENT_SOU
 target_include_directories(WeltallSortingAudit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallSortingAudit PRIVATE WeltallCore)
 target_compile_options(WeltallSortingAudit PRIVATE ${WELTALL_WARNINGS})
-target_compile_definitions(WeltallSortingAudit PRIVATE WELTALL_GAMES_DIR="${REPO_ROOT}/Games")
+target_compile_definitions(WeltallSortingAudit PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}")
 
 # Plays the game by machine, every map's scenes or on from a new game and saves, to find where it stops (Tools/StorySweep.cpp).
 file(GLOB STORY_SWEEP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Tools/StorySweep*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/Support/StorySweep*.cpp")
@@ -70,5 +76,5 @@ add_executable(WeltallStorySweep ${STORY_SWEEP_SOURCES} "${CMAKE_CURRENT_SOURCE_
 target_include_directories(WeltallStorySweep PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallStorySweep PRIVATE WeltallCore)
 target_compile_options(WeltallStorySweep PRIVATE ${WELTALL_WARNINGS})
-target_compile_definitions(WeltallStorySweep PRIVATE WELTALL_GAMES_DIR="${REPO_ROOT}/Games" WELTALL_STORY_DIR="${REPO_ROOT}/Content/Story")
+target_compile_definitions(WeltallStorySweep PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}" WELTALL_STORY_DIR="${WELTALL_STORY_DIR}")
 

@@ -17,6 +17,8 @@ jobs:
           persist-credentials: false
       - name: Test with synthetic data only
         run: python3 -m unittest discover -s Scripts/tests -p 'test_repo_guard.py' -v
+      - name: Test Android packaging with synthetic inputs
+        run: python3 -m unittest discover -s Tests/Python -p 'test_android_package.py' -v
       - name: Inspect current committed source
         run: python3 Scripts/repo_guard.py --tracked
       - name: Inspect every introduced commit, including removed files

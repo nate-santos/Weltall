@@ -17,6 +17,18 @@
 *.[nN][rR][gG]
 *.[cC][sS][oO]
 *.[zZ][sS][oO]
+# Common extracted PlayStation graphics, movie and sound formats.
+*.[tT][iI][mM]
+*.[tT][mM][dD]
+*.[vV][aA][gG]
+*.[sS][tT][rR]
+*.[xX][aA]
+*.[sS][eE][qQ]
+*.[vV][bB]
+*.[vV][hH]
+*.[pP][sS][fF]
+*.[mM][iI][nN][iI][pP][sS][fF]
+*.[sS][pP][uU]
 # Local saves, captured game content, dumps, and test artifacts.
 *.[mM][cC][rR]
 *.[mM][cC][dD]

@@ -30,6 +30,8 @@ FORBIDDEN_EXTENSIONS = frozenset({
     ".bin", ".cue", ".chd", ".iso", ".img", ".pbp", ".ecm", ".mdf",
     ".mds", ".ccd", ".sub", ".nrg", ".cso", ".zso", ".psx", ".ps-exe",
     ".mcr", ".mcd", ".gme", ".srm", ".sav", ".sstate", ".state",
+    ".tim", ".tmd", ".vag", ".str", ".xa", ".seq", ".vb", ".vh",
+    ".psf", ".minipsf", ".spu",
     # Packaged games, executables, archives, cooked assets and compiler output.
     ".apk", ".aab", ".apks", ".xapk", ".obb", ".pak", ".ucas", ".utoc",
     ".exe", ".dll", ".so", ".dylib", ".o", ".obj", ".a", ".lib", ".pdb",
@@ -108,6 +110,11 @@ def content_problem(prefix: bytes, size: int) -> str | None:
             return "ISO9660 disc content (regardless of its filename)"
     if size == 128 * 1024 and prefix.startswith(b"MC"):
         return "PlayStation memory card content"
+    if prefix.startswith(b"VAGp"):
+        return "PlayStation VAG audio content"
+    if len(prefix) >= 8 and prefix[:4] == b"\x10\x00\x00\x00":
+        if int.from_bytes(prefix[4:8], "little") in {0, 1, 2, 3, 8, 9}:
+            return "PlayStation TIM texture content"
     if CUE_FILE.search(prefix) and CUE_TRACK.search(prefix):
         return "CUE disc descriptor content (regardless of its filename)"
     return None

@@ -25,6 +25,7 @@ class ContentTests(unittest.TestCase):
             "nested/Output/result.txt", "Output/raw", "nested/TESTING/frame.png",
             "captures/frame.png", "one/Build/two.txt", "out/anything.cpp",
             "Source/release.APK", "Tests/Data/archive.7z", "Source/state.MCD",
+            "local/texture.TIM", "local/movie.STR", "local/sound.XA",
             "native/.cxx/metadata.json", "nested/build-arm64/cache.txt",
         ):
             with self.subTest(path=path):
@@ -44,6 +45,7 @@ class ContentTests(unittest.TestCase):
         samples = (
             b"MComprHD" + bytes(100), b"PS-X EXE" + bytes(100),
             b"\x00PBP" + bytes(100), b"ECM\x00" + bytes(100),
+            b"VAGp" + bytes(100), b"\x10\x00\x00\x00\x08\x00\x00\x00" + bytes(80),
             guard.CD_SYNC + bytes(2352 - len(guard.CD_SYNC)),
             b'FILE "synthetic.data" BINARY\r\n  TRACK 01 MODE2/2352\r\n',
             b'file "synthetic.data" binary\n track 01 mode1/2048\n',
