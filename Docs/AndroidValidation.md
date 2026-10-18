@@ -7,6 +7,7 @@ Updated October 18, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. 
 | Check | Result | What it establishes |
 | --- | --- | --- |
 | Windows Release core baseline | 1,358 passed, 0 failed, 6 skipped; 452.54 seconds | Native regression coverage with both supplied USA discs and authored story documents. The six skips require optional undub editions. |
+| Complete ARM64 core suite on Moto | 1,358 passed, 0 failed/errors, 6 skipped; 8,273,021 assertions; 1,638.95 seconds | Both USA discs and authored story documents; the skipped cases match the optional-undub Windows skips. |
 | ARM64 synthetic core suite on Moto | 731 cases, 269,420 assertions, 0 failed/errors/skipped; 12.16 seconds | NDK-built core runs correctly with disc discovery explicitly disabled, even though earlier test discs remain cached. |
 | ARM64 touch suite on Moto | 10 cases, 312 assertions, 0 failed/skipped | Multi-finger pad logic, layout/reset behavior, settings and Back-event retention. |
 | ARM64 disc smoke checks on Moto | 2 cases, 0 failed/skipped | Both USA discs are identified and their boot structures are read. |
@@ -14,6 +15,7 @@ Updated October 18, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. 
 | Packaging and device-runner unit checks | 28 passed | Synthetic input/path validation, staging, reports, child build environment and incremental cache preservation. |
 | Repository guard checks | 16 passed | Staged/committed/outgoing-history protection against disc data and generated artifacts, including recognizable renamed content. |
 | Unreal-facing game module | Compiles for Android ARM64 and Windows editor | Touch Slate widget, JNI/storage/lifecycle integration and existing custom rendering compile against UE 5.8.4's generated build configuration. This is a module compile check, not a completed engine link or APK. |
+| Moto graphics capabilities | Adreno 710, Vulkan 1.3.284 | Driver reports the sampled integer/float textures, color/depth attachments and buffer limits checked for this renderer. Actual draw output remains a device gate. |
 
 An earlier broad ARM64 run also passed 807 cases and 682,258 assertions. It included content cases whose tags were subsequently corrected, so it is not counted as the isolated synthetic baseline above.
 
@@ -31,4 +33,4 @@ The first Unreal source build is compiling the Windows editor/cook tools and And
 4. Check Android Back, controller unplugging, suspend/resume, saves and representative field/battle/world-map/disc-switch scenarios.
 5. Measure sustained frame time, memory, battery/thermal behavior and validate upgrade/save retention before calling the port ready for regular play.
 
-The complete rebuilt ARM64 suite with both discs is currently running. Results will replace this pending status after the reports are complete.
+The complete rebuilt ARM64 suite finished successfully. Its local reports are in `out/testing/android/20261018T134322Z-0167d074/`; the isolated synthetic report is in `out/testing/android/20261018T134229Z-d27f1aa3/`. These folders remain ignored and are not uploaded.

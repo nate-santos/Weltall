@@ -150,7 +150,7 @@ Keep Unreal for the first feasibility spike because it preserves rendering, audi
 
 ## Current readiness and next action
 
-Repository protection, the touch-input model, Android storage/lifecycle integration and local bundled-disc packaging are implemented. The Windows core baseline has 1,358 passing tests and six expected optional-undub skips. The Moto passes all 731 isolated synthetic ARM64 tests, and the complete disc-dependent device run is underway. Unreal 5.8.4 source access, dependencies and Android tools are configured; the first engine/editor/Android build is compiling. Shader cooking, visual touch/device testing, sustained gameplay performance and an installable APK are the remaining build/device gates. See `Docs/AndroidValidation.md`, `Docs/AndroidBuild.md` and `Docs/AndroidTouchControls.md` for evidence and interfaces. Disc bytes and game-derived captures stay in ignored local folders.
+Repository protection, the touch-input model, Android storage/lifecycle integration and local bundled-disc packaging are implemented. Windows and the Moto each pass 1,358 core tests with six expected optional-undub skips, using both supplied discs; the phone also passes all 731 isolated synthetic ARM64 tests. Unreal 5.8.4 source access, dependencies and Android tools are configured; the first engine/editor/Android build is compiling, and the Unreal-facing game module passes individual Android/Windows compile checks. Shader cooking, visual touch/device testing, sustained gameplay performance and an installable APK are the remaining build/device gates. See `Docs/AndroidValidation.md`, `Docs/AndroidBuild.md` and `Docs/AndroidTouchControls.md` for evidence and interfaces. Disc bytes and game-derived captures stay in ignored local folders.
 
 ## Sources
 
