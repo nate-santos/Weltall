@@ -236,6 +236,9 @@ def uat_command(ue_root, project, archive, configuration):
     return [str(Path(ue_root) / "Engine" / "Build" / "BatchFiles" / launcher), "-WaitForUATMutex", "BuildCookRun",
             f"-project={project / 'Weltall.uproject'}", "-platform=Android", "-cookflavor=ASTC",
             f"-clientconfig={configuration}", "-build", "-cook", "-stage", "-pak", "-package", "-archive",
+            # The host cooker reads host packaging defaults, not AndroidGame.ini. Its output
+            # must match Android's legacy pak staging rather than UE 5.8's default Zen store.
+            "-AdditionalCookerOptions=-SkipZenStore",
             f"-archivedirectory={archive}", "-nodebuginfo", "-SkipCookingEditorContent",
             "-noP4", "-unattended", "-utf8output"]
 

@@ -40,6 +40,8 @@ Without `--include-discs`, the refreshed `Content` inputs contain no disc files 
 
 Each build uses a fresh archive directory, so an old APK cannot be mistaken for the output of a successful command that produced no APK.
 
+Android uses legacy pak staging, with IoStore and ZenStore disabled. The packager also passes `-SkipZenStore` to the host cooker, which otherwise reads the host's UE 5.8 packaging defaults and can produce a Zen manifest incompatible with the Android pak stage. This does not disable Unreal's derived-data cache or discard compiled engine objects.
+
 The project refresh preserves `Binaries`, `Intermediate`, `Saved` and `DerivedDataCache`. Unchanged committed files keep their modification times, allowing Unreal to reuse compiled engine/game objects. Deleted source and old bundled-disc staging are removed; discs are staged again only when `--include-discs` is supplied. Unreal still runs cooking, staging and packaging normally. Use `--clean-export` when a completely fresh project and engine rebuild is needed. Do not refresh an export while another build of that export is running.
 
 ## First launch
