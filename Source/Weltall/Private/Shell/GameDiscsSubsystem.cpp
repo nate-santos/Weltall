@@ -13,17 +13,30 @@ FString UGameDiscsSubsystem::GamesFolder()
 	{
 		return FPaths::ConvertRelativePathToFull(Given);
 	}
+#if PLATFORM_ANDROID
+	return FBundledDiscsPreparation::GamesFolder();
+#else
 	// A packaged game's root holds its executable; the project's folder lies a level below it.
 	const FString Beside = FPlatformProperties::RequiresCookedData() ? FPaths::RootDir() : FPaths::ProjectDir();
 	return FPaths::ConvertRelativePathToFull(FPaths::Combine(Beside, TEXT("Games")));
+#endif
 }
 
 void UGameDiscsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	FString Given;
+	if (!FParse::Value(FCommandLine::Get(), TEXT("-Games="), Given)) Preparation.Begin();
+	if (Preparation.IsBlocked()) return;
 	Discs = Weltall::FGameLibrary::Scan(std::filesystem::path(*GamesFolder()));
 	UE_LOG(LogWeltall, Log, TEXT("Found %d of the game's discs in %s"), static_cast<int32>(Discs.Releases().size()), *GamesFolder());
 	LogNotes();
+}
+
+void UGameDiscsSubsystem::Deinitialize()
+{
+	Preparation.Stop();
+	Super::Deinitialize();
 }
 
 const Weltall::FIso9660* UGameDiscsSubsystem::Find(Weltall::EDiscRelease Release) const
@@ -33,6 +46,8 @@ const Weltall::FIso9660* UGameDiscsSubsystem::Find(Weltall::EDiscRelease Release
 
 void UGameDiscsSubsystem::Rescan()
 {
+	Preparation.Poll();
+	if (Preparation.IsBlocked()) return;
 	const std::size_t Before = Discs.Releases().size();
 	Discs.Adopt(Weltall::FGameLibrary::Scan(std::filesystem::path(*GamesFolder())));
 	if (Discs.Releases().size() != Before)

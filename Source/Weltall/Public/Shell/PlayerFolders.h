@@ -2,8 +2,11 @@
 
 #include "CoreMinimal.h"
 
-/** Weltall's folder among the user's settings: Windows' local application data, macOS's application support, XDG's config home elsewhere. */
+/** Physical writable data directory: Android's private app files, or the desktop settings folder. */
+WELTALL_API FString PlayerDataFolder();
+
+/** Settings in Android's private files, Windows' local app data, macOS's application support or XDG config home. */
 WELTALL_API FString PlayerSettingsFolder();
 
-/** Weltall's folder for the player's saves: the settings' folder's "Saves" on Windows and macOS, XDG's data home elsewhere. */
+/** Saves in Android's private files, the desktop settings folder on Windows/macOS or XDG's data home. */
 WELTALL_API FString PlayerSavesFolder();

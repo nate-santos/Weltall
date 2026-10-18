@@ -46,7 +46,10 @@ void AWeltallGameMode::BeginPlay()
 	{
 		return;
 	}
-	UE_LOG(LogWeltall, Error, TEXT("Disc 1 of the game is not in %s"), *UGameDiscsSubsystem::GamesFolder());
+	if (GetGameInstance()->GetSubsystem<UGameDiscsSubsystem>()->PreparationNotice().IsEmpty())
+	{
+		UE_LOG(LogWeltall, Error, TEXT("Disc 1 of the game is not in %s"), *UGameDiscsSubsystem::GamesFolder());
+	}
 	ShowNotice(FirstDiscMissing(), false);
 	GetWorldTimerManager().SetTimer(LookAgain, this, &AWeltallGameMode::LookForFirstDisc, 2.0f, true);
 }
@@ -94,6 +97,8 @@ void AWeltallGameMode::HideNotice()
 FText AWeltallGameMode::FirstDiscMissing() const
 {
 	namespace Text = Weltall::OptionsText::Discs;
+	const FText Preparing = GetGameInstance()->GetSubsystem<UGameDiscsSubsystem>()->PreparationNotice();
+	if (!Preparing.IsEmpty()) return Preparing;
 	const Weltall::FGameLibrary& Library = GetGameInstance()->GetSubsystem<UGameDiscsSubsystem>()->Library();
 	const std::filesystem::path Folder = std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()).make_preferred();
 	// Files by their place in the Games folder.
@@ -161,6 +166,8 @@ bool AWeltallGameMode::StartGame()
 	Screen->SetBattleSpeedStepped([Settings](Weltall::EBattleSpeed Speed) { Settings->KeepBattleSpeed(Speed); });
 	Screen->SetMenuKeys(Game->GetSubsystem<UKeyListenerSubsystem>());
 	UGameAssetsSubsystem* Assets = Game->GetSubsystem<UGameAssetsSubsystem>();
+	// Bundled Android discs may have become available after subsystem initialization.
+	Assets->Refresh();
 	Screen->SetMenuAssets(Assets);
 	Screen->SetDisplayModes([Window = Game->GetSubsystem<UGameWindowSubsystem>()]() { return Window->Modes(); });
 	Screen->SetSettingsFollowed([Settings](const Weltall::FPlayerSettings& Changed) { Settings->Follow(Changed); });

@@ -10,6 +10,7 @@
 #include "Sound/MusicReplacements.h"
 #include "Shell/GameDiscsSubsystem.h"
 #include "Shell/PlayerSettingsSubsystem.h"
+#include "Shell/PlayerFolders.h"
 #include "WeltallLog.h"
 
 namespace
@@ -27,7 +28,11 @@ namespace
 
 FString UGameAssetsSubsystem::AssetsFolder()
 {
+#if PLATFORM_ANDROID
+	return PlayerDataFolder() / TEXT("Assets");
+#else
 	return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::GetPath(UGameDiscsSubsystem::GamesFolder()), TEXT("Assets")));
+#endif
 }
 
 void UGameAssetsSubsystem::Initialize(FSubsystemCollectionBase& Collection)

@@ -23,7 +23,7 @@
 #include "Media/PsxExecutable.h"
 #include "Menu/MenuGameMenus.h"
 #include "Menu/MenuAssetPages.h"
-#include "Misc/Paths.h"
+#include "Shell/StoryDocuments.h"
 #include "Rendering/DrawListTextures.h"
 #include "Rendering/SharedRenderResource.h"
 #include "Screens/DrawListScreenFrame.h"
@@ -292,8 +292,7 @@ std::optional<Weltall::FError> FGameLoopScreen::Start(std::optional<uint16> Fiel
 				return Unread;
 			}
 		}
-		const FString StoryFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Story"));
-		auto Documents = Weltall::FStoryPacks::Read(std::filesystem::path(*StoryFolder));
+		auto Documents = ReadStoryDocuments();
 		if (!Documents)
 		{
 			return Weltall::MakeError("the port's story cannot be read: " + Documents.Error().Message);
