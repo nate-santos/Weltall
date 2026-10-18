@@ -18,6 +18,13 @@
 	"DisableEnginePluginsByDefault": true,
 	"Plugins": [
 		{
+			"Name": "AndroidDeviceProfileSelector",
+			"Enabled": true,
+			"PlatformAllowList": [
+				"Android"
+			]
+		},
+		{
 			"Name": "AndroidPermission",
 			"Enabled": true,
 			"PlatformAllowList": [
