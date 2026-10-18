@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidManifestUpdates>
+        <addAttribute tag="application" name="android:fullBackupContent" value="@xml/weltall_backup_rules" />
+        <addAttribute tag="application" name="android:dataExtractionRules" value="@xml/weltall_data_extraction_rules" />
+    </androidManifestUpdates>
+    <resourceCopies>
+        <copyFile src="$S(PluginDir)/res/xml/weltall_backup_rules.xml" dst="$S(BuildDir)/res/xml/weltall_backup_rules.xml" />
+        <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
+    </resourceCopies>
+</root>

@@ -16,6 +16,7 @@ Updated October 18, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. 
 | Repository guard checks | 16 passed | Staged/committed/outgoing-history protection against disc data and generated artifacts, including recognizable renamed content. |
 | Unreal-facing game module | Compiles for Android ARM64 and Windows editor | Touch Slate widget, JNI/storage/lifecycle integration and existing custom rendering compile against UE 5.8.4's generated build configuration. This is a module compile check, not a completed engine link or APK. |
 | Moto graphics capabilities | Adreno 710, Vulkan 1.3.284 | Driver reports the sampled integer/float textures, color/depth attachments and buffer limits checked for this renderer. Actual draw output remains a device gate. |
+| Android backup resources | Unreal plugin processing and SDK 36 resource compilation/linking pass | Both manifest references resolve to staged XML allowing only saves/settings. Finished game APK wiring and restore behavior remain unverified. |
 
 An earlier broad ARM64 run also passed 807 cases and 682,258 assertions. It included content cases whose tags were subsequently corrected, so it is not counted as the isolated synthetic baseline above.
 

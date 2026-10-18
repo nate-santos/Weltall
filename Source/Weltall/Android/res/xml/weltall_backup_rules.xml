@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Explicit inclusions leave recreatable disc copies, assets and logs out of backups. -->
+    <include domain="file" path="Weltall/Settings" />
+    <include domain="file" path="Weltall/Saves" />
+</full-backup-content>
