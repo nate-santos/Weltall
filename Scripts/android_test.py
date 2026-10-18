@@ -29,6 +29,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -176,7 +177,7 @@ def stage_story(adb, folder, run_id):
     return records
 
 
-def test_script(binary, remote_run, test_filter):
+def test_script(binary, remote_run, test_filter, no_discs=False):
     """Quote every caller-controlled shell value, including Catch2 filter metacharacters."""
     quote = lambda value: shlex.quote(str(value))
     command = " ".join(quote(value) for value in (
@@ -185,7 +186,8 @@ def test_script(binary, remote_run, test_filter):
     return "\n".join([
         "cd " + quote(remote_run) + " || exit 125",
         "mkdir -p " + quote(remote_run / "tmp") + " || exit 125",
-        "TMPDIR=" + quote(remote_run / "tmp") + " " + command + " >" + quote(remote_run / "console.txt") + " 2>&1 &",
+        "TMPDIR=" + quote(remote_run / "tmp") + (" WELTALL_TEST_NO_DISCS=1" if no_discs else "")
+        + " " + command + " >" + quote(remote_run / "console.txt") + " 2>&1 &",
         "test_pid=$!",
         'printf "%s\\n" "$test_pid" >' + quote(remote_run / "pid.txt"),
         'wait "$test_pid"',
@@ -303,8 +305,11 @@ def main(argv=None):
             adb.shell("chmod 700 " + shlex.quote(str(remote_binary)))
             print(f"Running {summary['filter']} on {summary['model']}. Local results: {result_dir}", flush=True)
             timed_out = False
+            started = time.monotonic()
             try:
-                completed = adb.shell(test_script(remote_binary, remote_run, summary["filter"]), timeout=args.timeout, check=False)
+                no_discs = not args.with_discs or (not args.test_filter and args.preset in {"synthetic", "touch"})
+                summary["disc_access_disabled"] = no_discs
+                completed = adb.shell(test_script(remote_binary, remote_run, summary["filter"], no_discs=no_discs), timeout=args.timeout, check=False)
                 status = completed.returncode
             except subprocess.TimeoutExpired:
                 timed_out = True
@@ -314,12 +319,14 @@ def main(argv=None):
                 for filename in ("report.junit.xml", "report.catch.xml", "console.txt", "exit-status.txt"):
                     adb.run(["pull", str(remote_run / filename), str(result_dir / filename)], check=False)
             summary["exit_code"] = status
+            summary["elapsed_seconds"] = time.monotonic() - started
             summary["timed_out"] = timed_out
             report = result_dir / "report.junit.xml"
             native_report = result_dir / "report.catch.xml"
             if report.is_file() and native_report.is_file() and not timed_out:
                 summary.update(report_counts(report))
                 summary["junit_entries"] = summary["tests"]
+                summary["junit_section_seconds"] = summary.pop("seconds")
                 summary.update(catch_counts(native_report))
             else:
                 raise RuntimeError("test execution timed out or did not produce a complete JUnit report; inspect local logs")

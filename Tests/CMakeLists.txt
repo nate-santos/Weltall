@@ -14,15 +14,18 @@ file(TO_CMAKE_PATH "${WELTALL_STORY_DIR}" WELTALL_STORY_DIR)
 set(CORE_DIR "${REPO_ROOT}/Source/WeltallCore")
 set(CATCH2_DIR "${REPO_ROOT}/ThirdParty/Catch2")
 
-# The same constraints as Unreal's build: no exceptions, no RTTI, and warnings are errors.
+# The core matches Unreal's no-exceptions/no-RTTI build. Catch2 needs exceptions to
+# report optional-disc SKIP/failed REQUIRE cases without terminating the process.
 if(MSVC)
 	# CMake adds /EHsc by default; drop it rather than overriding it per target.
 	string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 	set(WELTALL_LANGUAGE_OPTIONS /EHs-c- /GR- /utf-8 /permissive-)
+	set(WELTALL_TEST_LANGUAGE_OPTIONS /EHsc /GR- /utf-8 /permissive-)
 	set(WELTALL_LANGUAGE_DEFINITIONS _HAS_EXCEPTIONS=0)
 	set(WELTALL_WARNINGS /W4 /WX)
 else()
 	set(WELTALL_LANGUAGE_OPTIONS -fno-exceptions -fno-rtti)
+	set(WELTALL_TEST_LANGUAGE_OPTIONS -fexceptions -fno-rtti)
 	set(WELTALL_LANGUAGE_DEFINITIONS "")
 	set(WELTALL_WARNINGS -Wall -Wextra -Wpedantic -Wshadow -Werror)
 endif()
@@ -31,14 +34,13 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS "${CORE_DIR}/Private/*.cpp")
 add_library(WeltallCore STATIC ${CORE_SOURCES})
 # As in Unreal's build, the module's own sources also see its private headers.
 target_include_directories(WeltallCore PUBLIC "${CORE_DIR}/Public" PRIVATE "${CORE_DIR}/Private")
-target_compile_options(WeltallCore PUBLIC ${WELTALL_LANGUAGE_OPTIONS} PRIVATE ${WELTALL_WARNINGS})
+target_compile_options(WeltallCore PRIVATE ${WELTALL_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
 # Unreal's build exports the core's API from its module; built on its own, the core exports nothing.
-target_compile_definitions(WeltallCore PUBLIC ${WELTALL_LANGUAGE_DEFINITIONS} WELTALLCORE_API=)
+target_compile_definitions(WeltallCore PUBLIC WELTALLCORE_API= PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
 
 add_library(Catch2 STATIC "${CATCH2_DIR}/catch_amalgamated.cpp")
 target_include_directories(Catch2 SYSTEM PUBLIC "${CATCH2_DIR}")
-target_compile_options(Catch2 PRIVATE ${WELTALL_LANGUAGE_OPTIONS})
-target_compile_definitions(Catch2 PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
+target_compile_options(Catch2 PRIVATE ${WELTALL_TEST_LANGUAGE_OPTIONS})
 if(ANDROID)
 	# Catch2's Android diagnostic stream writes to logcat.
 	target_link_libraries(Catch2 PUBLIC log)
@@ -48,7 +50,7 @@ file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/We
 add_executable(WeltallCoreTests ${TEST_SOURCES})
 target_include_directories(WeltallCoreTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallCoreTests PRIVATE WeltallCore Catch2)
-target_compile_options(WeltallCoreTests PRIVATE ${WELTALL_WARNINGS})
+target_compile_options(WeltallCoreTests PRIVATE ${WELTALL_TEST_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
 target_compile_definitions(WeltallCoreTests PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}" WELTALL_STORY_DIR="${WELTALL_STORY_DIR}")
 
 enable_testing()
@@ -60,7 +62,8 @@ endif()
 # Prints a disc map as the text a story document that makes a map of its own starts from (Tools/MapText.cpp).
 add_executable(WeltallMapText "${CMAKE_CURRENT_SOURCE_DIR}/Tools/MapText.cpp")
 target_link_libraries(WeltallMapText PRIVATE WeltallCore)
-target_compile_options(WeltallMapText PRIVATE ${WELTALL_WARNINGS})
+target_compile_options(WeltallMapText PRIVATE ${WELTALL_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
+target_compile_definitions(WeltallMapText PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
 target_compile_definitions(WeltallMapText PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}")
 
 # Finds where the drawing order and the depth disagree, on the field, the world map and in battle (Tools/SortingAudit.cpp).
@@ -70,7 +73,8 @@ add_executable(WeltallSortingAudit ${SORTING_AUDIT_SOURCES} "${CMAKE_CURRENT_SOU
 	"${CMAKE_CURRENT_SOURCE_DIR}/Support/BattleSortingAudit.cpp")
 target_include_directories(WeltallSortingAudit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallSortingAudit PRIVATE WeltallCore)
-target_compile_options(WeltallSortingAudit PRIVATE ${WELTALL_WARNINGS})
+target_compile_options(WeltallSortingAudit PRIVATE ${WELTALL_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
+target_compile_definitions(WeltallSortingAudit PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
 target_compile_definitions(WeltallSortingAudit PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}")
 
 # Plays the game by machine, every map's scenes or on from a new game and saves, to find where it stops (Tools/StorySweep.cpp).
@@ -79,6 +83,7 @@ add_executable(WeltallStorySweep ${STORY_SWEEP_SOURCES} "${CMAKE_CURRENT_SOURCE_
 	"${CMAKE_CURRENT_SOURCE_DIR}/Support/XorShift32.cpp")
 target_include_directories(WeltallStorySweep PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(WeltallStorySweep PRIVATE WeltallCore)
-target_compile_options(WeltallStorySweep PRIVATE ${WELTALL_WARNINGS})
+target_compile_options(WeltallStorySweep PRIVATE ${WELTALL_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
+target_compile_definitions(WeltallStorySweep PRIVATE ${WELTALL_LANGUAGE_DEFINITIONS})
 target_compile_definitions(WeltallStorySweep PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}" WELTALL_STORY_DIR="${WELTALL_STORY_DIR}")
 

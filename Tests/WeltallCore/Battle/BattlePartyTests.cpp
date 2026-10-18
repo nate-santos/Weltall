@@ -98,7 +98,7 @@ namespace
 	}
 }
 
-TEST_CASE("A press in the frames Billy's ammunition window takes to close after a cancel still attacks, as in the game", "[Battle]")
+TEST_CASE("A press in the frames Billy's ammunition window takes to close after a cancel still attacks, as in the game", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const FProgram Program = ReadProgram(*Disc);
@@ -120,7 +120,7 @@ TEST_CASE("A press in the frames Billy's ammunition window takes to close after 
 	CHECK_FALSE(Context.Party.bAmmunitionShown);
 }
 
-TEST_CASE("The party's turns stop where the game would loop forever or place by a register it never set", "[Battle]")
+TEST_CASE("The party's turns stop where the game would loop forever or place by a register it never set", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const FProgram Program = ReadProgram(*Disc);

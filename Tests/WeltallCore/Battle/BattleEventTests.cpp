@@ -168,7 +168,7 @@ TEST_CASE("Battle events stop where the game would hang or read past its data", 
 	}
 }
 
-TEST_CASE("Every battle event script on the disc decodes along every thread", "[Battle]")
+TEST_CASE("Every battle event script on the disc decodes along every thread", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);

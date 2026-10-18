@@ -114,7 +114,7 @@ namespace
 	}
 }
 
-TEST_CASE("Battle events load, run at the battle's hooks and end as the original's, frame by frame", "[Battle]")
+TEST_CASE("Battle events load, run at the battle's hooks and end as the original's, frame by frame", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);

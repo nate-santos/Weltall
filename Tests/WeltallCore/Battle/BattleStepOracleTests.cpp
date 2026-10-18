@@ -282,7 +282,7 @@ namespace
 	}
 }
 
-TEST_CASE("The Battle program runs a battle as the original's, frame by frame", "[Battle]")
+TEST_CASE("The Battle program runs a battle as the original's, frame by frame", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const FStepDisc Loaded = LoadStepDisc(*Disc);
@@ -305,7 +305,7 @@ TEST_CASE("The Battle program runs a battle as the original's, frame by frame", 
 // The same with frames that overrun as EXT6's screen wave makes one: the frame takes the wave's vertical blanks before
 // its input step (the pad's queue overflows meanwhile), and the frame after it runs four catch-up steps, each an input
 // step more: the waits tick and the menus' counters step without the pad read again, the messages' step runs whole.
-TEST_CASE("The Battle program catches up after a frame that overran, as the original's", "[Battle]")
+TEST_CASE("The Battle program catches up after a frame that overran, as the original's", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const FStepDisc Loaded = LoadStepDisc(*Disc);

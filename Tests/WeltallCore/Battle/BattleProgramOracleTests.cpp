@@ -479,7 +479,7 @@ namespace
 
 // One test a battle, so that each takes seconds and a difference names its battle.
 #define BATTLE_PROGRAM_TEST(Number, What)                                                                                              \
-	TEST_CASE("The Battle program with its show and HUD plays battle " #Number " as the original's, frame by frame: " What, "[Battle]") \
+	TEST_CASE("The Battle program with its show and HUD plays battle " #Number " as the original's, frame by frame: " What, "[Battle][Content]") \
 	{                                                                                                                                   \
 		REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);                                                                                     \
 		CHECK(RunBattle(*Disc, Number) == Digests[Number]);                                                                             \
@@ -609,7 +609,7 @@ namespace
 	}
 }
 
-TEST_CASE("A weapon's trail blends with what is behind it unless the original's ribbon is asked for", "[Battle]")
+TEST_CASE("A weapon's trail blends with what is behind it unless the original's ribbon is asked for", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const std::array<int32, 2> Fixed = TrailCodes(*Disc, FBattleShowOptions{});
@@ -620,7 +620,7 @@ TEST_CASE("A weapon's trail blends with what is behind it unless the original's 
 	CHECK(Original[1] == 0);
 }
 
-TEST_CASE("A spell's shapes that set no light take the stage's, whatever the program before left, unless the original is asked for", "[Battle]")
+TEST_CASE("A spell's shapes that set no light take the stage's, whatever the program before left, unless the original is asked for", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const std::array<int16, 3> None{0, 0, 0};
@@ -673,7 +673,7 @@ namespace
 	}
 }
 
-TEST_CASE("A tint leaves the burning village's palettes as they were", "[Battle]")
+TEST_CASE("A tint leaves the burning village's palettes as they were", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	CHECK(FramesWithAnEmptyVillageRow(*Disc, FBattleShowOptions{}) == 0);

@@ -6,6 +6,8 @@ The Android implementation is in development. The source currently has ARM64/mob
 
 Use Unreal Engine 5.8 and the Android SDK, NDK and JDK versions selected by that engine's Turnkey/setup tools. Set `UE_ROOT` in the environment or the ignored `local.env` file. Existing desktop packaging remains in `Scripts/package.py`; Android packaging is separate.
 
+The packager also accepts `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `NDKROOT`, `NDK_ROOT` and `ANDROID_NDK_HOME` from `local.env`. Existing environment values take precedence. These tool locations are passed only to the build process; the script does not change global environment settings or inherit arbitrary keys from the local file.
+
 ```text
 python Scripts/android_package.py --check-toolchain
 ```
@@ -70,6 +72,8 @@ The C++ core can be tested on Android before Unreal is available. Configure the 
 ```
 
 Build the `WeltallCoreTests` target. Cross-compiled Catch2 discovery is skipped on the development computer; execute the binary through `Scripts/android_test.py` instead. The runner defaults to `out/tests/android-arm64/WeltallCoreTests` and the locally installed `out/tools/platform-tools/adb` executable. Select another binary with `--binary` and another adb with `--adb`. The phone needs USB debugging enabled and authorization for this computer; when more than one authorized device is connected, select its serial with `--serial`.
+
+The core retains Unreal's exception-free build. The Catch2 harness uses exceptions so missing optional disc editions are reported as skipped tests instead of aborting the process. A synthetic run also sets `WELTALL_TEST_NO_DISCS=1`, preventing cached phone discs from affecting that run.
 
 ```text
 python Scripts/android_test.py --preset touch

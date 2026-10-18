@@ -157,6 +157,24 @@ class AndroidPackageTests(unittest.TestCase):
             self.assertEqual(package.main([]), 1)
         self.assertTrue(old.is_file())
 
+    def test_build_tool_paths_are_child_scoped_and_existing_environment_wins(self):
+        (self.root / "local.env").write_text("JAVA_HOME=local java\nANDROID_HOME=local android sdk\n"
+                                            "NDKROOT=local ndk\nUNREQUESTED_SECRET=not inherited\n")
+        with mock.patch.object(package, "REPO", self.root), \
+                mock.patch.dict(package.os.environ, {"JAVA_HOME": "existing java", "UNRELATED_EXISTING": "preserved"}, clear=True), \
+                mock.patch.object(package.subprocess, "Popen") as popen:
+            child = popen.return_value.__enter__.return_value
+            child.stdout = []
+            child.wait.return_value = 0
+            self.assertEqual(package.run_build(["synthetic-build"], self.root / "build-output.txt"), 0)
+            environment = popen.call_args.kwargs["env"]
+            self.assertEqual(environment["JAVA_HOME"], "existing java")
+            self.assertEqual(environment["ANDROID_HOME"], "local android sdk")
+            self.assertEqual(environment["NDKROOT"], "local ndk")
+            self.assertEqual(environment["UNRELATED_EXISTING"], "preserved")
+            self.assertNotIn("UNREQUESTED_SECRET", environment)
+            self.assertNotIn("ANDROID_HOME", package.os.environ)
+
 
 if __name__ == "__main__":
     unittest.main()

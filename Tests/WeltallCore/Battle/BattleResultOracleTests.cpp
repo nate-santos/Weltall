@@ -52,7 +52,7 @@ namespace
 	}
 }
 
-TEST_CASE("The battle's result gives EXP, levels, skills, gold and drops as the original's", "[Battle]")
+TEST_CASE("The battle's result gives EXP, levels, skills, gold and drops as the original's", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);
@@ -73,7 +73,7 @@ TEST_CASE("The battle's result gives EXP, levels, skills, gold and drops as the 
 	CHECK(Whole.Hex() == OriginalDigest);
 }
 
-TEST_CASE("The growth table gives the EXP each level needs and the characters' targets", "[Battle]")
+TEST_CASE("The growth table gives the EXP each level needs and the characters' targets", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);
@@ -100,7 +100,7 @@ TEST_CASE("The growth table gives the EXP each level needs and the characters' t
 	CHECK(LittleEndian::ReadU16(Bytes, FBattleGrowthTable::RecordSize + 0xB8) == 750);
 }
 
-TEST_CASE("Ether level 99 still rolls its EP growth, or in the original divides by zero and never grows", "[Battle]")
+TEST_CASE("Ether level 99 still rolls its EP growth, or in the original divides by zero and never grows", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);

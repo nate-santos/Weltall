@@ -132,7 +132,7 @@ namespace
 	}
 }
 
-TEST_CASE("A battle ends as the original's, frame by frame, up to its result", "[Battle]")
+TEST_CASE("A battle ends as the original's, frame by frame, up to its result", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);

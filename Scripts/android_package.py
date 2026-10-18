@@ -37,6 +37,7 @@ PROJECT_PATHS = ("Weltall.uproject", "Config", "Content/Story", "Shaders", "Sour
 CHUNK_BYTES = 1024 * 1024
 MANIFEST_HEADER = "WELTALL_BUNDLED_DISCS_V1"
 CUE_FILE = re.compile(r'^\s*FILE\s+(?:"([^"]+)"|(\S+))\s+BINARY\s*$', re.IGNORECASE)
+TOOL_ENV_KEYS = ("UE_ROOT", "JAVA_HOME", "ANDROID_HOME", "ANDROID_SDK_ROOT", "NDKROOT", "NDK_ROOT", "ANDROID_NDK_HOME")
 
 
 def setting(key):
@@ -203,14 +204,25 @@ def toolchain_problems(ue_root):
     return problems
 
 
+def build_environment():
+    """Scope approved local tool paths to child processes, preserving environment precedence."""
+    environment = os.environ.copy()
+    for key in TOOL_ENV_KEYS:
+        value = setting(key)
+        if value:
+            environment[key] = value
+    return environment
+
+
 def run_build(command, log):
     log.parent.mkdir(parents=True, exist_ok=True)
     kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
     with log.open("w", encoding="utf-8", newline="\n") as output:
         with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                              encoding="utf-8", errors="replace", **kwargs) as process:
+                              encoding="utf-8", errors="replace", env=build_environment(), **kwargs) as process:
             for line in process.stdout:
                 output.write(line)
+                output.flush()
                 if any(mark in line for mark in ("Error:", "ERROR:", "BUILD SUCCESSFUL", "BUILD FAILED")):
                     print(line.rstrip())
             return process.wait()

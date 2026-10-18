@@ -135,7 +135,7 @@ namespace
 	}
 }
 
-TEST_CASE("A battle's turns run as the original's, frame by frame", "[Battle]")
+TEST_CASE("A battle's turns run as the original's, frame by frame", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);

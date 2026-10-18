@@ -128,7 +128,7 @@ namespace
 	}
 }
 
-TEST_CASE("The party's turns run their menus, attacks, lists and automatic actions as the original's", "[Battle]")
+TEST_CASE("The party's turns run their menus, attacks, lists and automatic actions as the original's", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
 	const auto Executable = ReadBootExecutable(*Disc);
