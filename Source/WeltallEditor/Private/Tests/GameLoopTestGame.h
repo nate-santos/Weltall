@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Media/GameLibrary.h"
+#include "Shell/GameDiscsSubsystem.h"
 #include "Misc/Paths.h"
 #include "Screens/GameLoopScreen.h"
 #include "Sound/GameSoundSession.h"
@@ -11,10 +12,10 @@
 #include <memory>
 #include <optional>
 
-/** The project's first disc, or null when its Games folder has none: the tests that play the game skip then. */
+/** The configured first disc (-Games= or the project's Games folder), or null when it is absent. */
 inline const Weltall::FIso9660* FindTestDisc(Weltall::FGameLibrary& Library)
 {
-	Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Games"))));
+	Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()));
 	return Library.Find(Weltall::EDiscRelease::UsaDisc1);
 }
 

@@ -2,6 +2,7 @@
 
 #include "HAL/PlatformTime.h"
 #include "Media/GameLibrary.h"
+#include "Shell/GameDiscsSubsystem.h"
 #include "Media/PsxExecutable.h"
 #include "Misc/Paths.h"
 #include "Shell/TextureExport.h"
@@ -25,7 +26,7 @@ int32 UExportTexturesCommandlet::Main(const FString& Params)
 		UE_LOG(LogExportTextures, Error, TEXT("Usage: -run=ExportTextures -Out=<textures folder>"));
 		return 1;
 	}
-	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Games"))));
+	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()));
 	const Weltall::FIso9660* Disc = Library.Find(Weltall::EDiscRelease::UsaDisc1);
 	const auto Executable = Disc != nullptr ? Weltall::ReadBootExecutable(*Disc) : Weltall::TResult<Weltall::FPsxExecutable>(Weltall::MakeError("Disc 1 is not in the Games folder"));
 	const auto Index = Executable ? Weltall::FGameFileIndex::Read(*Executable) : Weltall::TResult<Weltall::FGameFileIndex>(Executable.Error());

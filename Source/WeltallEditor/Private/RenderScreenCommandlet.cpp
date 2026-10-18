@@ -7,6 +7,7 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Media/GameLibrary.h"
+#include "Shell/GameDiscsSubsystem.h"
 #include "Media/MoviePlayer.h"
 #include "Misc/FileHelper.h"
 #include "FrameProfile.h"
@@ -729,7 +730,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		FTextureModLibrary::Configure(FPaths::ConvertRelativePathToFull(TexturesFolder), true, false);
 	}
 
-	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Games"))));
+	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()));
 	int32 DiscNumber = 1;
 	FParse::Value(*Params, TEXT("Disc="), DiscNumber);
 	const Weltall::FIso9660* Disc = Library.Find(DiscNumber == 2 ? Weltall::EDiscRelease::UsaDisc2 : Weltall::EDiscRelease::UsaDisc1);

@@ -2,6 +2,7 @@
 
 #include "Audio.h"
 #include "Media/GameLibrary.h"
+#include "Shell/GameDiscsSubsystem.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Sound/GameSoundSession.h"
@@ -42,7 +43,7 @@ int32 URenderSoundCommandlet::Main(const FString& Params)
 		return 1;
 	}
 
-	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Games"))));
+	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()));
 	const Weltall::FIso9660* Disc = Library.Find(Weltall::EDiscRelease::UsaDisc1);
 	if (Disc == nullptr)
 	{
