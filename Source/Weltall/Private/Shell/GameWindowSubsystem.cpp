@@ -119,12 +119,16 @@ void UGameWindowSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	ForegroundedHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationForegrounded);
 	DeactivatedHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationDeactivated);
 	ReactivatedHandle = FCoreDelegates::ApplicationHasReactivatedDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationReactivated);
+	FollowMobileScreenAwake();
 #endif
 	Follow();
 }
 
 void UGameWindowSubsystem::Deinitialize()
 {
+#if PLATFORM_ANDROID
+	FPlatformApplicationMisc::ControlScreensaver(EScreenSaverAction::Enable);
+#endif
 	FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundedHandle);
 	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundedHandle);
 	FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedHandle);
@@ -199,25 +203,39 @@ void UGameWindowSubsystem::HoldMobileAudio()
 void UGameWindowSubsystem::ApplicationBackgrounded()
 {
 	bApplicationForeground = false;
+	FollowMobileScreenAwake();
 	HoldMobileAudio();
 }
 
 void UGameWindowSubsystem::ApplicationForegrounded()
 {
 	bApplicationForeground = true;
+	FollowMobileScreenAwake();
 	bResumeFrame = true;
 }
 
 void UGameWindowSubsystem::ApplicationDeactivated()
 {
 	bApplicationActive = false;
+	FollowMobileScreenAwake();
 	HoldMobileAudio();
 }
 
 void UGameWindowSubsystem::ApplicationReactivated()
 {
 	bApplicationActive = true;
+	FollowMobileScreenAwake();
 	bResumeFrame = true;
+}
+
+void UGameWindowSubsystem::FollowMobileScreenAwake()
+{
+#if PLATFORM_ANDROID
+	// This changes only the game's window flag, never the phone's timeout or lock settings.
+	// Long movies/preparation must stay visible; an inactive game must allow normal sleep.
+	FPlatformApplicationMisc::ControlScreensaver(bApplicationActive && bApplicationForeground
+		? EScreenSaverAction::Disable : EScreenSaverAction::Enable);
+#endif
 }
 
 void UGameWindowSubsystem::Follow()

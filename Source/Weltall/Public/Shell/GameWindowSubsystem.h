@@ -44,6 +44,7 @@ private:
 	void ApplicationDeactivated();
 	void ApplicationReactivated();
 	void HoldMobileAudio();
+	void FollowMobileScreenAwake();
 
 	FDelegateHandle SettingsChanged;
 	FDelegateHandle BackgroundedHandle;
