@@ -26,6 +26,8 @@ The development machine has Unreal Engine 5.8.4 source, Visual Studio 2022 Build
 
 The first Unreal source build is compiling the Windows editor/cook tools and Android runtime. Its local exported project contains both BIN/CUE pairs, staged through the explicit `--include-discs` path. No APK has passed packaging or installation yet. Native decoder tests do not establish screen rendering or speaker output.
 
+The [October 18 handoff](AndroidHandoff.md) records the active build log, tool locations and resume command. The running export predates the newest backup receipt/resources, so refresh it with the normal incremental packager only after the current build exits.
+
 ## Next device gates
 
 1. Finish Unreal compilation and mobile Vulkan shader cooking; verify the local APK contains both bundled discs.
