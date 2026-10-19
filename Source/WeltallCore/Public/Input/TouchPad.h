@@ -83,6 +83,9 @@ namespace Weltall
 	/** Input sources are combined, never injected as key-up events into one another. */
 	constexpr FPadState MergePads(FPadState Hardware, FPadState Touch)
 	{
-		return {static_cast<uint16>(Hardware.Buttons | Touch.Buttons)};
+		// A touch direction is a digital press, even when the stick holds that direction too.
+		Hardware.StickButtons &= static_cast<uint16>(~Touch.Buttons);
+		Hardware.Buttons |= Touch.Buttons;
+		return Hardware;
 	}
 }

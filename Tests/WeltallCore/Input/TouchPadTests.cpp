@@ -1,5 +1,6 @@
 #include "Input/TouchPad.h"
 #include "Input/PadLatch.h"
+#include "Input/KernelPad.h"
 #include "Game/PlayerSettings.h"
 
 #include <catch_amalgamated.hpp>
@@ -17,6 +18,32 @@ namespace
 	{
 		return Layout.Controls[static_cast<std::size_t>(Control)].Center();
 	}
+}
+
+TEST_CASE("Touch buttons preserve a controller's analog report through the kernel", "[Input][Touch]")
+{
+	const uint16 Right = FPadState::Bit(EPadButton::Right);
+	FPadState Hardware{static_cast<uint16>(Right | FPadState::Bit(EPadButton::Cross))};
+	Hardware.StickButtons = Right;
+	Hardware.StickX = 240;
+	Hardware.StickY = 24;
+	Hardware.bAnalog = true;
+	CHECK(MergePads(Hardware, {}) == Hardware);
+
+	const FPadState Touch{static_cast<uint16>(Right | FPadState::Bit(EPadButton::Circle))};
+	const FPadState Combined = MergePads(MergePads(Hardware, Touch), {});
+	FKernelPad Kernel;
+	Kernel.Vblank(Combined, 1);
+	const FKernelPadWords Words = Kernel.TakeMerged();
+	CHECK(Words.bAnalog);
+	CHECK(Words.StickX == Hardware.StickX);
+	CHECK(Words.StickY == Hardware.StickY);
+	CHECK(Words.StickHeld == 0); // Right is also held by the touch D-pad.
+	CHECK(Words.Held == FKernelPad::LogicalButtons(FKernelPad::ReportWord(FPadState{static_cast<uint16>(Hardware.Buttons | Touch.Buttons)})));
+	CHECK(MergePads({}, Touch) == Touch);
+
+	const FPadState ActionOnly{FPadState::Bit(EPadButton::Square)};
+	CHECK(MergePads(Hardware, ActionOnly).StickButtons == Right);
 }
 
 TEST_CASE("Touch movement and two action fingers remain independent", "[Input][Touch]")
