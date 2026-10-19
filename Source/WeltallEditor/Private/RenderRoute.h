@@ -15,6 +15,7 @@ class FGameLoopScreen;
  * scripts hold the party the route waits on its point.
  * Random battles are kept off while the route is walked, they are no part of the way, unless -RouteBattles lets them
  * come as they would.
+ * -RouteAt=S starts the route at simulated second S, leaving earlier scripted input (such as a normal save load) alone.
  */
 class FRenderRoute
 {
@@ -23,7 +24,7 @@ public:
 	static bool Parse(const FString& Params, FRenderRoute& Route);
 
 	/** The buttons the route holds this frame. */
-	Weltall::FPadState Step(FGameLoopScreen& Game);
+	Weltall::FPadState Step(FGameLoopScreen& Game, double Elapsed);
 
 private:
 	struct FPoint
@@ -38,6 +39,7 @@ private:
 
 	TArray<FPoint> Points;
 	bool bBattles = false;
+	double StartsAt = 0.0;
 	int32 Next = 0;
 	int32 Frame = 0;
 	/** Where the point was begun: the program and the field's map, to know when the way has led elsewhere. */

@@ -45,6 +45,12 @@ namespace
 
 bool FRenderRoute::Parse(const FString& Params, FRenderRoute& Route)
 {
+	FParse::Value(*Params, TEXT("RouteAt="), Route.StartsAt);
+	if (!std::isfinite(Route.StartsAt) || Route.StartsAt < 0.0)
+	{
+		UE_LOG(LogRenderRoute, Error, TEXT("-RouteAt must be a finite, non-negative number of simulated seconds"));
+		return false;
+	}
 	FString Text;
 	if (!FParse::Value(*Params, TEXT("Route="), Text, false))
 	{
@@ -76,8 +82,12 @@ void FRenderRoute::Pass()
 	++Next;
 }
 
-FPadState FRenderRoute::Step(FGameLoopScreen& Game)
+FPadState FRenderRoute::Step(FGameLoopScreen& Game, double Elapsed)
 {
+	if (Elapsed < StartsAt)
+	{
+		return {};
+	}
 	++Frame;
 	Weltall::FGameLoop* Loop = Game.Loop();
 	if (Loop == nullptr || Next >= Points.Num())
