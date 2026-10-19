@@ -68,7 +68,7 @@ Each pending cell requires a recorded run on that platform/disc. For a save-base
 | Menus, options and party management | Pending | Pending | Pending | Pending |
 | Save, reload and matching restored state | Actual Android-created cave save loads into matching scene; PC legal save-point write coverage pending | Native legal cave save, checksum and reload pass; broader scenarios pending | Exact Android-created post-victory save loads with matching party/stats/gold and responsive field/camera control | Native legal map 641 post-victory save in empty Card 8, checksum and cold load with matching party/stats/gold pass; interruption cases pending |
 | Movies with audible sound from raw BIN/CUE | Pending | Pending | Pending | Pending |
-| Battling arena input and completed round | Normal lobby entry, controls help, scripted bout/malfunction/story continuation and practice input/pause/resume/exit pass; competitive rounds/results pending | Pending | Pending | Pending |
+| Battling arena input and completed round | Normal lobby entry, controls help, scripted bout/malfunction/story continuation and practice input/pause/resume/exit pass; competitive rounds/results pending | Normal entry/help, practice movement/jump/action/pause/resume/exit, scripted bout/malfunction and return to story pass; further dialogue and competitive rounds/results pending | Pending | Pending |
 | Extended play with actual progression | Pending | Pending | Pending | Pending |
 
 Disc-switch validation is a separate transition: reach the original Disc 1 → Disc 2 handoff, continue with both discs present, and compare restored/progressed state on PC and Android. Automated story sweeps and sampled saves supplement the extended play sessions; they do not replace them.
