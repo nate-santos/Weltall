@@ -88,4 +88,14 @@ namespace Weltall
 	private:
 		std::vector<std::vector<FMenuSpritePart>> Frames;
 	};
+
+	struct FTextureRegion;
+
+	/**
+	 * The pictures a sheet's frames draw, for texture replacements: every part's texels in its view (page, depth and CLUT),
+	 * those of one view that overlap or touch merged into one (MergeTextureRegions). Whatever else lies in the sheet's pages
+	 * (text typed at run time, what an earlier program left) is outside them, so their keys stay the same from one scene
+	 * to the next.
+	 */
+	WELTALLCORE_API std::vector<FTextureRegion> MenuSheetTextureRegions(const FMenuSpriteSheet& Sheet);
 }

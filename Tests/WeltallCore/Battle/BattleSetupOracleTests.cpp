@@ -16,6 +16,7 @@
 
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace Weltall;
@@ -30,6 +31,8 @@ namespace
 	constexpr uint32 Seed = 0xBA77E001;
 	constexpr int32 Cases = 48;
 	constexpr const char* OriginalDigest = "ca56016265920b0075f25adfec5df0ef8997c3a5";
+	/** The same cases on Perfect Works Build's rebalanced party's Battle (`battle_setup_digests --perfect-works-rebalance`). */
+	constexpr const char* RebalanceDigest = "3ff85f6b03184261c5d039619ee3a1815559e0de";
 	constexpr int32 SceneCount = 76;
 	constexpr int32 StageCount = 75;
 
@@ -196,47 +199,63 @@ namespace
 	}
 }
 
+namespace
+{
+	/** Every case set up and digested, by the original's rules or Perfect Works Build's rebalance's. */
+	std::string SetupDigest(const FIso9660& Disc, bool bRebalance)
+	{
+		const auto Executable = ReadBootExecutable(Disc);
+		REQUIRE(Executable);
+		const auto Index = FGameFileIndex::Read(*Executable);
+		REQUIRE(Index);
+		const auto Tables = FBattleTables::Load(Disc.Image(), *Index);
+		REQUIRE(Tables);
+		const auto Program = FBattleProgramTables::Load(Disc.Image(), *Index);
+		REQUIRE(Program);
+		std::vector<FBattleScene> Scenes;
+		for (int32 Number = 0; Number < SceneCount; ++Number)
+		{
+			auto Scene = FBattleScene::Load(Disc.Image(), *Index, Number);
+			REQUIRE(Scene);
+			Scenes.push_back(std::move(*Scene));
+		}
+		std::vector<FBattleStage> Stages;
+		for (int32 Number = 0; Number < StageCount; ++Number)
+		{
+			auto Stage = FBattleStage::Load(Disc.Image(), *Index, Number);
+			REQUIRE(Stage);
+			Stages.push_back(*Stage);
+		}
+
+		FXorShift32 G(Seed);
+		FOracleDigest Digest;
+		auto Context = std::make_unique<FBattleContext>();
+		for (int32 Case = 0; Case < Cases; ++Case)
+		{
+			FSetupCase Drawn(G);
+			FPsxRandom Random(Drawn.RandomSeed);
+			Context->GameState = &Drawn.State;
+			Context->Random = &Random;
+			Context->Program = &*Program;
+			Context->bPerfectWorksRebalance = bRebalance;
+			const FBattleFormation Formation = FBattleFormation::FromRecord(Drawn.Formation);
+			SetUpBattle(*Context, Formation, *Tables, Scenes[Formation.Scene], Stages[Formation.Stage]);
+			FinishBattlePartySetup(*Context);
+			REQUIRE(Context->Fault == EBattleFault::None);
+			DigestSetup(Digest, *Context, Drawn.State, Random);
+		}
+		return Digest.Hex();
+	}
+}
+
 TEST_CASE("Battles are set up as the original sets them up, from random game states and formations", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
-	const auto Executable = ReadBootExecutable(*Disc);
-	REQUIRE(Executable);
-	const auto Index = FGameFileIndex::Read(*Executable);
-	REQUIRE(Index);
-	const auto Tables = FBattleTables::Load(Disc->Image(), *Index);
-	REQUIRE(Tables);
-	const auto Program = FBattleProgramTables::Load(Disc->Image(), *Index);
-	REQUIRE(Program);
-	std::vector<FBattleScene> Scenes;
-	for (int32 Number = 0; Number < SceneCount; ++Number)
-	{
-		auto Scene = FBattleScene::Load(Disc->Image(), *Index, Number);
-		REQUIRE(Scene);
-		Scenes.push_back(std::move(*Scene));
-	}
-	std::vector<FBattleStage> Stages;
-	for (int32 Number = 0; Number < StageCount; ++Number)
-	{
-		auto Stage = FBattleStage::Load(Disc->Image(), *Index, Number);
-		REQUIRE(Stage);
-		Stages.push_back(*Stage);
-	}
+	CHECK(SetupDigest(*Disc, false) == OriginalDigest);
+}
 
-	FXorShift32 G(Seed);
-	FOracleDigest Digest;
-	auto Context = std::make_unique<FBattleContext>();
-	for (int32 Case = 0; Case < Cases; ++Case)
-	{
-		FSetupCase Drawn(G);
-		FPsxRandom Random(Drawn.RandomSeed);
-		Context->GameState = &Drawn.State;
-		Context->Random = &Random;
-		Context->Program = &*Program;
-		const FBattleFormation Formation = FBattleFormation::FromRecord(Drawn.Formation);
-		SetUpBattle(*Context, Formation, *Tables, Scenes[Formation.Scene], Stages[Formation.Stage]);
-		FinishBattlePartySetup(*Context);
-		REQUIRE(Context->Fault == EBattleFault::None);
-		DigestSetup(Digest, *Context, Drawn.State, Random);
-	}
-	CHECK(Digest.Hex() == OriginalDigest);
+TEST_CASE("Battles are set up as Perfect Works Build's rebalanced party's Battle sets them up", "[Battle][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	CHECK(SetupDigest(*Disc, true) == RebalanceDigest);
 }

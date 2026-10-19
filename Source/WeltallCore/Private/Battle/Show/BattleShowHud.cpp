@@ -7,11 +7,15 @@
 #include "Formats/Tim.h"
 #include "Formats/VramImageList.h"
 #include "Foundation/LittleEndian.h"
+#include "Graphics/TextureRegion.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
 #include "Text/MesRender.h"
+#include "Text/MessageOverrides.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -38,7 +42,6 @@ namespace Weltall
 		constexpr std::size_t PortraitBytes = 0x460;
 		constexpr uint8 SpecialPartyPortrait = 11;
 		/** The sheet's frames the set-up takes textures from, and where the party's portraits are drawn from. */
-		constexpr int32 PortraitFrame = 0x61;
 		constexpr std::array<int32, 4> EdgeFrames{0x4B, 0x50, 0x4D, 0x4E};
 		/** The gauges' animated CLUT rows: 198 units each from x 1, stored four times over. */
 		constexpr int16 TextureRowX = 1;
@@ -349,6 +352,7 @@ namespace Weltall
 		}
 		FBattleHudResources Resources;
 		Resources.Sheet = std::move(*Sheet);
+		Resources.SheetRegions = MenuSheetTextureRegions(Resources.Sheet);
 		Resources.Images = std::move(*Images);
 		Resources.Portraits = std::move(*PortraitsBytes);
 		Resources.Messages = std::move(*MessagesBytes);
@@ -378,6 +382,7 @@ namespace Weltall
 			return Archive.Error();
 		}
 		ResultSheet = std::move(*Sprites);
+		ResultSheetRegions = MenuSheetTextureRegions(ResultSheet);
 		ResultImages = std::move(*Archive);
 		ResultPortraits = std::move(*PortraitsBytes);
 		return std::nullopt;
@@ -443,7 +448,134 @@ namespace Weltall
 		{
 			return *Error;
 		}
+		const std::array<std::pair<std::string_view, std::vector<uint8>*>, 5> Tables = {{
+			{MessageTables::Battle, &Resources->Messages},
+			{MessageTables::BattleItemHelp, &Resources->ItemHelp},
+			{MessageTables::BattleEtherHelp, &Resources->HelpTexts[0]},
+			{MessageTables::BattleGearEtherHelp, &Resources->HelpTexts[1]},
+			{MessageTables::BattleSpecialHelp, &Resources->HelpTexts[2]},
+		}};
+		for (const auto& [Table, Bytes] : Tables)
+		{
+			if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, Table, *Bytes, EMessageWindows::Program))
+			{
+				*Bytes = std::move(Applied->Table);
+			}
+		}
 		return Resources;
+	}
+
+	std::optional<FError> ForEachBattleHudPicture(const FCdImage& Image, const FGameFileIndex& Index, bool bResult, const FBattleHudPictureVisit& Visit)
+	{
+		const auto Read = [&Image, &Index](int32 Directory, int32 Number) -> TResult<std::vector<uint8>>
+		{
+			const FIndexRecord* Record = Index.Find(Directory, Number);
+			if (Record == nullptr)
+			{
+				return MakeError("the disc lacks the battle HUD's files");
+			}
+			return ReadFileSectors(Image, *Record);
+		};
+		const TResult<std::vector<uint8>> Data = Read(FBattleHudResources::DataDirectory, FBattleHudResources::DataFile);
+		if (!Data)
+		{
+			return Data.Error();
+		}
+		TResult<std::vector<uint8>> SheetBytes = UnpackContainerSection(*Data, SheetSection);
+		TResult<std::vector<uint8>> ImagesBytes = UnpackContainerSection(*Data, ImagesSection);
+		TResult<std::vector<uint8>> PortraitsBytes = UnpackContainerSection(*Data, PortraitsSection);
+		if (!SheetBytes || !ImagesBytes || !PortraitsBytes)
+		{
+			return MakeError("the battle data file lacks the HUD's sections");
+		}
+		FBattleHudResources Pictures;
+		TResult<FMenuSpriteSheet> Sheet = FMenuSpriteSheet::Parse(*SheetBytes);
+		TResult<std::vector<FVramImage>> Images = ReadVramImageList(*ImagesBytes);
+		if (!Sheet)
+		{
+			return Sheet.Error();
+		}
+		if (!Images)
+		{
+			return Images.Error();
+		}
+		Pictures.Sheet = std::move(*Sheet);
+		Pictures.Portraits = std::move(*PortraitsBytes);
+		const auto Vram = std::make_unique<FVram>();
+		for (const FVramImage& Picture : *Images)
+		{
+			Vram->Upload(Picture);
+		}
+		const FMenuSpriteSheet* Drawn = &Pictures.Sheet;
+		std::span<const uint8> Portraits = Pictures.Portraits;
+		int32 PortraitFrame = FBattleHudResources::PortraitFrame;
+		if (bResult)
+		{
+			const TResult<std::vector<uint8>> File = Read(FBattleHudResources::ResultDirectory, FBattleHudResources::ResultFile);
+			if (!File)
+			{
+				return File.Error();
+			}
+			if (std::optional<FError> Error = Pictures.ParseResult(*File))
+			{
+				return Error;
+			}
+			for (const FVramImage& Picture : Pictures.ResultImages)
+			{
+				Vram->Upload(Picture);
+			}
+			Drawn = &Pictures.ResultSheet;
+			Portraits = Pictures.ResultPortraits;
+			PortraitFrame = FBattleHudResources::ResultPortraitFrame;
+		}
+		const auto ViewOf = [Drawn](int32 Frame)
+		{
+			const std::span<const FMenuSpritePart> Parts = Drawn->Frame(Frame);
+			return Parts.empty() ? NoTextureView
+				: PackTextureView(FTexturePage::FromAttribute(MenuGpu::TexturePage(Parts[0].Depth, 0, Parts[0].ImageX, Parts[0].ImageY)),
+					  FClutPosition::FromAttribute(MenuGpu::Clut(Parts[0].ClutX, Parts[0].ClutY)));
+		};
+		std::array<uint32, FBattleHud::PartySlots> PortraitViews{};
+		for (int32 Slot = 0; Slot < FBattleHud::PartySlots; ++Slot)
+		{
+			PortraitViews[static_cast<std::size_t>(Slot)] = ViewOf(PortraitFrame + Slot);
+		}
+		const std::vector<FTextureRegion> Regions = MenuSheetTextureRegions(*Drawn);
+		for (const FTextureRegion& Region : Regions)
+		{
+			if (std::find(PortraitViews.begin(), PortraitViews.end(), Region.View) == PortraitViews.end())
+			{
+				Visit(*Vram, Region);
+			}
+		}
+		const FMenuSpriteTexture Place = Drawn->Texture(PortraitFrame);
+		for (std::size_t At = 0; At + PortraitBytes <= Portraits.size(); At += PortraitBytes)
+		{
+			TResult<FTim> Tim = ParseTim(Portraits.subspan(At, PortraitBytes));
+			if (!Tim)
+			{
+				return Tim.Error();
+			}
+			if (Tim->Clut)
+			{
+				FVramImage Clut = *Tim->Clut;
+				Clut.Rect.X = static_cast<int16>(Place.ClutX);
+				Clut.Rect.Y = static_cast<int16>(Place.ClutY);
+				Vram->Upload(Clut);
+			}
+			FVramImage Pixels = Tim->Image;
+			Pixels.Rect.X = static_cast<int16>(Place.VramX);
+			Pixels.Rect.Y = static_cast<int16>(Place.VramY);
+			Vram->Upload(Pixels);
+			for (const FTextureRegion& Region : Regions)
+			{
+				if (Region.View == PortraitViews[0])
+				{
+					Visit(*Vram, Region);
+				}
+			}
+		}
+		return std::nullopt;
 	}
 
 	FBattleHud::FBattleHud(const FBattleHudResources& InResources, FMesContext& InText, FVram& InVram, IVramUploads* InObserver)
@@ -496,7 +628,7 @@ namespace Weltall
 		EvenTextClut = MenuGpu::Clut(TextClutX, TextClutY);
 		OddTextClut = MenuGpu::Clut(OddTextClutX, TextClutY);
 		InitCommandIcons();
-		LoadPortraits(Resources.Portraits, PortraitFrame);
+		LoadPortraits(Resources.Portraits, FBattleHudResources::PortraitFrame);
 		InitPanelPrims();
 		InitPanelSprites();
 		InitFlash();

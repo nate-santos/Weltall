@@ -153,9 +153,10 @@ namespace Weltall::BattlingFightOps
 			}
 		}
 
-		int16 AttackTimer(FBattlingFight& Fight, const FBattlingAiState& Ai)
+		/** The ticks until the computer acts again after an attack: Step ticks a level below hard, 1-20 more. */
+		int16 AttackTimer(FBattlingFight& Fight, const FBattlingAiState& Ai, int32 Step = 0x14)
 		{
-			return static_cast<int16>((2 - Ai.Level) * 0x14 + Fight.Random.Next() % 0x14 + 1);
+			return static_cast<int16>((2 - Ai.Level) * Step + Fight.Random.Next() % 0x14 + 1);
 		}
 
 		void AttackStep(FBattlingFight& Fight, FBattlingFighter& Fighter, FBattlingAiState& Ai)
@@ -171,7 +172,8 @@ namespace Weltall::BattlingFightOps
 			else
 			{
 				Combo(Fight, Fighter);
-				Ai.Timer = AttackTimer(Fight, Ai);
+				// Perfect Works' arena's computer attacks again sooner after a combo: 10 ticks a level, not 20.
+				Ai.Timer = AttackTimer(Fight, Ai, ArenaRules(Fight) ? 10 : 0x14);
 			}
 			Reroll(Fight, Ai, Fighter);
 		}
@@ -223,7 +225,8 @@ namespace Weltall::BattlingFightOps
 		{
 			Ai.Phase = 0;
 			Ai.Mode = EBattlingAiMode::Wait;
-			Ai.Timer = static_cast<int16>((2 - Ai.Level) * 0x1E + 0x5A);
+			// Perfect Works' arena's computer waits (2 - level) x 5 + 25 ticks.
+			Ai.Timer = static_cast<int16>(ArenaRules(Fight) ? (2 - Ai.Level) * 5 + 25 : (2 - Ai.Level) * 0x1E + 0x5A);
 			Reroll(Fight, Ai, Fighter);
 		}
 
@@ -589,7 +592,8 @@ namespace Weltall::BattlingFightOps
 		Ai.Mode = EBattlingAiMode::Wait;
 		Ai.Counter = 0;
 		Fighter.Stick = 0;
-		Ai.HeatLimit = 0x1000 - Fighter.EtherHeat;
+		// Perfect Works' arena's computer keeps under half an Ether Bullet's heat from the top.
+		Ai.HeatLimit = 0x1000 - (ArenaRules(Fight) ? Fighter.EtherHeat >> 1 : Fighter.EtherHeat);
 		Ai.Level = Fight.Settings.Level;
 		for (std::size_t Trait = 0; Trait < Ai.Traits.size(); ++Trait)
 		{

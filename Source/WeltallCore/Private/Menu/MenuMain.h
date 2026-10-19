@@ -79,6 +79,8 @@ namespace Weltall
 		void AddGoldAndTime();
 		/** A play time's seven digits as the menu draws them: hours (three), minutes, seconds. */
 		static std::array<uint32, 7> SplitPlayTime(uint32 Time);
+		/** Perfect Works Build's rebalance is in play: its menu's rules for items and shown stats. */
+		bool UsesPerfectWorksRules() const;
 
 		// Arranging the party on its panels (MenuMainOrder.cpp), the port's: Right from the arc, a member picked, then another
 		// to swap with; Triangle puts the story's order back.
@@ -231,13 +233,22 @@ namespace Weltall
 		TMenuTask<bool> OptionsScreen();
 		ESettingsPage SettingsPage() const;
 		bool OnSavesPages() const;
+		/** The Modding page, the last L1 and R1 turn to, whether or not it has opened the Assets page. */
+		bool OnModdingTurned() const;
+		/** The rows the screen adds under the Modding page's own: the mods' heading, the Assets page's row and each mod's, those the menu has. */
+		void AddModdingRows();
+		/** Left or Right on one of those rows: a mod's switched on or off; false on the others. */
+		bool StepModdingRow();
+		/** Confirm on one of those rows: the Assets page or the mod's page opened from it; false on the heading. */
+		bool ActivateModdingRow();
+		/** The Assets page, opened from the Modding page. */
 		bool OnAssetsPage() const;
 		void FillAssetRows();
 		bool RefreshAssetProgress();
 		bool StepAssetOption();
 		bool ActivateAssetOption();
 		bool OnControlsPage() const;
-		/** How many pages L1 and R1 turn through: the settings', then the controls' and the saves' where the menu has them. */
+		/** How many pages L1 and R1 turn through: the settings', the controls' and the saves' where the menu has them, then Modding. */
 		int32 TurnedPages() const;
 		/** The page's title and rows as they stand. */
 		void FillOptionsRows();
@@ -454,14 +465,17 @@ namespace Weltall
 			FDisplayModes Display;
 			/** The page L1 and R1 have turned to: the settings' by number, then the saves'. */
 			int32 Turned = 0;
-			/** The fixes' own list is shown, and Custom was picked while the fixes match a preset. */
-			bool bCustom = false;
+			/** A list opened from a page's row (the fixes' own, the CRT's parts), the row, and Custom picked while the fixes match a preset. */
+			std::optional<ESettingsPage> Opened;
+			int32 OpenedFrom = 0;
 			bool bCustomPicked = false;
 			int32 Row = 0;
 			int32 Top = 0;
 			std::unique_ptr<FMenuSavePages> SavePages;
 			std::unique_ptr<FMenuControlsPage> ControlsPage;
 			uint64 AssetRevision = 0;
+			/** The Assets page is open over the Modding page, from the row OpenedFrom. */
+			bool bAssetsOpened = false;
 			/** The page listened for a key: the buttons do nothing until every one is let go. */
 			bool bAwaitRelease = false;
 			/** The second disc's row asked whether to switch, and switched. */

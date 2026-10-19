@@ -13,8 +13,8 @@ using namespace Weltall;
 
 namespace
 {
-	constexpr std::array<ESettingsPage, 5> Pages = {ESettingsPage::Display, ESettingsPage::Sound, ESettingsPage::Camera, ESettingsPage::Fixes,
-		ESettingsPage::Custom};
+	constexpr std::array<ESettingsPage, 8> Pages = {ESettingsPage::Display, ESettingsPage::Sound, ESettingsPage::Camera, ESettingsPage::Fixes,
+		ESettingsPage::Custom, ESettingsPage::Crt, ESettingsPage::Modding, ESettingsPage::PerfectWorks};
 	namespace Text = OptionsText;
 
 	/** The settings text's lines that name a fix, as "key = value". */
@@ -140,6 +140,125 @@ TEST_CASE("The fixes' list shows each fix on or as the original, under the headi
 	CHECK(FSettingsPages::RowCount(ESettingsPage::Custom) == FSettingsPages::FixCount() + Headings);
 }
 
+TEST_CASE("The Modding page's balance rows show the original first and step through every rate", "[Menu][Balance]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	REQUIRE(FSettingsPages::RowCount(ESettingsPage::Modding) == 4);
+	const FSettingsRow Heading = FSettingsPages::Row(ESettingsPage::Modding, 0, Settings);
+	CHECK(Heading.bHeading);
+	CHECK(Heading.Label == Text::Modding::Balance);
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Modding, 0, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 1, Settings).Label == Text::Modding::Experience.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 2, Settings).Label == Text::Modding::Gold.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 3, Settings).Label == Text::Modding::Encounters.Label);
+	for (const int32 Row : {1, 2, 3})
+	{
+		CHECK(FSettingsPages::Row(ESettingsPage::Modding, Row, Settings).Value == "Normal");
+	}
+
+	// Experience: Normal, then up to 4x and round; Left from Normal is 4x.
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 1, 1, Settings, bCustomPicked));
+	CHECK(Settings.Balance.Experience == ERewardRate::OneAndAHalf);
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 1, Settings).Value == "1.5x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 1, -1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 1, -1, Settings, bCustomPicked));
+	CHECK(Settings.Balance.Experience == ERewardRate::Quadruple);
+	CHECK(Settings.Balance.Gold == ERewardRate::Original);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 2, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 2, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 2, Settings).Value == "2x");
+
+	// Encounters: Right from Normal doubles them, Left from Normal halves them, then a quarter, then none.
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 3, 1, Settings, bCustomPicked));
+	CHECK(Settings.Balance.Encounters == EEncounterRate::Double);
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 3, Settings).Value == "2x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 3, -1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 3, -1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 3, Settings).Value == "1/2");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 3, -1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Modding, 3, -1, Settings, bCustomPicked));
+	CHECK(Settings.Balance.Encounters == EEncounterRate::None);
+	CHECK(FSettingsPages::Row(ESettingsPage::Modding, 3, Settings).Value == "None");
+	CHECK(FSettingsPages::Activate(ESettingsPage::Modding, 3, Settings, false) == ESettingsAction::None);
+	CHECK(FSettingsPages::Title(ESettingsPage::Modding) == Text::Titles::Modding);
+}
+
+TEST_CASE("The Perfect Works page says when its changes apply, shows the mod's parts under headings and switches each", "[Menu][Mods]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	constexpr ESettingsPage Page = ESettingsPage::PerfectWorks;
+	CHECK(FSettingsPages::Title(Page) == Text::Titles::PerfectWorks);
+	REQUIRE(FSettingsPages::RowCount(Page) == 15);
+	const auto Value = [&](int32 Row) { return FSettingsPages::Row(Page, Row, Settings).Value; };
+	const FSettingsRow Notice = FSettingsPages::Row(Page, 0, Settings);
+	CHECK(Notice.bReadOnly);
+	CHECK(Notice.Label == Text::PerfectWorks::Notice);
+	CHECK(FSettingsPages::Row(Page, 1, Settings).Label == Text::PerfectWorks::Enabled.Label);
+	CHECK(Value(1) == "Off");
+	CHECK(FSettingsPages::Row(Page, 2, Settings).bHeading);
+	CHECK(FSettingsPages::Row(Page, 6, Settings).bHeading);
+	CHECK(FSettingsPages::Row(Page, 10, Settings).bHeading);
+	CHECK(Value(3) == "Perfect Works");
+	CHECK(Value(4) == "Off");
+	CHECK(Value(5) == "Perfect Works");
+	CHECK(FSettingsPages::Row(Page, 7, Settings).Label == Text::PerfectWorks::Party.Label);
+	CHECK(Value(7) == "Original");
+	CHECK(Value(8) == "Original");
+	CHECK(FSettingsPages::Row(Page, 9, Settings).Label == Text::PerfectWorks::Arena.Label);
+	CHECK(Value(9) == "Original");
+	CHECK(Value(11) == "Fixed");
+	CHECK(Value(12) == "Original");
+	CHECK(Value(13) == "Fixed");
+	CHECK(Value(14) == "Perfect Works");
+
+	CHECK_FALSE(FSettingsPages::Step(Page, 0, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(Page, 1, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.bEnabled);
+	REQUIRE(FSettingsPages::Step(Page, 3, -1, Settings, bCustomPicked));
+	CHECK_FALSE(Settings.PerfectWorks.bScript);
+	CHECK(Value(3) == "Original");
+	REQUIRE(FSettingsPages::Step(Page, 11, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.Portraits == EPerfectWorksPortraits::Resized);
+	REQUIRE(FSettingsPages::Step(Page, 11, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.Portraits == EPerfectWorksPortraits::Original);
+	REQUIRE(FSettingsPages::Step(Page, 12, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.bRoniPortrait);
+	REQUIRE(FSettingsPages::Step(Page, 13, 1, Settings, bCustomPicked));
+	CHECK_FALSE(Settings.PerfectWorks.bEmeraldaCafe);
+	CHECK(Value(13) == "Original");
+	CHECK_FALSE(FSettingsPages::Step(Page, 2, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Activate(Page, 3, Settings, false) == ESettingsAction::None);
+	// The arena's modes step round: Original, Basic, Expert.
+	REQUIRE(FSettingsPages::Step(Page, 9, 1, Settings, bCustomPicked));
+	CHECK(Value(9) == "Basic");
+	REQUIRE(FSettingsPages::Step(Page, 9, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.Arena == EPerfectWorksArena::Expert);
+	REQUIRE(FSettingsPages::Step(Page, 9, 1, Settings, bCustomPicked));
+	CHECK(Value(9) == "Original");
+
+	// Story mode and the rebalances (the arena's too) exclude each other, as the mod's patcher has them: the one chosen last stays.
+	REQUIRE(FSettingsPages::Step(Page, 7, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(Page, 8, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(Page, 9, -1, Settings, bCustomPicked));
+	CHECK(Value(7) == "Perfect Works");
+	CHECK(Value(8) == "Perfect Works");
+	CHECK(Value(9) == "Expert");
+	REQUIRE(FSettingsPages::Step(Page, 4, 1, Settings, bCustomPicked));
+	CHECK(Settings.PerfectWorks.bStoryMode);
+	CHECK_FALSE(Settings.PerfectWorks.bRebalancedParty);
+	CHECK_FALSE(Settings.PerfectWorks.bRebalancedEnemies);
+	CHECK(Settings.PerfectWorks.Arena == EPerfectWorksArena::Original);
+	REQUIRE(FSettingsPages::Step(Page, 8, 1, Settings, bCustomPicked));
+	CHECK_FALSE(Settings.PerfectWorks.bStoryMode);
+	CHECK(Settings.PerfectWorks.bRebalancedEnemies);
+	REQUIRE(FSettingsPages::Step(Page, 4, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(Page, 9, 1, Settings, bCustomPicked));
+	CHECK_FALSE(Settings.PerfectWorks.bStoryMode);
+	CHECK(Settings.PerfectWorks.Arena == EPerfectWorksArena::Basic);
+}
+
 TEST_CASE("The options' choices wrap, and their numbers step within their ranges", "[Menu]")
 {
 	FPlayerSettings Settings;
@@ -179,61 +298,88 @@ TEST_CASE("The options' choices wrap, and their numbers step within their ranges
 	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 4, 1, Settings, bCustomPicked));
 	CHECK(Settings.Field.MovieFilter == EMovieFilter::Smooth);
 
+	// The CRT filter: off at first, then the monitor's, the television's and the player's own, round to off.
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 5, Settings).Label == Text::Display::Crt.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 5, Settings).Value == "Off");
 	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 5, 1, Settings, bCustomPicked));
+	CHECK(Settings.Display.Crt == ECrtFilter::Monitor);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 5, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 5, Settings).Value == "TV");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 5, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 5, Settings).Value == "Custom");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 5, 1, Settings, bCustomPicked));
+	CHECK(Settings.Display.Crt == ECrtFilter::Off);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 5, -1, Settings, bCustomPicked));
+	CHECK(Settings.Display.Crt == ECrtFilter::Custom);
+	Settings.Display.Crt = ECrtFilter::Off;
+
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 6, 1, Settings, bCustomPicked));
 	CHECK(Settings.Field.AntiAliasing == EFieldAntiAliasing::Supersampling);
 
 	// The pilots in gears: the members' own sprites, or the map's.
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 7, Settings).Label == Text::Display::Pilots.Label);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 7, Settings).Value == "Detailed");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 7, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Label == Text::Display::Pilots.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Value == "Detailed");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 8, 1, Settings, bCustomPicked));
 	CHECK_FALSE(Settings.Field.bDetailedPilots);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 7, Settings).Value == "Original");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 7, -1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Value == "Original");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 8, -1, Settings, bCustomPicked));
 	CHECK(Settings.Field.bDetailedPilots);
 
 	// The gears the field draws as sprites: their battle models but in cutscenes (the default), their models always, their sprites.
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Label == Text::Display::Gears.Label);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Value == "3D in play");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 8, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 9, Settings).Label == Text::Display::Gears.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 9, Settings).Value == "3D in play");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 9, 1, Settings, bCustomPicked));
 	CHECK(Settings.Field.GearModels == EFieldGearModels::Everywhere);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Value == "3D always");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 8, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 9, Settings).Value == "3D always");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 9, 1, Settings, bCustomPicked));
 	CHECK(Settings.Field.GearModels == EFieldGearModels::Off);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 8, Settings).Value == "Original");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 8, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 9, Settings).Value == "Original");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 9, 1, Settings, bCustomPicked));
 	CHECK(Settings.Field.GearModels == EFieldGearModels::OutsideCutscenes);
 
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 9, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 10, 1, Settings, bCustomPicked));
 	CHECK_FALSE(Settings.bChapterCards);
 
 	// The text speed: twice the original's at first; the original's, then twice, four times and a page at once, round
 	// to the original.
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 10, Settings).Value == "2x");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 10, -1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == "2x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, -1, Settings, bCustomPicked));
 	CHECK(Settings.TextSpeed == EMesTextSpeed::Original);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 10, Settings).Value == Text::Display::TextSpeedValues[0]);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 10, -1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == Text::Display::TextSpeedValues[0]);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, -1, Settings, bCustomPicked));
 	CHECK(Settings.TextSpeed == EMesTextSpeed::Instant);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 10, 1, Settings, bCustomPicked));
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 10, 1, Settings, bCustomPicked));
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 10, Settings).Value == "2x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == "2x");
 
 	// The battle speed: the game's own, then twice and four times it, round to the game's own.
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Label == Text::Display::BattleSpeed.Label);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == Text::Display::BattleSpeedValues[0]);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 12, Settings).Label == Text::Display::BattleSpeed.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 12, Settings).Value == Text::Display::BattleSpeedValues[0]);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 12, 1, Settings, bCustomPicked));
 	CHECK(Settings.BattleSpeed == EBattleSpeed::Double);
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == "2x");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, 1, Settings, bCustomPicked));
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 11, Settings).Value == "4x");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 12, Settings).Value == "2x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 12, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 12, Settings).Value == "4x");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 12, 1, Settings, bCustomPicked));
 	CHECK(Settings.BattleSpeed == EBattleSpeed::Normal);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 11, -1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 12, -1, Settings, bCustomPicked));
 	CHECK(Settings.BattleSpeed == EBattleSpeed::Quadruple);
 
+	// The battle effects' flashes: the original's, then softer and none, round to the original's.
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 13, Settings).Label == Text::Display::BattleFlashes.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 13, Settings).Value == "Original");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 13, 1, Settings, bCustomPicked));
+	CHECK(Settings.Field.BattleFlashes == EBattleFlashes::Softer);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 13, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 13, Settings).Value == "Off");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 13, 1, Settings, bCustomPicked));
+	CHECK(Settings.Field.BattleFlashes == EBattleFlashes::Original);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 13, -1, Settings, bCustomPicked));
+	CHECK(Settings.Field.BattleFlashes == EBattleFlashes::Off);
+
 	// In the background the game stops and is silent, unless set otherwise.
-	CHECK(FSettingsPages::Row(ESettingsPage::Display, 12, Settings).Value == Text::On);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 12, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 14, Settings).Value == Text::On);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 14, 1, Settings, bCustomPicked));
 	CHECK_FALSE(Settings.Display.bPauseInBackground);
 	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 1, Settings).Value == Text::Off);
 	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 1, 1, Settings, bCustomPicked));
@@ -277,6 +423,45 @@ TEST_CASE("The options' choices wrap, and their numbers step within their ranges
 	CHECK(FSettingsPages::Activate(ESettingsPage::Camera, 4, Settings, false) == ESettingsAction::Reset);
 	CHECK(Settings.Camera == FFieldCameraOffsets::Defaults());
 	CHECK(FSettingsPages::Activate(ESettingsPage::Camera, 0, Settings, false) == ESettingsAction::None);
+}
+
+TEST_CASE("The CRT filter's parts show the look in use, and changing one makes it the player's own", "[Menu]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	// Confirm on the CRT filter's row opens its parts, wherever the window's rows put it.
+	CHECK(FSettingsPages::Activate(ESettingsPage::Display, 5, Settings, false) == ESettingsAction::OpenCrt);
+	CHECK(FSettingsPages::Activate(ESettingsPage::Display, 7, Settings, false, WideDisplay) == ESettingsAction::OpenCrt);
+	CHECK(FSettingsPages::Activate(ESettingsPage::Display, 4, Settings, false) == ESettingsAction::None);
+	REQUIRE(FSettingsPages::RowCount(ESettingsPage::Crt) == 10);
+
+	// The television's look, part by part.
+	Settings.Display.Crt = ECrtFilter::Television;
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 0, Settings).Label == Text::Crt::Scanlines.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 0, Settings).Value == "8");
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 1, Settings).Value == "Slots");
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 7, Settings).Label == Text::Crt::Curvature.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 7, Settings).Value == "3");
+
+	// Its glass a step rounder: the rest of the television's look kept, as the player's own.
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Crt, 7, 1, Settings, bCustomPicked));
+	CHECK(Settings.Display.Crt == ECrtFilter::Custom);
+	FCrtLook Rounder = FCrtLook::Television();
+	Rounder.Curvature = 4;
+	CHECK(Settings.Display.CustomCrt == Rounder);
+	CHECK(FSettingsPages::Row(ESettingsPage::Display, 5, Settings).Value == "Custom");
+
+	// A part's steps stop at their ends; the mask's kinds wrap.
+	Settings.Display.CustomCrt.Scanlines = FCrtLook::Steps;
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Crt, 0, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Crt, 1, 1, Settings, bCustomPicked));
+	CHECK(Settings.Display.CustomCrt.Mask == ECrtMask::None);
+
+	// A look chosen again shows its own parts; the player's stays for Custom.
+	Settings.Display.Crt = ECrtFilter::Monitor;
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 1, Settings).Value == "Stripes");
+	Settings.Display.Crt = ECrtFilter::Custom;
+	CHECK(FSettingsPages::Row(ESettingsPage::Crt, 1, Settings).Value == "None");
 }
 
 TEST_CASE("The window's size is chosen among the display's, from the window's own", "[Menu]")

@@ -76,13 +76,12 @@ namespace Weltall
 		{
 			return MakeError("the disc lacks scene " + std::to_string(Scene) + "'s graphics");
 		}
-		TResult<std::vector<uint8>> Sectors = ReadFileSectors(Image, *Record);
-		if (!Sectors)
+		TResult<std::vector<uint8>> Bytes = ReadFileBytes(Image, *Record);
+		if (!Bytes)
 		{
-			return Sectors.Error();
+			return Bytes.Error();
 		}
-		Sectors->resize(static_cast<std::size_t>(Record->Size));
-		return Parse(std::move(*Sectors));
+		return Parse(std::move(*Bytes));
 	}
 
 	TResult<std::vector<FBattleImageSetImage>> ReadBattleImageSet(std::span<const uint8> File, uint32 Offset)

@@ -1,0 +1,52 @@
+// The undub's subtitle laid over a movie picture's colour, after the picture's own steps: a texture as large as the
+// picture, clear around the line, its colour premultiplied by its alpha, scaled with a Catmull-Rom filter as the
+// picture's luma is. Blending the line's colour by its alpha is how the undub's patch draws it into the decoded picture.
+// Its letters are anti-aliased at the picture's size: magnified, the light's ramp across their edges is steepened to
+// about three display pixels wide, so they stay crisp at any size, about a level a little above its middle, so that the
+// strokes keep their weight; their dark rim keeps its softness. Drawn at the picture's own size, nothing changes.
+
+// Catmull-Rom from nine bilinear samples: the middle two taps of each axis share one sample. Position is in the
+// picture's pixels.
+float4 SampleSubtitle(Texture2D<float4> Subtitle, SamplerState Bilinear, float2 Position)
+{
+	float Width;
+	float Height;
+	Subtitle.GetDimensions(Width, Height);
+	const float2 Size = float2(Width, Height);
+	const float2 Center = floor(Position - 0.5) + 0.5;
+	const float2 F = Position - Center;
+	const float2 W0 = F * (-0.5 + F * (1.0 - 0.5 * F));
+	const float2 W1 = 1.0 + F * F * (-2.5 + 1.5 * F);
+	const float2 W2 = F * (0.5 + F * (2.0 - 1.5 * F));
+	const float2 W3 = F * F * (-0.5 + 0.5 * F);
+	const float2 W12 = W1 + W2;
+	const float2 Uv0 = (Center - 1.0) / Size;
+	const float2 Uv12 = (Center + W2 / W12) / Size;
+	const float2 Uv3 = (Center + 2.0) / Size;
+
+	float4 Sum = 0.0;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv0.x, Uv0.y), 0) * W0.x * W0.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv12.x, Uv0.y), 0) * W12.x * W0.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv3.x, Uv0.y), 0) * W3.x * W0.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv0.x, Uv12.y), 0) * W0.x * W12.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv12.x, Uv12.y), 0) * W12.x * W12.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv3.x, Uv12.y), 0) * W3.x * W12.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv0.x, Uv3.y), 0) * W0.x * W3.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv12.x, Uv3.y), 0) * W12.x * W3.y;
+	Sum += Subtitle.SampleLevel(Bilinear, float2(Uv3.x, Uv3.y), 0) * W3.x * W3.y;
+	return Sum;
+}
+
+// Colour is the picture's, 0 to 1; Scale the display pixels a picture pixel spans. The filter's overshoot is kept
+// within what the line can cover.
+float3 OverlaySubtitle(float3 Colour, Texture2D<float4> Subtitle, SamplerState Bilinear, float2 Position, float Scale)
+{
+	const float4 Line = SampleSubtitle(Subtitle, Bilinear, Position);
+	const float Alpha = saturate(Line.a);
+	const float3 Light = clamp(Line.rgb, 0.0, Alpha);
+	// A letter's edge falls from its full light to its rim's across about a picture pixel, some 0.7 of the light.
+	const float Level = dot(Light, 1.0 / 3.0);
+	const float Steepened = saturate((Level - 0.6) * max(Scale * 0.45, 1.0) + 0.6);
+	const float3 Crisp = Level > 0.0 ? min(Light * (Steepened / Level), Alpha) : Light;
+	return Colour * (1.0 - Alpha) + Crisp;
+}

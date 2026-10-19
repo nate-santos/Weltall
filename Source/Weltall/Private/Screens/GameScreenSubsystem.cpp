@@ -7,21 +7,34 @@
 #include "Input/PadPortsSubsystem.h"
 #include "Input/WeltallPlayerController.h"
 #include "Presentation/ScreenLayout.h"
+#include "Rendering/CrtRendering.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "Audio/GameSoundSubsystem.h"
 #include "Screens/GameScreen.h"
 #include "Shell/GameWindowSubsystem.h"
 
-void AddDisplayFramePasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Display, Weltall::EDisplayAspect Aspect, const IScreenFrame* Frame)
+void AddDisplayFramePasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Display, const Weltall::FDisplayOptions& Options,
+	const IScreenFrame* Frame)
 {
 	AddClearRenderTargetPass(GraphBuilder, Output, FLinearColor::Black, Display);
-	if (Frame != nullptr)
+	if (Frame == nullptr)
 	{
-		const Weltall::FDisplayRect Picture = Weltall::FitAspect(Display.Width(), Display.Height(), Aspect);
-		const FIntPoint Origin = Display.Min + FIntPoint(Picture.X, Picture.Y);
-		Frame->AddPasses(GraphBuilder, Output, FIntRect(Origin, Origin + FIntPoint(Picture.Width, Picture.Height)));
+		return;
 	}
+	const Weltall::FDisplayRect Placed = Weltall::FitAspect(Display.Width(), Display.Height(), Options.Aspect);
+	const FIntPoint Origin = Display.Min + FIntPoint(Placed.X, Placed.Y);
+	const FIntRect Area(Origin, Origin + FIntPoint(Placed.Width, Placed.Height));
+	if (Options.Crt == Weltall::ECrtFilter::Off)
+	{
+		Frame->AddPasses(GraphBuilder, Output, Area);
+		return;
+	}
+	FRDGTextureRef Picture = GraphBuilder.CreateTexture(FRDGTextureDesc::Create2D(Area.Size(), Output->Desc.Format, FClearValueBinding::Black,
+		TexCreate_RenderTargetable | TexCreate_ShaderResource), TEXT("CrtPicture"));
+	AddClearRenderTargetPass(GraphBuilder, Picture, FLinearColor::Black);
+	Frame->AddPasses(GraphBuilder, Picture, FIntRect(FIntPoint::ZeroValue, Area.Size()));
+	AddCrtPasses(GraphBuilder, Picture, Output, Area, Weltall::CrtParameters(Weltall::ShownCrtLook(Options)), Frame->ScreenSize());
 }
 
 void UGameScreenSubsystem::Show(TSharedRef<IGameScreen> InScreen)
@@ -78,7 +91,8 @@ void UGameScreenSubsystem::Tick(float DeltaTime)
 		Screen->AddViewInput(Controller->ReadView(DeltaTime));
 	}
 	FGamePads Pads;
-	if (const UButtonGlyphSubsystem* Glyphs = GetGameInstance()->GetSubsystem<UButtonGlyphSubsystem>())
+	const UButtonGlyphSubsystem* Glyphs = GetGameInstance()->GetSubsystem<UButtonGlyphSubsystem>();
+	if (Glyphs != nullptr)
 	{
 		Pads.bConnected = Glyphs->HasController() || (Controller != nullptr && Controller->HasTouchControls());
 	}
@@ -91,6 +105,8 @@ void UGameScreenSubsystem::Tick(float DeltaTime)
 	}
 	Screen->SetPads(Pads);
 	Weltall::FPadState Held = Controller ? Controller->HeldPad() : Weltall::FPadState{};
+	// A gamepad in use is a DualShock in analog mode to the game; the keyboard is a digital pad.
+	Held.bAnalog = Glyphs != nullptr && Glyphs->GamepadInUse().IsValid();
 	if (UKeyListenerSubsystem* Keys = GetGameInstance()->GetSubsystem<UKeyListenerSubsystem>())
 	{
 		Held = Keys->Filter(Held);

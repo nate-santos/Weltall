@@ -26,6 +26,7 @@ class ContentTests(unittest.TestCase):
             "captures/frame.png", "one/Build/two.txt", "out/anything.cpp",
             "Source/release.APK", "Tests/Data/archive.7z", "Source/state.MCD",
             "local/texture.TIM", "local/movie.STR", "local/sound.XA",
+            "Mods/PerfectWorks/text.txt", "mOdS/extracted.dat",
             "native/.cxx/metadata.json", "nested/build-arm64/cache.txt",
         ):
             with self.subTest(path=path):
@@ -36,6 +37,8 @@ class ContentTests(unittest.TestCase):
             "Tests/WeltallCore/Chd/ChdFixtures.cpp", "Scripts/tests/test_repo_guard.py",
             "Source/Weltall/Android/WeltallControls.cpp", "Docs/AndroidPortPlan.md",
             ".github/workflows/repository-data-guard.yml", "Content/Story/custom.txt",
+            "Tests/WeltallCore/Mods/PerfectWorksTests.cpp",
+            "Source/WeltallCore/Public/Mods/PerfectWorks.h",
             "Tests/Support/SoundTestFiles.cpp", "Source/Weltall/Weltall.Build.cs",
         ):
             with self.subTest(path=path):

@@ -115,6 +115,17 @@ namespace Weltall
 		RootWorld = FGteMatrix::Identity();
 	}
 
+	void FBattlingSkeleton::Attach(int32 Parent, FMdlPart Part, const FGteVector& Angles)
+	{
+		Model.Parts.push_back(std::move(Part));
+		FBattlingJoint Joint;
+		Joint.Parent = static_cast<int16>(Parent);
+		Joint.Part = static_cast<int16>(Model.Parts.size() - 1);
+		Joint.Angles = Angles;
+		Joint.bOwnTextures = true;
+		Joints.push_back(Joint);
+	}
+
 	void FBattlingSkeleton::Pose()
 	{
 		RootWorld = ScaleAxes(RotationXyz(RootAngles), Scale);

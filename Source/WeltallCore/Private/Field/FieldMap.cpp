@@ -4,6 +4,7 @@
 #include "Foundation/LittleEndian.h"
 #include "Graphics/VramStream.h"
 #include "Media/GameFileIndex.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
 #include <iterator>
@@ -182,6 +183,11 @@ namespace Weltall
 		if (!Map)
 		{
 			return MakeError("field map " + std::to_string(MapNumber) + ": " + Map.Error().Message);
+		}
+		if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, MessageTables::Field(MapNumber), Map->Messages, EMessageWindows::Table))
+		{
+			Map->Messages = std::move(Applied->Table);
+			Map->ReplacedMessages = std::move(Applied->Replaced);
 		}
 		return Map;
 	}

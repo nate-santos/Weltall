@@ -26,7 +26,19 @@ TSharedPtr<FMovieScreen> FMovieScreen::Open(const Weltall::FIso9660& Disc, int32
 	{
 		return nullptr;
 	}
-	TSharedRef<FMovieScreen> Opened = MakeShared<FMovieScreen>(Disc.Image(), *Movie, EndFrame, bSkippable, Sound, Filter);
+	// The undub's movies show its subtitles, as its own patch draws them.
+	std::optional<Weltall::FMovieSubtitles> Subtitles;
+	if (const Weltall::FMovieSubtitleEntry* Entry = Index->MovieSubtitles().Find(Number))
+	{
+		Weltall::TResult<Weltall::FMovieSubtitles> MovieLines = Weltall::FMovieSubtitles::Load(Disc.Image(), *Index, *Entry);
+		if (!MovieLines)
+		{
+			UE_LOG(LogWeltall, Error, TEXT("The movie's subtitles cannot be read: %hs"), MovieLines.Error().Message.c_str());
+			return nullptr;
+		}
+		Subtitles = std::move(*MovieLines);
+	}
+	TSharedRef<FMovieScreen> Opened = MakeShared<FMovieScreen>(Disc.Image(), *Movie, EndFrame, bSkippable, Sound, Filter, std::move(Subtitles));
 	// With the first picture decoded and the sound read ahead of it, the sound starts with the picture.
 	const Weltall::TResult<bool> Started = Opened->Player.Start();
 	if (!Started)
@@ -39,8 +51,9 @@ TSharedPtr<FMovieScreen> FMovieScreen::Open(const Weltall::FIso9660& Disc, int32
 }
 
 FMovieScreen::FMovieScreen(const Weltall::FCdImage& Image, Weltall::FMovieLocation Location, uint32 EndFrame, bool bSkippable, Weltall::FGameSoundSystem& Sound,
-	Weltall::EMovieFilter InFilter)
-	: Player(Image, Location, {.EndFrame = EndFrame, .bSkippable = bSkippable}, Sound), Vblanks(Weltall::PsxTiming::FrameSeconds), Filter(InFilter)
+	Weltall::EMovieFilter InFilter, std::optional<Weltall::FMovieSubtitles> Subtitles)
+	: Player(Image, Location, {.EndFrame = EndFrame, .bSkippable = bSkippable}, Sound, std::move(Subtitles)), Vblanks(Weltall::PsxTiming::FrameSeconds),
+	  Filter(InFilter)
 {
 }
 

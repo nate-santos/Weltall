@@ -161,8 +161,8 @@ namespace Weltall
 		std::array<std::array<uint8, 3>, 2> BackgroundColors{};
 	};
 
-	/** The transitions the battle's setup draws itself, for the battle kinds 1 to 4. */
-	enum class EBattleSetupTransition : uint8
+	/** The meshes the battle makes of the screen's picture: the transitions its setup draws itself (battle kinds 1 to 4), and the screen wave. */
+	enum class EBattleScreenMesh : uint8
 	{
 		/** Kind 1: the picture in triangles that come nearer and dim. */
 		Triangles,
@@ -172,6 +172,8 @@ namespace Weltall
 		Wave,
 		/** Kind 3: the ripples run outward. */
 		WaveSine,
+		/** The screen wave (effect 218): ripples that run outward ever faster and higher, slowly nearer, then darken. */
+		ScreenWave,
 	};
 
 	/** A triangle of a setup transition's mesh as a frame draws it. */
@@ -197,13 +199,15 @@ namespace Weltall
 	};
 
 	/**
-	 * The mesh a setup transition makes of the screen's last picture (stored as the default transition
-	 * stores it) and draws over black for its 82 frames of two vertical blanks: 32 x 32 cells of two flat
-	 * triangles each, added to the black, or 16 x 16 cells of two triangles shaded a corner, averaged
-	 * with it. It draws no random number. Columns past the screen's own (below 0, or from Columns())
-	 * are the same mesh continued to either side, for a display wider than the original's.
+	 * The mesh a setup transition or the screen wave makes of the screen's last picture (stored as the
+	 * default transition stores it), drawn in frames of two vertical blanks: 32 x 32 cells of two flat
+	 * triangles each, added to what lies behind them, or 16 x 16 cells of two triangles shaded a corner,
+	 * averaged with it. The setup's transitions draw it over black for 82 frames; the screen wave never
+	 * clears the screen (FBattleScreenWave). It draws no random number. Columns past the screen's own
+	 * (below 0, or from Columns()) are the same mesh continued to either side, for a display wider than
+	 * the original's.
 	 */
-	class FBattleSetupMesh
+	class FBattleScreenMesh
 	{
 	public:
 		static constexpr int32 Sides = 2;
@@ -212,12 +216,12 @@ namespace Weltall
 		static constexpr int32 ScreenCentreY = FBattleShatter::ScreenCentreY;
 		static constexpr int32 ProjectionDistance = FBattleShatter::ProjectionDistance;
 
-		WELTALLCORE_API void Create(EBattleSetupTransition InKind);
+		WELTALLCORE_API void Create(EBattleScreenMesh InKind);
 		/** A frame's step, before its drawing into Buffer. */
 		WELTALLCORE_API void Step(int32 Buffer);
 
-		EBattleSetupTransition Kind() const { return Transition; }
-		bool IsWave() const { return Transition == EBattleSetupTransition::Wave || Transition == EBattleSetupTransition::WaveSine; }
+		EBattleScreenMesh Kind() const { return Transition; }
+		bool IsWave() const { return Transition != EBattleScreenMesh::Triangles && Transition != EBattleScreenMesh::TrianglesStill; }
 		int32 Rows() const { return IsWave() ? 14 : 7; }
 		int32 Columns() const { return IsWave() ? 20 : 10; }
 		/** The columns to either side that reach the screen's width at 32:9. */
@@ -246,7 +250,7 @@ namespace Weltall
 		int32 Speed() const { return Approach; }
 
 	private:
-		EBattleSetupTransition Transition = EBattleSetupTransition::Triangles;
+		EBattleScreenMesh Transition = EBattleScreenMesh::Triangles;
 		int32 Count = 0;
 		int32 Distance = 0;
 		std::array<uint8, 2> Colors{};

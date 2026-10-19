@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Game/GameBalance.h"
 #include "WorldMap/WorldMapTables.h"
 #include "WorldMap/WorldMapTerrain.h"
 
@@ -33,10 +34,12 @@ namespace Weltall
 		int32 Slots = 0;
 		/** Encounters that fell on the last moving tick; the loop's check reads and clears it. */
 		int32 Fired = 0;
+		/** How often the player asked them to come: a period lengthened or shortened to suit, or none counted. */
+		EEncounterRate Rate = EEncounterRate::Original;
 
 		/** The encounters reset: a new period on the next moving tick. */
 		WELTALLCORE_API void Reset(bool bInVehicle);
-		/** One moving tick; rand() is the game's. */
+		/** One moving tick, which none of the player's rate leaves uncounted; rand() is the game's. */
 		WELTALLCORE_API void Tick(FPsxRandom& Random);
 	};
 

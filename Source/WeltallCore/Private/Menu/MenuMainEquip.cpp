@@ -103,7 +103,7 @@ namespace Weltall
 				if (!bGear)
 				{
 					RecomputeCharacterEquipment(*Services.Game, Member(Slot), Resources.Equipment());
-					const FCharacterStats Stats = ComputeCharacterStats(*Services.Game, Member(Slot), !Services.Options.bAgilityShownCapped);
+					const FCharacterStats Stats = ComputeCharacterStats(*Services.Game, Member(Slot), !Services.Options.bAgilityShownCapped, UsesPerfectWorksRules());
 					std::copy(Stats.Values.begin(), Stats.Values.end(), ShownStats.begin());
 				}
 				else

@@ -2,7 +2,7 @@
 
 namespace Weltall
 {
-	void FBattleFadeTask::Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue)
+	void FBattleFadeTask::Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue, bool bEffect)
 	{
 		if (Fade.bBlocked)
 		{
@@ -14,7 +14,7 @@ namespace Weltall
 			Sprites->LinkTask(*this);
 			Sprites->Uncount(*this);
 		}
-		Fade.Start(Steps, BlendMode, Red, Green, Blue);
+		Fade.Start(Steps, BlendMode, Red, Green, Blue, bEffect);
 		if (!Fade.bOn)
 		{
 			Sprites->UnlinkTask(*this);

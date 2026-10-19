@@ -3,6 +3,7 @@
 #include "Field/FieldFrame.h"
 #include "FieldDrawBuilder.h"
 #include "FieldGearDraw.h"
+#include "Graphics/Texture.h"
 
 bool IsNearInWorld(const std::array<int32, 3>& A, const std::array<int32, 3>& B, int32 Limit)
 {
@@ -250,7 +251,8 @@ bool BuildFieldFrameDraw(const Weltall::FFieldScene& Scene, const Weltall::FFiel
 	Draw.bGearsDrawn = false;
 	Draw.PictureStretch.bStaged = false;
 	const Weltall::FMdlColor& Background = Latest.Background;
-	Draw.Background = FColor(Background.R, Background.G, Background.B).ReinterpretAsLinear();
+	// The GPU clears the screen in 15-bit colour: a texel of the same colour meets the background exactly.
+	Draw.Background = FColor(Weltall::FilledChannel(Background.R), Weltall::FilledChannel(Background.G), Weltall::FilledChannel(Background.B)).ReinterpretAsLinear();
 	Draw.Filter = Options.Filter;
 	Draw.SpriteFilter = Options.SpriteFilter;
 	Draw.AntiAliasing = Options.AntiAliasing;

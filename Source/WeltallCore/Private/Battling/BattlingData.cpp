@@ -7,6 +7,8 @@
 #include "Graphics/GteVectors.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
+#include "Text/MessageOverrides.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
 
@@ -41,6 +43,8 @@ namespace Weltall
 			std::size_t EndingScript;
 			std::size_t FontGlyphs;
 			std::size_t Roster;
+			std::size_t ElFenrirPart;
+			std::size_t KnockOutLabel;
 			uint32 DpadX;
 			uint32 DpadY;
 		};
@@ -51,9 +55,9 @@ namespace Weltall
 		using BattlingFiles::ReadPacked;
 		constexpr std::array<FBattlingTablesLayout, 2> Layouts{{
 			{EDiscRelease::UsaDisc1, 13, 0x21640, 0x21688, 0x21604, 0x223F0, 0x22470, 0x22480, 0x22490, 0x224A0, 0x224B0, 0x21738, 0x22AB4, 0x21448, 0x21600, 0x2156C, 0x21594, 0x215D4,
-				0x21740, 0x21E74, 0x8005020C, 0x8005021C},
+				0x21740, 0x21E74, 0x224C0, 0x158, 0x8005020C, 0x8005021C},
 			{EDiscRelease::UsaDisc2, 13, 0x21640, 0x21688, 0x21604, 0x223F0, 0x22470, 0x22480, 0x22490, 0x224A0, 0x224B0, 0x21738, 0x22AB4, 0x21448, 0x21600, 0x2156C, 0x21594, 0x215D4,
-				0x21740, 0x21E74, 0x8005020C, 0x8005021C},
+				0x21740, 0x21E74, 0x224C0, 0x158, 0x8005020C, 0x8005021C},
 		}};
 
 		/** The gears whose sound sets are their own. */
@@ -291,6 +295,12 @@ namespace Weltall
 		Tables.DeathSoundSet = ReadSoundSet(Program, Layout->DeathSounds);
 		Tables.WyrmSoundSet = ReadSoundSet(Program, Layout->WyrmSounds);
 		Tables.ChuChuSoundSet = ReadSoundSet(Program, Layout->ChuChuSounds);
+		TResult<FMdlPart> ElFenrirPart = ParseMdlPart(Program.subspan(Layout->ElFenrirPart));
+		if (!ElFenrirPart)
+		{
+			return MakeError("El-Fenrir's part in the Battling program: " + ElFenrirPart.Error().Message);
+		}
+		Tables.ElFenrirPart = std::move(*ElFenrirPart);
 		for (std::size_t State = 0; State < Tables.ChainInputs.size(); ++State)
 		{
 			for (std::size_t Input = 0; Input < 3; ++Input)
@@ -348,6 +358,8 @@ namespace Weltall
 			const auto First = Program.begin() + static_cast<std::ptrdiff_t>(Name);
 			Tables.GearNames[Gear].assign(First, std::find(First, Program.end(), uint8{0}));
 		}
+		const auto Label = Program.begin() + static_cast<std::ptrdiff_t>(Layout->KnockOutLabel);
+		Tables.KnockOutLabel.assign(Label, std::find(Label, Program.end(), uint8{0}));
 		if (!Executable.Contains(Layout->DpadX, 16) || !Executable.Contains(Layout->DpadY, 16))
 		{
 			return MakeError("the executable lacks the kernel's d-pad tables");
@@ -395,6 +407,7 @@ namespace Weltall
 			const std::size_t At = Start + GearRowSize * Gear;
 			FBattlingGearStats& Stats = Table.Gears[Gear];
 			Stats.Power = ReadS16(Bytes, At);
+			Stats.ArenaHp = ReadS16(Bytes, At + 2);
 			Stats.Threshold = ReadS16(Bytes, At + 4);
 			for (std::size_t Trait = 0; Trait < Stats.Traits.size(); ++Trait)
 			{
@@ -405,6 +418,11 @@ namespace Weltall
 				Stats.Strengths[Move] = Bytes[At + 10 + Move];
 			}
 			Stats.Ether = Bytes[At + 0x18];
+			Stats.ArenaDashHeat = Bytes[At + 0x1B];
+			Stats.ArenaAcceleration = Bytes[At + 0x1C];
+			Stats.ArenaDeceleration = Bytes[At + 0x1D];
+			Stats.ArenaEtherHeat = Bytes[At + 0x1E];
+			Stats.ArenaKnockDown = Bytes[At + 0x1F];
 		}
 		return Table;
 	}
@@ -435,6 +453,11 @@ namespace Weltall
 			return Table.Error();
 		}
 		Messages.Messages = *Table;
+		if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, MessageTables::Battling, Bytes.subspan(Start, End - Start), EMessageWindows::Program))
+		{
+			Messages.Replaced = std::move(Applied->Table);
+			Messages.Messages = *FMessageTable::Parse(Messages.Replaced);
+		}
 		return Messages;
 	}
 

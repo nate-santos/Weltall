@@ -155,7 +155,7 @@ namespace Weltall
 
 	ESettingsPage FMenuMain::SettingsPage() const
 	{
-		return OptionsState.bCustom ? ESettingsPage::Custom : static_cast<ESettingsPage>(OptionsState.Turned);
+		return OptionsState.Opened.value_or(OnModdingTurned() ? ESettingsPage::Modding : static_cast<ESettingsPage>(OptionsState.Turned));
 	}
 
 	bool FMenuMain::OnControlsPage() const
@@ -170,8 +170,8 @@ namespace Weltall
 
 	int32 FMenuMain::TurnedPages() const
 	{
-		return TurnedSettingsPages + (OptionsState.ControlsPage ? 1 : 0) + (OptionsState.SavePages ? 1 : 0)
-			+ (Services.Settings->Assets() != nullptr ? 1 : 0);
+		constexpr int32 ModdingPage = 1;
+		return TurnedSettingsPages + (OptionsState.ControlsPage ? 1 : 0) + (OptionsState.SavePages ? 1 : 0) + ModdingPage;
 	}
 
 	void FMenuMain::FillOptionsRows()
@@ -204,6 +204,10 @@ namespace Weltall
 		if (ShowsSecondDiscRow())
 		{
 			State.Rows.push_back(SecondDiscRow());
+		}
+		if (Page == ESettingsPage::Modding)
+		{
+			AddModdingRows();
 		}
 	}
 
@@ -460,6 +464,10 @@ namespace Weltall
 			FillOptionsRows();
 			return true;
 		}
+		if (SettingsPage() == ESettingsPage::Modding && State.Row >= FSettingsPages::RowCount(ESettingsPage::Modding))
+		{
+			return StepModdingRow();
+		}
 		if (OnSecondDiscRow() || !FSettingsPages::Step(SettingsPage(), State.Row, Direction, State.Settings, State.bCustomPicked, State.Display))
 		{
 			return false;
@@ -472,9 +480,9 @@ namespace Weltall
 	void FMenuMain::TurnOptionsPage(int32 Direction)
 	{
 		FMenuOptionsState& State = OptionsState;
-		if (State.bCustom || (OnSavesPages() && State.SavePages->Page() != ESavesPage::Saves))
+		if (State.Opened || State.bAssetsOpened || (OnSavesPages() && State.SavePages->Page() != ESavesPage::Saves))
 		{
-			// A list opened from a page (the fixes', a folder's, a file's saves) turns a page of rows at a time.
+			// A list opened from a page (the fixes', the CRT's, the Assets page, a folder's, a file's saves) turns a page of rows at a time.
 			const int32 LastTop = std::max(static_cast<int32>(State.Rows.size()) - FMenuOptionsScreen::Rows, 0);
 			State.Top = std::clamp(State.Top + Direction * FMenuOptionsScreen::Rows, 0, LastTop);
 			State.Row = State.Rows[static_cast<std::size_t>(State.Top)].bHeading ? NextRow(State.Rows, State.Top, 1) : State.Top;
@@ -518,10 +526,17 @@ namespace Weltall
 			FillOptionsRows();
 			return bDone;
 		}
-		switch (FSettingsPages::Activate(SettingsPage(), State.Row, State.Settings, State.bCustomPicked))
+		if (SettingsPage() == ESettingsPage::Modding && State.Row >= FSettingsPages::RowCount(ESettingsPage::Modding))
+		{
+			return ActivateModdingRow();
+		}
+		const ESettingsAction Action = FSettingsPages::Activate(SettingsPage(), State.Row, State.Settings, State.bCustomPicked, State.Display);
+		switch (Action)
 		{
 		case ESettingsAction::OpenCustom:
-			State.bCustom = true;
+		case ESettingsAction::OpenCrt:
+			State.Opened = Action == ESettingsAction::OpenCrt ? ESettingsPage::Crt : ESettingsPage::Custom;
+			State.OpenedFrom = State.Row;
 			ShowOptionsPage(true);
 			return true;
 		case ESettingsAction::Reset:
@@ -546,14 +561,22 @@ namespace Weltall
 			ShowOptionsPage(true);
 			return true;
 		}
-		if (!State.bCustom)
+		if (State.bAssetsOpened)
+		{
+			State.bAssetsOpened = false;
+			ShowOptionsPage(true);
+			State.Row = State.OpenedFrom;
+			return true;
+		}
+		if (!State.Opened)
 		{
 			return false;
 		}
-		// Back on Fixes, whose preset is read from the fixes again.
-		State.bCustom = false;
+		// Back on the row the list was opened from (the fixes' preset is read from the fixes again).
+		State.Opened.reset();
 		State.bCustomPicked = false;
 		ShowOptionsPage(true);
+		State.Row = State.OpenedFrom;
 		return true;
 	}
 

@@ -17,12 +17,13 @@ namespace Weltall
 		}
 	}
 
-	void FBattleFade::Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue)
+	void FBattleFade::Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue, bool bEffect)
 	{
 		if (bBlocked)
 		{
 			return;
 		}
+		bFromEffect = bEffect;
 		From = bOn ? Shown : std::array<uint8, 3>{};
 		bOn = true;
 		Mode = static_cast<uint8>(BlendMode);

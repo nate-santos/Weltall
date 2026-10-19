@@ -239,7 +239,7 @@ uint32 FTextureReplacementGpu::RegionId(const FBoundTextureRegion& Bound, const 
 	const uint32 PictureFirst = static_cast<uint16>(Region.PictureFirstU()) | static_cast<uint32>(static_cast<uint16>(Region.PictureFirstV())) << 16;
 	const uint32 PictureTexels = static_cast<uint32>(Region.PictureTexelsWide()) | static_cast<uint32>(Region.PictureTexelsHigh()) << 16;
 	RegionEntries[static_cast<int32>(Id) * EntriesPerRegion] = FUintVector4(Picture.FirstTile, Size, Rect, Bound.Palette ? Id : NoPalette);
-	RegionEntries[static_cast<int32>(Id) * EntriesPerRegion + 1] = FUintVector4(PictureFirst, PictureTexels, 0, 0);
+	RegionEntries[static_cast<int32>(Id) * EntriesPerRegion + 1] = FUintVector4(PictureFirst, PictureTexels, Bound.Image->bKindsFromAlpha ? 1u : 0u, 0);
 	if (Bound.Palette)
 	{
 		FMemory::Memcpy(&PaletteRows[static_cast<int32>(Id) * PaletteWidth], Bound.Palette->GetData(), Bound.Palette->Num() * sizeof(uint16));

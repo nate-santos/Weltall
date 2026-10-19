@@ -112,6 +112,7 @@ namespace Weltall
 			const auto& Enemies = Tables.EnemyCommands();
 			std::copy(Enemies.begin(), Enemies.end(), Context.Commands.begin() + FBattleContext::EnemyCommandIndex(0));
 			Context.Items = Tables.Items();
+			Context.AmmunitionAttacks = Tables.AmmunitionAttacks();
 		}
 
 		/**
@@ -426,6 +427,8 @@ namespace Weltall
 		const bool bPlayersOrder = Context.bPlayersOrder;
 		const FBattleEventOptions EventOptions = Context.EventOptions;
 		const FBattleRuleOptions RuleOptions = Context.RuleOptions;
+		const bool bPerfectWorksRebalance = Context.bPerfectWorksRebalance;
+		const FGameBalance Balance = Context.Balance;
 		Context = FBattleContext{};
 		Context.GameState = State;
 		Context.Random = Random;
@@ -436,6 +439,8 @@ namespace Weltall
 		Context.bPlayersOrder = bPlayersOrder;
 		Context.EventOptions = EventOptions;
 		Context.RuleOptions = RuleOptions;
+		Context.bPerfectWorksRebalance = bPerfectWorksRebalance;
+		Context.Balance = Balance;
 		Context.Formation = Formation;
 		Context.SceneFile = Scene.Bytes();
 		// The battle's memory starts cleared: zeros where the context names "none" until the setup and the
@@ -550,6 +555,14 @@ namespace Weltall
 			for (const FForcedMultiplier& Forced : Multipliers)
 			{
 				BattleGameState::Byte(State, GearOffset(Forced.Gear) + Gear::BaseMultiplier) = Forced.Multiplier;
+			}
+			// Perfect Works' rebalance gives Weltall's two records 21.
+			if (Context.bPerfectWorksRebalance)
+			{
+				for (const std::size_t Weltall : {std::size_t{0}, std::size_t{1}})
+				{
+					BattleGameState::Byte(State, GearOffset(Weltall) + Gear::BaseMultiplier) = 21;
+				}
 			}
 			BattleGameState::Byte(State, GearOffset(13) + Gear::Frame) = 88;
 			BattleGameState::Byte(State, GearOffset(7) + Gear::Engine) = 0;

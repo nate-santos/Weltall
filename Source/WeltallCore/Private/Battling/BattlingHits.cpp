@@ -89,6 +89,51 @@ namespace Weltall::BattlingFightOps
 		}
 	}
 
+	namespace
+	{
+		/**
+		 * A projectile's damage in Perfect Works' arena: a downed gear takes it whole (Expert: 3/4) without a sound or a guard;
+		 * one from behind half as much again; the guard halves it (Expert: before any test of where it came from, Basic: after).
+		 * Expert counts each unguarded one in the hits in a row.
+		 */
+		int32 ArenaProjectileDamage(FBattlingFight& Fight, FBattlingFighter& Fighter, const FBattlingProjectile& Projectile, const FBattlingPoint& Point,
+			uint32& Kind)
+		{
+			const bool bExpert = ExpertRules(Fight);
+			const uint16 Power = static_cast<uint16>(Projectile.Power);
+			if (Fighter.Movement == BattlingMovement::Down)
+			{
+				return bExpert ? static_cast<int32>(static_cast<uint64>(Power) * 0xC0000000u >> 32) : Power;
+			}
+			const bool bGuarded = (Fighter.Flags & BattlingFlags::GuardActive) != 0;
+			if (bExpert && bGuarded)
+			{
+				PlayFighterSound(Fight, Fighter, SoundGuarded, &Point, EBattlingSoundPlace::Fixed);
+				Fighter.HitFlash = 0x80;
+				return Power >> 1;
+			}
+			const int32 Heading = GteRatan2(Projectile.Velocity[0], Projectile.Velocity[2], Fight.Tables.Arctangents);
+			int32 Damage = Projectile.Power;
+			if (static_cast<uint32>((Heading - Fighter.Yaw) & 0xFFF) - 0x601 < 0x3FF)
+			{
+				Damage += Damage >> 1;
+				Kind = 3;
+			}
+			if (bExpert || !bGuarded)
+			{
+				PlayFighterSound(Fight, Fighter, SoundProjectileHit, &Point, EBattlingSoundPlace::Fixed);
+				if (bExpert)
+				{
+					++Fighter.HitsInRow;
+				}
+				return Damage;
+			}
+			PlayFighterSound(Fight, Fighter, SoundGuarded, &Point, EBattlingSoundPlace::Fixed);
+			Fighter.HitFlash = 0x80;
+			return (Damage + (Projectile.Power < 0 ? 1 : 0)) >> 1;
+		}
+	}
+
 	void AgeVolumes(FBattlingFighter& Fighter)
 	{
 		for (FBattlingHitVolume& Volume : Fighter.Volumes)
@@ -149,27 +194,35 @@ namespace Weltall::BattlingFightOps
 			}
 			Fighter.HitFlash = 0xFF;
 			Fighter.Flags2 |= BattlingFlags2::HitFlash;
-			const int32 Heading = GteRatan2(Projectile.Velocity[0], Projectile.Velocity[2], Fight.Tables.Arctangents);
-			Damage = Projectile.Power;
-			if (static_cast<uint32>((Heading - Fighter.Yaw) & 0xFFF) - 0x601 < 0x3FF)
+			if (ArenaRules(Fight))
 			{
-				Damage <<= 1;
-				Kind = 3;
-				PlayFighterSound(Fight, Fighter, SoundProjectileHit, &Point, EBattlingSoundPlace::Fixed);
-			}
-			else if ((Fighter.Flags & BattlingFlags::GuardActive) == 0)
-			{
-				PlayFighterSound(Fight, Fighter, SoundProjectileHit, &Point, EBattlingSoundPlace::Fixed);
+				Damage = ArenaProjectileDamage(Fight, Fighter, Projectile, Point, Kind);
 			}
 			else
 			{
-				PlayFighterSound(Fight, Fighter, SoundGuarded, &Point, EBattlingSoundPlace::Fixed);
-				Damage = Damage / 2;
-				Fighter.HitFlash = 0x80;
+				const int32 Heading = GteRatan2(Projectile.Velocity[0], Projectile.Velocity[2], Fight.Tables.Arctangents);
+				Damage = Projectile.Power;
+				if (static_cast<uint32>((Heading - Fighter.Yaw) & 0xFFF) - 0x601 < 0x3FF)
+				{
+					Damage <<= 1;
+					Kind = 3;
+					PlayFighterSound(Fight, Fighter, SoundProjectileHit, &Point, EBattlingSoundPlace::Fixed);
+				}
+				else if ((Fighter.Flags & BattlingFlags::GuardActive) == 0)
+				{
+					PlayFighterSound(Fight, Fighter, SoundProjectileHit, &Point, EBattlingSoundPlace::Fixed);
+				}
+				else
+				{
+					PlayFighterSound(Fight, Fighter, SoundGuarded, &Point, EBattlingSoundPlace::Fixed);
+					Damage = Damage / 2;
+					Fighter.HitFlash = 0x80;
+				}
 			}
 			const int32 Stun = (Damage << 1) / 3;
 			Fighter.Stun += Stun;
-			Fighter.DownStun = static_cast<int16>(Fighter.DownStun + Stun);
+			// Perfect Works' Expert arena adds the whole damage to the knock-down stun.
+			Fighter.DownStun = static_cast<int16>(Fighter.DownStun + (ExpertRules(Fight) ? Damage : Stun));
 			Fighter.HitPoint = Point;
 			Hits = Damage != 0 ? 1 : 0;
 			Fight.Effects.SparkSource = Point;
@@ -209,8 +262,24 @@ namespace Weltall::BattlingFightOps
 			}
 			const FBattlingPoint Contact{Fight.Contact[0], Axis[1], Fight.Contact[1]};
 			Other.Flags &= ~BattlingFlags::AttackLive;
+			const bool bArena = ArenaRules(Fight);
+			bool bGuarded = (Fighter.Flags & BattlingFlags::GuardActive) != 0;
+			if (bArena)
+			{
+				// Perfect Works' arena: a swing takes 4/5 of its power from a downed gear, which cannot guard, and keeps it so.
+				Fight.Effects.SparkSource = Contact;
+				if (!ExpertRules(Fight))
+				{
+					Fighter.SwingHit = 1;
+				}
+				if (Fighter.Movement == BattlingMovement::Down)
+				{
+					Volume.Power = static_cast<uint8>(Volume.Power * 4 / 5);
+					bGuarded = false;
+				}
+			}
 			uint32 Power = Volume.Power;
-			if ((Fighter.Flags & BattlingFlags::GuardActive) == 0)
+			if (!bGuarded)
 			{
 				PlayFighterSound(Fight, Fighter, Volume.Sound, &Contact, EBattlingSoundPlace::Fixed);
 				SpawnEffect(Fight, Contact, 0);
@@ -228,10 +297,22 @@ namespace Weltall::BattlingFightOps
 				Power >>= 1;
 				Fighter.Flags2 |= BattlingFlags2::HitFlash;
 			}
-			Fighter.ReactionTimer = static_cast<int16>(Power);
 			const uint32 Stun = (Power * 6) / 5;
-			Fighter.DownStun = static_cast<int16>(Fighter.DownStun + static_cast<int16>(Stun));
-			Fighter.Stun += static_cast<int32>(Stun);
+			if (bArena && !ExpertRules(Fight))
+			{
+				// Perfect Works' Basic arena: the reaction lasts as long as the stun it adds up to, stored as a halfword.
+				const int32 Stunned = Fighter.Stun + static_cast<int32>(Stun);
+				Fighter.ReactionTimer = static_cast<int16>(Stunned);
+				Fighter.DownStun = static_cast<int16>(Fighter.DownStun + static_cast<int16>(Stun));
+				Fighter.Stun = static_cast<int32>((static_cast<uint32>(Fighter.Stun) & 0xFFFF0000u) | (static_cast<uint32>(Stunned) & 0xFFFFu));
+			}
+			else
+			{
+				Fighter.ReactionTimer = static_cast<int16>(Power);
+				// Perfect Works' Expert arena adds the power to the knock-down stun too.
+				Fighter.DownStun = static_cast<int16>(Fighter.DownStun + static_cast<int16>(Stun) + (bArena ? static_cast<int16>(Power) : int16{0}));
+				Fighter.Stun += static_cast<int32>(Stun);
+			}
 			Fighter.HitPoint = Contact;
 			if (Power != 0)
 			{

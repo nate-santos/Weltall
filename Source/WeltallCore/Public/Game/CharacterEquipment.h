@@ -66,7 +66,8 @@ namespace Weltall
 	/**
 	 * A character's stats as the Status screen shows them: base plus equipment (Billy's attack from his
 	 * two guns, × 6 / 10), capped 250 (99 for hit and evade). Agility shows at most 16, as battle caps
-	 * it; `bOriginalAgilityCap` shows it as the original does, where only a value over 20 becomes 16.
+	 * it; `bOriginalAgilityCap` shows it as the original does, where only a value over 20 becomes 16, or with
+	 * bPerfectWorksRules as Perfect Works Build's rebalanced menu does, at most 20.
 	 */
-	WELTALLCORE_API FCharacterStats ComputeCharacterStats(const FGameState& State, int32 Character, bool bOriginalAgilityCap);
+	WELTALLCORE_API FCharacterStats ComputeCharacterStats(const FGameState& State, int32 Character, bool bOriginalAgilityCap, bool bPerfectWorksRules = false);
 }

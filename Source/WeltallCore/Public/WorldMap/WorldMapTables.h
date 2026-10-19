@@ -159,6 +159,11 @@ namespace Weltall
 		inline constexpr int32 CharacterSpriteBase = 2;
 		inline constexpr int32 GearSpriteBase = 0x13;
 		inline constexpr int32 GroupCount = 17;
+		/** The first group's header file; each group's files follow its header, the next group's header eleven files on. */
+		inline constexpr int32 FirstGroupHeader = 43;
+		inline constexpr int32 GroupFiles = 11;
+		inline constexpr int32 Group(int32 Header) { return (Header - FirstGroupHeader) / GroupFiles; }
+		inline constexpr int32 GroupHeader(int32 Group) { return FirstGroupHeader + Group * GroupFiles; }
 
 		inline constexpr int32 Archive(int32 Header) { return Header + 1; }
 		inline constexpr int32 TerrainTextures(int32 Header) { return Header + 2; }

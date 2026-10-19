@@ -109,6 +109,26 @@ namespace Weltall
 		return State->Music->Read(Key);
 	}
 
+	void FDiscAssetStore::SetMessages(std::shared_ptr<const FMessageOverrides> Messages)
+	{
+		State->Messages = std::move(Messages);
+	}
+
+	std::shared_ptr<const FMessageOverrides> FDiscAssetStore::Messages() const
+	{
+		return State->bEnabled ? State->Messages : nullptr;
+	}
+
+	void FDiscAssetStore::SetFontSheet(std::shared_ptr<const FMesFontSheet> Sheet)
+	{
+		State->FontSheet = std::move(Sheet);
+	}
+
+	std::shared_ptr<const FMesFontSheet> FDiscAssetStore::FontSheet() const
+	{
+		return State->bEnabled ? State->FontSheet : nullptr;
+	}
+
 	TResult<std::optional<std::vector<uint8>>> FDiscAssetStore::ReadOverride(const FIndexRecord& Record) const
 	{
 		if (!State->bEnabled) return std::optional<std::vector<uint8>>{};

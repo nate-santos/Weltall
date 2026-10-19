@@ -53,8 +53,8 @@ namespace
 			std::size_t Offset;
 			std::string_view Format;
 		};
-		const std::array<FText, 24> Texts{{
-			{Ether, 0x120, ""}, {DrawGame, 0x14C, ""}, {KnockOut, 0x158, ""}, {Fight, 0x174, ""}, {Start, 0x17C, ""},
+		const std::array<FText, 23> Texts{{
+			{Ether, 0x120, ""}, {DrawGame, 0x14C, ""}, {Fight, 0x174, ""}, {Start, 0x17C, ""},
 			{RubberBandMode, 0x188, ""}, {Ready, 0x19C, ""}, {RubberBandBattle, 0x1A4, ""}, {Practice, 0x1B8, ""},
 			{Round, 0x1C4, "%d"}, {Strength, 0x218, "%d"}, {Frames, 0x220, "%d-%d"}, {Replay, 0x25C, ""},
 			{YouWereVictorious, 0x284, ""}, {PlayerOneVictory, 0x298, ""}, {ComputerOneVictory, 0x2A8, ""},
@@ -211,9 +211,15 @@ TEST_CASE("Battling's gear files hold what the fight reads on both discs", "[Con
 		CHECK(Tables->GearNames[0] == "WELTALL");
 		CHECK(Tables->GearNames[17] == "GANADOR");
 		CHECK(Tables->GearNames[28] == "TIN ROBO");
+		CHECK(Tables->KnockOutLabel == "KNOCK OUT!!");
 		CHECK(Tables->FontGlyphs[0].U == 60);
 		CHECK(Tables->FontGlyphs[10].Height == 18);
 		CHECK(Tables->FontGlyphs[41].Width == 8);
+		// El-Fenrir's part of the program's own: 41 corners and 70 triangles on the arena's own page and CLUT.
+		CHECK(Tables->ElFenrirPart.Vertices.size() == 41);
+		REQUIRE(Tables->ElFenrirPart.Primitives.size() == 70);
+		CHECK(Tables->ElFenrirPart.Primitives[0].Type == EMdlPrimitiveType::TexturedTriangle);
+		CHECK(Tables->ElFenrirPart.Primitives[0].Texture({}) == FMdlTextureState{0x1E, 0x6F7F});
 		CheckLabelTexts(*Disc, *Opened.Index);
 
 		auto GearTable = FBattlingGearTable::Read(Disc->Image(), *Opened.Index);

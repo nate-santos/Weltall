@@ -2,6 +2,7 @@
 #include "FieldDirections.h"
 
 #include "Graphics/GteVectors.h"
+#include "Text/MessageOverrides.h"
 
 #include <algorithm>
 
@@ -408,6 +409,14 @@ namespace Weltall::EventOps
 			Place.Width = State.WindowWidth != 0 ? State.WindowWidth : Place.Width;
 			Place.Lines = State.WindowLines != 0 ? State.WindowLines : Place.Lines;
 			Place.Lines = bPortrait ? PortraitLines : Place.Lines;
+		}
+		if (Messages.Replaced != nullptr)
+		{
+			Messages.Replaced->CheckWindow(Place.Message, Messages.Table.String(Place.Message), Place.Width, Place.Lines);
+			if (!bSized || State.WindowWidth == 0)
+			{
+				Messages.Replaced->CheckScreenWidth(Place.Message, Place.Width, (RightEdge - LeftEdge - 0x10) / 4);
+			}
 		}
 		if ((Place.Style & NoBackground) != 0)
 		{

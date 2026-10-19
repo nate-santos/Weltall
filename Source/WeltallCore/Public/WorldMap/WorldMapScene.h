@@ -117,4 +117,7 @@ namespace Weltall
 
 	/** Reads a scene's group: its archive and its terrain, of the size the scene table gives. */
 	WELTALLCORE_API TResult<FWorldMapScene> ReadWorldMapScene(const FCdImage& Image, const FGameFileIndex& Index, const FWorldMapSceneEntry& Entry);
+
+	/** Scene group Group's message table (its place names and messages), as its archive holds it. */
+	WELTALLCORE_API TResult<std::vector<uint8>> ReadWorldMapMessages(const FCdImage& Image, const FGameFileIndex& Index, int32 Group);
 }

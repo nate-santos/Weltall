@@ -59,7 +59,12 @@ namespace Weltall
 		FMoviePlayback Playback;
 		Playback.EndFrame = (Request.Type & FMovieProgramRequest::EndFrameGiven) != 0 ? Request.EndFrame : FMoviePlayback::DefaultEndFrame;
 		Playback.bSkippable = Request.NoSkip == 0;
-		Program->MoviePlayer = std::make_unique<FMoviePlayer>(*Disc->Image, *Location, Playback, *Session.Sound().Sound());
+		TResult<std::optional<FMovieSubtitles>> Subtitles = Session.MovieSubtitles(Request.Number);
+		if (!Subtitles)
+		{
+			return Subtitles.Error();
+		}
+		Program->MoviePlayer = std::make_unique<FMoviePlayer>(*Disc->Image, *Location, Playback, *Session.Sound().Sound(), std::move(*Subtitles));
 		const TResult<bool> Started = Program->MoviePlayer->Start();
 		if (!Started)
 		{

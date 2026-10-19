@@ -165,14 +165,36 @@ namespace Weltall
 		return Bytes;
 	}
 
-	TResult<std::optional<std::vector<uint8>>> FCdImage::ReadAssetOverride(const FIndexRecord& Record) const
+	TResult<std::optional<FFileReplacement>> FCdImage::ReadReplacement(const FIndexRecord& Record) const
 	{
-		return Assets ? Assets->ReadOverride(Record) : TResult<std::optional<std::vector<uint8>>>(std::optional<std::vector<uint8>>{});
+		if (Assets)
+		{
+			TResult<std::optional<std::vector<uint8>>> Override = Assets->ReadOverride(Record);
+			if (!Override)
+			{
+				return Override.Error();
+			}
+			if (*Override)
+			{
+				return std::optional{FFileReplacement{std::move(**Override), static_cast<uint64>(std::max(Record.Size, 0))}};
+			}
+		}
+		return Mods ? Mods->Read(Record) : TResult<std::optional<FFileReplacement>>(std::optional<FFileReplacement>{});
 	}
 
 	TResult<std::optional<std::vector<uint8>>> FCdImage::ReadMusicReplacement(uint64 Key) const
 	{
 		return Assets ? Assets->ReadMusic(Key) : TResult<std::optional<std::vector<uint8>>>(std::optional<std::vector<uint8>>{});
+	}
+
+	std::shared_ptr<const FMessageOverrides> FCdImage::MessageOverrides() const
+	{
+		return Assets ? Assets->Messages() : nullptr;
+	}
+
+	std::shared_ptr<const FMesFontSheet> FCdImage::FontSheet() const
+	{
+		return Assets ? Assets->FontSheet() : nullptr;
 	}
 
 	TResult<FCdSectorHeader> FCdImage::ReadHeader(uint32 Lba) const

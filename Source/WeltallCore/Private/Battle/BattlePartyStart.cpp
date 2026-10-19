@@ -39,15 +39,17 @@ namespace Weltall
 			Figures.MaxEp = Member.MaxEp;
 		}
 
-		void AddEquipment(FBattleCombatant& Member)
+		void AddEquipment(FBattleCombatant& Member, bool bPerfectWorksRebalance)
 		{
 			const std::array<uint8, 8>& Bonus = Member.EquipmentBonuses;
-			Member.Attack = AddByte(Member.Attack, Bonus[0]);
+			// Perfect Works' rebalance adds its own bonuses too, before the agility's cap.
+			const std::array<uint8, 5> Extra = bPerfectWorksRebalance ? Member.ExtraBonuses : std::array<uint8, 5>{};
+			Member.Attack = AddByte(AddByte(Member.Attack, Bonus[0]), Extra[0]);
 			Member.Traits = 0;
-			Member.Defense = AddByte(Member.Defense, Bonus[1]);
-			Member.Agility = AddByte(Member.Agility, Bonus[2]);
-			Member.Ether = AddByte(Member.Ether, Bonus[3]);
-			Member.EtherDefense = AddByte(Member.EtherDefense, Bonus[4]);
+			Member.Defense = AddByte(AddByte(Member.Defense, Bonus[1]), Extra[1]);
+			Member.Agility = AddByte(AddByte(Member.Agility, Bonus[2]), Extra[4]);
+			Member.Ether = AddByte(AddByte(Member.Ether, Bonus[3]), Extra[2]);
+			Member.EtherDefense = AddByte(AddByte(Member.EtherDefense, Bonus[4]), Extra[3]);
 			Member.Hit = AddByte(Member.Hit, Bonus[6]);
 			Member.Evade = AddByte(Member.Evade, Bonus[7]);
 			if (Member.Agility > 16)
@@ -161,7 +163,7 @@ namespace Weltall
 				return;
 			}
 			RecordStartFigures(Context, Index, Member);
-			AddEquipment(Member);
+			AddEquipment(Member, Context.bPerfectWorksRebalance);
 			Member.ExpShare = 5;
 			Member.EtherExpShare = 5;
 			Member.AttackLevel = 0;

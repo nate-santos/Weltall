@@ -31,7 +31,17 @@ namespace Weltall
 	 */
 	struct FPadState
 	{
+		/** The stick's report at rest. */
+		static constexpr uint8 StickCentre = 0x80;
+
 		uint16 Buttons = 0;
+		/** The directions among Buttons that only the stick holds: the port's bindings let a stick press them, which a DualShock's never does. */
+		uint16 StickButtons = 0;
+		/** The stick as a DualShock in analog mode reports it: 0 at its left (top) to 0xFF at its right (bottom). */
+		uint8 StickX = StickCentre;
+		uint8 StickY = StickCentre;
+		/** A gamepad, which the game is told is a DualShock in analog mode. */
+		bool bAnalog = false;
 
 		static constexpr uint16 Bit(EPadButton Button) { return static_cast<uint16>(1u << static_cast<uint32>(Button)); }
 

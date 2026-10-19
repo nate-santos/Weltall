@@ -222,7 +222,10 @@ namespace Weltall
 		const bool bPoisoned = (Combatant.Status & 0x800) != 0;
 		const bool bLosesEp = (Combatant.Mental & 0x200) != 0 || (Gear.Status & 0x200) != 0;
 		const bool bLeaks = (Gear.Status & 0x80) != 0;
-		const bool bBoosted = (Gear.Buffs & 0x8000) != 0;
+		// Perfect Works' rebalance drains fuel for any of the gear's permanent buffs, its booster and its engine parts',
+		// while the pilot is boarded.
+		const bool bRebalance = Context.bPerfectWorksRebalance;
+		const bool bBoosted = bRebalance ? Gear.PermanentBuffs != 0 && Combatant.IsInGear() : (Gear.Buffs & 0x8000) != 0;
 		if (!bPoisoned && !bLosesEp && !bLeaks && !bBoosted)
 		{
 			return;
@@ -242,6 +245,12 @@ namespace Weltall
 		if (bBoosted)
 		{
 			Drains[2] += Gear.MaxFuel / 50u;
+		}
+		if (bBoosted && bRebalance)
+		{
+			// Its engine parts' bits: 4 no fuel, 1 a quarter less, 2 half.
+			const uint32 Fuel = Drains[2];
+			Drains[2] = (Gear.PermanentBuffs & 4) != 0 ? 0 : (Gear.PermanentBuffs & 1) != 0 ? Fuel - (Fuel >> 2) : (Gear.PermanentBuffs & 2) != 0 ? Fuel - (Fuel >> 1) : Fuel;
 		}
 		for (std::size_t Kind = 0; Kind < Drains.size(); ++Kind)
 		{

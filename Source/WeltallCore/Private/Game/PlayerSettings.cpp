@@ -256,6 +256,7 @@ namespace Weltall
 			Visitor.Flag("fix.wide_view_staging", Fixes.Field.bWideViewStaging);
 			Visitor.Flag("fix.swim_stroke", Fixes.Field.bSwimStrokeAfterWading);
 			Visitor.Flag("fix.moon_glow", Fixes.Field.bMoonGlowFades);
+			Visitor.Flag("fix.sprite_frames", Fixes.Field.bSpriteFramesAligned);
 			Visitor.Flag("fix.silent_start_only_for_its_song", Fixes.Music.bStartOnlyForItsSong);
 			Visitor.Flag("fix.pan_slides_end_on_target", Fixes.SoundDriver.bPanSlidesEndOnTarget);
 			Visitor.Flag("fix.high_notes_stay_high", Fixes.SoundDriver.bHighNotesStayHigh);
@@ -267,6 +268,8 @@ namespace Weltall
 			Visitor.Flag("fix.menu_ether_heals_as_battle", Fixes.Menu.bEtherHealsAsBattle);
 			Visitor.Flag("fix.menu_gear_repair_own_gear", Fixes.Menu.bGearRepairOwnGear);
 			Visitor.Flag("fix.menu_names_keep_trailing_s", Fixes.Menu.bNamesKeepTrailingS);
+			Visitor.Flag("fix.member_change_says_ep", Fixes.Menu.bMemberChangeSaysEp);
+			Visitor.Flag("fix.shop_pointer_beside_words", Fixes.Menu.bShopPointerBesideWords);
 			Visitor.Flag("fix.gear_shop_parts_as_menu", Fixes.Menu.bGearShopPartsAsMenu);
 			Visitor.Flag("fix.gear_shop_model_field_pace", Fixes.Menu.bGearModelFieldPace);
 			Visitor.Flag("fix.shop_sale_recomputes_equipment", Fixes.Menu.bSaleRecomputesEquipment);
@@ -287,6 +290,8 @@ namespace Weltall
 			Visitor.Flag("fix.battle_whole_amounts", Fixes.BattleRules.bWholeAmounts);
 			Visitor.Flag("fix.battle_counter_keeps_group_attack", Fixes.BattleRules.bCounterKeepsGroupAttack);
 			Visitor.Flag("fix.battle_deus_second_form_hp", Fixes.BattleRules.bDeusSecondFormHp);
+			Visitor.Flag("fix.battle_deus_keeps_camera", Fixes.BattleRules.bDeusKeepsCamera);
+			Visitor.Flag("fix.battle_ether_ammunition_element", Fixes.BattleRules.bEtherAmmunitionElement);
 			Visitor.Flag("fix.battle_trails_blend", Fixes.BattleShow.bTrailsBlend);
 			Visitor.Flag("fix.battle_unlit_models_take_stage_light", Fixes.BattleShow.bUnlitModelsTakeStageLight);
 			Visitor.Flag("fix.battle_tint_keeps_stage_palettes", Fixes.BattleShow.bTintKeepsStagePalettes);
@@ -303,6 +308,18 @@ namespace Weltall
 			Visitor.Flag("display.full_screen", Settings.Display.bFullScreen);
 			Visitor.Size("display.window_size", Settings.Display.WindowSize);
 			Visitor.Choice("display.aspect", Settings.Display.Aspect, {"window", "16:9", "4:3"});
+			Visitor.Choice("display.crt_filter", Settings.Display.Crt, {"off", "monitor", "tv", "custom"});
+			auto& Crt = Settings.Display.CustomCrt;
+			Visitor.Level("crt.scanlines", Crt.Scanlines, 0, FCrtLook::Steps);
+			Visitor.Choice("crt.mask", Crt.Mask, {"none", "aperture_grille", "slot_mask"});
+			Visitor.Level("crt.mask_strength", Crt.MaskStrength, 0, FCrtLook::Steps);
+			Visitor.Choice("crt.mask_size", Crt.MaskSize, {"fine", "medium", "coarse"});
+			Visitor.Level("crt.sharpness", Crt.Sharpness, 0, FCrtLook::Steps);
+			Visitor.Level("crt.color_bleed", Crt.ColorBleed, 0, FCrtLook::Steps);
+			Visitor.Level("crt.glow", Crt.Glow, 0, FCrtLook::Steps);
+			Visitor.Level("crt.curvature", Crt.Curvature, 0, FCrtLook::Steps);
+			Visitor.Level("crt.corners", Crt.Corners, 0, FCrtLook::Steps);
+			Visitor.Level("crt.vignette", Crt.Vignette, 0, FCrtLook::Steps);
 			Visitor.Flag("display.pause_in_background", Settings.Display.bPauseInBackground);
 
 			auto& Field = Settings.Field;
@@ -315,16 +332,36 @@ namespace Weltall
 			Visitor.Flag("field.detailed_pilots", Field.bDetailedPilots);
 			// Once a flag: its true and false read as they did.
 			Visitor.Choice("field.gear_models", Field.GearModels, {"false", "outside_cutscenes", "true"});
+			Visitor.Choice("field.battle_flashes", Field.BattleFlashes, {"original", "softer", "off"});
 
 			Visitor.Choice("sound.output", Settings.SoundOutput, {"stereo", "wide_stereo", "mono"});
 			Visitor.Flag("sound.in_background", Settings.Display.bSoundInBackground);
 			Visitor.Choice("sound.voices", Settings.VoiceLanguage, {"automatic", "english", "japanese"});
+			Visitor.Choice("sound.subtitles", Settings.MovieSubtitles, {"automatic", "on", "off"});
 			Visitor.Flag("assets.external", Settings.bExternalAssets);
 			Visitor.Flag("assets.capture_textures", Settings.bCaptureTextures);
 
 			Visitor.Flag("game.chapter_cards", Settings.bChapterCards);
 			Visitor.Choice("game.text_speed", Settings.TextSpeed, {"original", "double", "quadruple", "instant"});
 			Visitor.Choice("game.battle_speed", Settings.BattleSpeed, {"normal", "2x", "4x"});
+
+			auto& Balance = Settings.Balance;
+			Visitor.Choice("balance.experience", Balance.Experience, {"original", "1.5x", "2x", "3x", "4x"});
+			Visitor.Choice("balance.gold", Balance.Gold, {"original", "1.5x", "2x", "3x", "4x"});
+			Visitor.Choice("balance.encounters", Balance.Encounters, {"none", "quarter", "half", "original", "double"});
+
+			auto& PerfectWorks = Settings.PerfectWorks;
+			Visitor.Flag("mods.perfect_works", PerfectWorks.bEnabled);
+			Visitor.Flag("mods.perfect_works.script", PerfectWorks.bScript);
+			Visitor.Flag("mods.perfect_works.story_mode", PerfectWorks.bStoryMode);
+			Visitor.Flag("mods.perfect_works.music", PerfectWorks.bMusic);
+			Visitor.Flag("mods.perfect_works.rebalanced_party", PerfectWorks.bRebalancedParty);
+			Visitor.Flag("mods.perfect_works.rebalanced_enemies", PerfectWorks.bRebalancedEnemies);
+			Visitor.Choice("mods.perfect_works.arena", PerfectWorks.Arena, {"original", "basic", "expert"});
+			Visitor.Choice("mods.perfect_works.portraits", PerfectWorks.Portraits, {"original", "fixed", "resized"});
+			Visitor.Flag("mods.perfect_works.roni_portrait", PerfectWorks.bRoniPortrait);
+			Visitor.Flag("mods.perfect_works.emeralda_cafe", PerfectWorks.bEmeraldaCafe);
+			Visitor.Flag("mods.perfect_works.title_screen", PerfectWorks.bTitleScreen);
 
 			auto& Camera = Settings.Camera;
 			Visitor.Number("camera.zoom", Camera.Zoom, FFieldCameraOffsets::MinZoom, FFieldCameraOffsets::MaxZoom);

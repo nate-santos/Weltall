@@ -16,6 +16,12 @@ namespace Weltall
 		uint16 Pressed = 0;
 		/** Pressed, or every held button when it repeats. */
 		uint16 Repeated = 0;
+		/** The directions among Held that only the stick holds (FPadState::StickButtons). */
+		uint16 StickHeld = 0;
+		/** The analog stick's report, and whether the controller is analog: what the arena reads of a DualShock. */
+		uint8 StickX = FPadState::StickCentre;
+		uint8 StickY = FPadState::StickCentre;
+		bool bAnalog = false;
 
 		bool operator==(const FKernelPadWords&) const = default;
 	};
@@ -26,7 +32,8 @@ namespace Weltall
 	 * Triangle with Square), the newly pressed ones, and the repeat (the held buttons 32 vertical blanks after
 	 * the port's last new press, then on every vertical blank whose count is a multiple of 4), both ports' words
 	 * queued together for the mode's next tick; a queue already holding 16 loses the new ones and marks the
-	 * overflow, which only a reset clears. Every mode reads the first port; the arena reads both.
+	 * overflow, which only a reset clears. Every mode reads the first port; the arena reads both, and a gamepad's
+	 * stick with them, as a DualShock's in analog mode.
 	 */
 	class FKernelPad
 	{

@@ -18,6 +18,7 @@ namespace Weltall
 	class FGameSession;
 	class FGameState;
 	class FMenuSpriteSheet;
+	struct FTextureRegion;
 	struct FBattleOutcome;
 	struct FKernelState;
 
@@ -54,6 +55,8 @@ namespace Weltall
 		const FBattlePresentation& Presentation() const { return *Show; }
 		/** The sheet the HUD's pictures are drawn from, which holds the game's own pictures of the buttons. */
 		WELTALLCORE_API const FMenuSpriteSheet& HudSheet() const;
+		/** The pictures the HUD draws from its sheet (FBattleHud::TextureRegions), for texture replacements. */
+		WELTALLCORE_API std::span<const FTextureRegion> HudTextureRegions() const;
 
 	private:
 		explicit FBattleGameProgram(FGameSession& InSession);

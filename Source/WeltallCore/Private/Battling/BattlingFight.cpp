@@ -22,6 +22,10 @@ namespace Weltall
 		constexpr int32 SetTimeCap = 179999;
 		constexpr uint16 ButtonStart = 0x800;
 		constexpr uint8 ArgentoGear = 22;
+		/** El-Fenrir's part of the program's own hangs on its joint 12, turned so; the joint after, the file's own, stays hidden. */
+		constexpr uint8 ElFenrir = 13;
+		constexpr int32 ElFenrirPartJoint = 12;
+		constexpr FGteVector ElFenrirPartAngles{0, 0xC00, 0x400};
 		constexpr uint8 EndingAnimation = 10;
 
 		enum : uint8
@@ -369,7 +373,7 @@ namespace Weltall
 				{
 					SetState(Fight, Fight.Winner == 2 ? StateBetweenRounds : StateReplay);
 				}
-				Labels.PrintCentered(Fight.Winner == 2 ? BattlingLabelTexts::DrawGame : BattlingLabelTexts::KnockOut, Buffer);
+				Labels.PrintCentered(Fight.Winner == 2 ? BattlingLabelTexts::DrawGame : std::string_view(Fight.Tables.KnockOutLabel), Buffer);
 			}
 			if (Fight.IntroCounter != 0)
 			{
@@ -457,6 +461,9 @@ namespace Weltall
 		case 0x29:
 		case 0x2A:
 			Fighter.Kind |= 4;
+			break;
+		case ElFenrir:
+			Fighter.Skeleton.Attach(ElFenrirPartJoint, Tables.ElFenrirPart, ElFenrirPartAngles);
 			break;
 		case 0x24:
 		case 0x25:

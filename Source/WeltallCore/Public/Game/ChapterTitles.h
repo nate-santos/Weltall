@@ -43,4 +43,11 @@ namespace Weltall
 		/** How many lines the file holds: the progress values that have a line of their own. */
 		uint16 LineCount = 0;
 	};
+
+	/**
+	 * The titles' file (Lines) with the player's chapter titles in place (Assets/text: chapters/<number>, from 1): each
+	 * line of a chapter they rename written again in full-width characters, as the disc's are. The chapters' cards and
+	 * the saves' places read it. A title longer than its lines, or with a character they cannot hold, keeps the disc's.
+	 */
+	WELTALLCORE_API std::vector<uint8> WithPlayersChapterTitles(const FCdImage& Image, std::span<const uint8> Lines);
 }

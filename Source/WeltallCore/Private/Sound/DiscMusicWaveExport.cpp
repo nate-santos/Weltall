@@ -33,7 +33,7 @@ namespace Weltall
 		std::filesystem::path MusicFolder)
 	{
 		auto State = std::make_unique<FState>(Disc, Index, std::move(MusicFolder));
-		State->Disc.Image().SetAssetStore(nullptr);
+		State->Disc.Image().UseDiscAlone();
 		auto Started = FGameSoundSession::Start(State->Disc);
 		if (!Started) return Started.Error();
 		State->Session = std::move(*Started);

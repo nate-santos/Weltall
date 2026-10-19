@@ -28,7 +28,7 @@ namespace Weltall
 	{
 		FState(std::filesystem::path InFolder, const FCdImage& InImage) : Folder(std::move(InFolder)), Image(InImage)
 		{
-			Image.SetAssetStore(nullptr);
+			Image.UseDiscAlone();
 		}
 		std::filesystem::path Folder;
 		FCdImage Image;
@@ -37,6 +37,8 @@ namespace Weltall
 		std::string Manifest;
 		bool bEnabled = false;
 		std::shared_ptr<const FMusicReplacements> Music;
+		std::shared_ptr<const FMessageOverrides> Messages;
+		std::shared_ptr<const FMesFontSheet> FontSheet;
 		mutable std::map<uint32, std::shared_ptr<const IByteSource>> MovieFiles;
 	};
 

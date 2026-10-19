@@ -20,6 +20,7 @@ public:
 		std::shared_ptr<const Weltall::FDrawList> InPrevious, std::shared_ptr<const std::vector<int32>> InMatches, float InAlpha);
 
 	virtual void AddPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Area) const override;
+	virtual Weltall::FScreenSize ScreenSize() const override { return Screen; }
 
 	/** The frame filled again for another display frame, once the rendering thread has let go of it. */
 	void Set(std::shared_ptr<const Weltall::FDrawList> InLatest, std::shared_ptr<const Weltall::FDrawList> InPrevious,

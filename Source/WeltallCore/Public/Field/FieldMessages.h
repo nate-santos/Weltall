@@ -12,6 +12,7 @@
 namespace Weltall
 {
 	struct FEventContext;
+	struct FReplacedMessages;
 
 	/** Where a message instruction puts its window. */
 	enum class EFieldMessageMode : uint8
@@ -200,8 +201,9 @@ namespace Weltall
 		int32 CursorFrame = 0;
 		/** Set while the field runs a map's first ticks: no window opens. */
 		bool bMapEntering = false;
-		/** The map's messages. */
+		/** The map's messages, and which of them are the player's (none without any). */
 		FMessageTable Table;
+		const FReplacedMessages* Replaced = nullptr;
 		/** The font and name tables the windows' text reads, the button map, and the number string they share. */
 		FMesContext Text;
 

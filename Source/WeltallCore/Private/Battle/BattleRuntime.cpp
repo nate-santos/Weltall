@@ -43,8 +43,8 @@ namespace Weltall
 		}
 
 		/** The setup's transition of each battle kind from 1 to 4. */
-		constexpr std::array<EBattleSetupTransition, 4> SetupTransitions{EBattleSetupTransition::Triangles, EBattleSetupTransition::Wave,
-			EBattleSetupTransition::WaveSine, EBattleSetupTransition::TrianglesStill};
+		constexpr std::array<EBattleScreenMesh, 4> SetupTransitions{EBattleScreenMesh::Triangles, EBattleScreenMesh::Wave,
+			EBattleScreenMesh::WaveSine, EBattleScreenMesh::TrianglesStill};
 	}
 
 	TResult<std::unique_ptr<FBattleRuntime>> FBattleRuntime::Begin(const FBattleRequest& Request, const FBattleRuntimeServices& Services)
@@ -72,7 +72,7 @@ namespace Weltall
 		if (HasSetupTransition(Runtime->Kind))
 		{
 			Runtime->SetupLoop.FramesLeft = SetupTransitionFrames;
-			Runtime->SetupMesh = std::make_unique<FBattleSetupMesh>();
+			Runtime->SetupMesh = std::make_unique<FBattleScreenMesh>();
 			Runtime->SetupMesh->Create(SetupTransitions[static_cast<std::size_t>(Runtime->Kind - 1)]);
 		}
 		else
@@ -106,6 +106,8 @@ namespace Weltall
 		Context.bPlayersOrder = Request.bPlayersOrder;
 		Context.EventOptions = Request.EventOptions;
 		Context.RuleOptions = Request.RuleOptions;
+		Context.bPerfectWorksRebalance = Request.bPerfectWorksRebalance;
+		Context.Balance = Request.Balance;
 	}
 
 	FBattleRuntime::~FBattleRuntime() = default;
@@ -115,7 +117,7 @@ namespace Weltall
 		return Pc == EPc::Transition ? Transition.get() : nullptr;
 	}
 
-	const FBattleSetupMesh* FBattleRuntime::SetupTransition() const
+	const FBattleScreenMesh* FBattleRuntime::SetupTransition() const
 	{
 		return Pc == EPc::Transition ? SetupMesh.get() : nullptr;
 	}
@@ -289,7 +291,7 @@ namespace Weltall
 							Messages = StoryEventMessages;
 						}
 					}
-					BeginBattleEvent(Context, Services.Events->Script(Script), Messages);
+					BeginBattleEvent(Context, Services.Events->Script(Script), Messages, Services.Events->Layout(), Services.Events->Replaced(Script));
 				}
 				Pc = EPc::EventLoad;
 				break;

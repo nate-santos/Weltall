@@ -28,6 +28,9 @@ namespace Weltall
 		constexpr int32 OddClutX = 16;
 		/** The reserve's pointer places follow the party's three. */
 		constexpr int32 ReservePointers = 3;
+		/** The panels' label that begins the EP's: the sheet's M (of "MP") in the original, its E with the fix. */
+		constexpr std::size_t EpInitial = 6;
+		constexpr int32 LetterE = 0x0E;
 	}
 
 	TMenuTask<> FMenuMember::BuildPanels(int32 Top)
@@ -76,9 +79,10 @@ namespace Weltall
 		Panel.Labels.clear();
 		for (std::size_t Label = 0; Label < FMenuPanelPlaces::Labels; ++Label)
 		{
-			if (Tables.PanelLabels[Label] != NoLabel)
+			const int32 Frame = Label == EpInitial && Services.Options.bMemberChangeSaysEp ? LetterE : Tables.PanelLabels[Label];
+			if (Frame != NoLabel)
 			{
-				Sheet.Draw(Tables.PanelLabels[Label], Places.X[Label], Places.Y[Label] + Down, FullScale, Panel.Labels);
+				Sheet.Draw(Frame, Places.X[Label], Places.Y[Label] + Down, FullScale, Panel.Labels);
 			}
 		}
 		Panel.Portrait.clear();

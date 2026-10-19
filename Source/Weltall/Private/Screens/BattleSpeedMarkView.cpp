@@ -24,6 +24,11 @@ public:
 		AddDrawListPasses(GraphBuilder, *Vram, Frame, Output, FIntRect(Origin, Origin + FIntPoint(Place.Width, Place.Height)), Weltall::BattleSpeedMarkScreen);
 	}
 
+	virtual Weltall::FScreenSize ScreenSize() const override
+	{
+		return Background.IsValid() ? Background->ScreenSize() : IScreenFrame::ScreenSize();
+	}
+
 	TSharedPtr<const IScreenFrame> Background;
 	Weltall::FDrawList Mark;
 

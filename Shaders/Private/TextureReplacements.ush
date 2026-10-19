@@ -2,9 +2,9 @@
 
 // Replacement pictures for the texture regions a frame draws (FTextureReplacementGpu): a view's lookup gives its map, the
 // map the region a texel belongs to, and the region's two entries its picture's first tile in the atlas and its size,
-// its rectangle of the view's texels, the colours its CLUT held when the picture was matched to it, and where the
-// original picture lies in the view's texels and its size: for part of a picture larger than the view's page, beyond
-// the region.
+// its rectangle of the view's texels, the colours its CLUT held when the picture was matched to it, where the original
+// picture lies in the view's texels and its size (for part of a picture larger than the view's page, beyond the region),
+// and whether the picture's alpha is its pixels' kinds.
 Texture2D<uint4> ReplacementViews;
 Texture2D<uint> ReplacementRegionMaps;
 Texture2D<uint4> ReplacementRegions;
@@ -54,7 +54,7 @@ uint ReplacementMapOf(uint Texture)
 }
 
 // A region's picture: its size in pixels, the original picture's first texel in the view and its size in texels, its
-// pixels to a texel each way, and the region's first and last texels.
+// pixels to a texel each way, the region's first and last texels, and whether its alpha is its pixels' kinds.
 struct FReplacementPicture
 {
 	int2 Size;
@@ -63,6 +63,7 @@ struct FReplacementPicture
 	float2 Scale;
 	int2 First;
 	int2 Last;
+	bool bKindsFromAlpha;
 };
 
 uint4 ReplacementRegionEntry(uint Index)
@@ -79,13 +80,15 @@ FReplacementPicture ReplacementPictureOf(uint4 Entry, uint4 Extent)
 	Picture.Scale = float2(Picture.Size) / float2(Picture.Texels);
 	Picture.First = int2(Entry.z & 0xFF, (Entry.z >> 8) & 0xFF);
 	Picture.Last = Picture.First + int2((Entry.z >> 16) & 0xFF, Entry.z >> 24);
+	Picture.bKindsFromAlpha = (Extent.z & 1) != 0;
 	return Picture;
 }
 
 // A pixel of a region's picture, Local counted from its first: its colour following the original's CLUT, and the kind of
 // texel it draws as, the kind of the original texel its centre lies over (the region's nearest, for a pixel of a larger
 // picture beyond it). The original's blend class stays; the picture's alpha below one half leaves a hole, and above it
-// draws where the original texel was transparent too.
+// draws where the original texel was transparent too. A picture whose alpha is its kinds (Beetle PSX HW's) gives its
+// own: none a hole, full opaque, anything between semi-transparent.
 FPsxTexel ReplacementTexel(Texture2D<uint> Vram, uint Texture, uint4 Entry, FReplacementPicture Picture, int2 Local)
 {
 	const uint Across = (uint(Picture.Size.x) + REPLACEMENT_TILE - 1) / REPLACEMENT_TILE;
@@ -96,12 +99,21 @@ FPsxTexel ReplacementTexel(Texture2D<uint> Vram, uint Texture, uint4 Entry, FRep
 	uint Index;
 	const uint Color = PsxFetchColor(Vram, Texture, Under, Index);
 	FPsxTexel Texel = PsxTexelOf(Color);
-	if (Pixel.a < 0.5)
+	if (Picture.bKindsFromAlpha)
 	{
-		Texel.Kind = TEXEL_TRANSPARENT;
-		return Texel;
+		const float Alpha = Pixel.a * 255.0;
+		Texel.Kind = Alpha < 0.5 ? TEXEL_TRANSPARENT : (Alpha > 254.5 ? TEXEL_PLAIN : TEXEL_SEMI_TRANSPARENT);
+		if (Texel.Kind == TEXEL_TRANSPARENT) return Texel;
 	}
-	if (Texel.Kind == TEXEL_TRANSPARENT) Texel.Kind = TEXEL_PLAIN;
+	else
+	{
+		if (Pixel.a < 0.5)
+		{
+			Texel.Kind = TEXEL_TRANSPARENT;
+			return Texel;
+		}
+		if (Texel.Kind == TEXEL_TRANSPARENT) Texel.Kind = TEXEL_PLAIN;
+	}
 	Texel.Rgb = Pixel.rgb;
 	if (Entry.w != REPLACEMENT_NONE && Color != 0)
 	{

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Text/MesCharacters.h"
 #include "Text/MessageTable.h"
 
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace Weltall
@@ -31,6 +33,18 @@ namespace Weltall
 	/** The codes of Text, ended by 00; none where a character has no glyph or a mark is none of the marks. */
 	WELTALLCORE_API std::optional<std::vector<uint8>> MesCodesOfText(std::string_view Text);
 
+	/** As MesTextOfCodes, a glyph written as the character Characters gives it, and in braces only without one. */
+	WELTALLCORE_API std::string MesTextOfCodes(std::span<const uint8> Codes, const FMesCharacters& Characters);
+
+	/** As MesCodesOfText, its characters those of Characters. */
+	WELTALLCORE_API std::optional<std::vector<uint8>> MesCodesOfText(std::string_view Text, const FMesCharacters& Characters);
+
+	/** How many of Codes the message at their start takes as MesTextOfCodes reads it, its 00 included; all of them without one. */
+	WELTALLCORE_API std::size_t MesMessageSize(std::span<const uint8> Codes);
+
+	/** The glyphs the message types itself, in order: what its marks put in is not among them. */
+	WELTALLCORE_API std::vector<FMesCode> MesGlyphsOfCodes(std::span<const uint8> Codes);
+
 	/** A window's size for a message, as its table gives it. */
 	struct FMesExtent
 	{
@@ -44,6 +58,12 @@ namespace Weltall
 	 * three) and its tallest page. What a mark puts in at play (a name, a number) is not counted.
 	 */
 	WELTALLCORE_API FMesExtent MesExtentOfCodes(std::span<const uint8> Codes);
+
+	/** Glyphs a font sheet gives widths of their own, in units of 4 pixels, by their code's lead << 8 | code. */
+	using FMesGlyphWidths = std::unordered_map<uint16, int32>;
+
+	/** As MesExtentOfCodes, the glyphs of Widths as wide as it says. */
+	WELTALLCORE_API FMesExtent MesExtentOfCodes(std::span<const uint8> Codes, const FMesGlyphWidths& Widths);
 
 	/**
 	 * A message's pages From to To, counted from 1, as a message of their own: their codes, ended by 00, the page marks

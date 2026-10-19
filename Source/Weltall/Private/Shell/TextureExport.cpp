@@ -20,7 +20,7 @@ const TCHAR* FTextureExport::IndexName = TEXT("index.tsv");
 FTextureExport::FTextureExport(const Weltall::FIso9660& InDisc, const Weltall::FGameFileIndex& InIndex, const FString& TexturesFolder)
 	: Disc(InDisc), Index(InIndex), Originals(TexturesFolder / FTextureModLibrary::OriginalsFolder)
 {
-	Disc.Image().SetAssetStore(nullptr);
+	Disc.Image().UseDiscAlone();
 	Catalogue = std::make_unique<Weltall::FDiscTextureCatalogue>(Disc.Image(), Index);
 	Wrappers = &FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
 }

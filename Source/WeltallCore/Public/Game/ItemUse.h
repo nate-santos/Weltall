@@ -32,7 +32,8 @@ namespace Weltall
 	 * (power x 10) restored up to their maxima, the stat items' steps (capped: 200, max HP 999, max EP
 	 * 99), weight gained or lost, and the two debugging items the data holds (every item ten times,
 	 * every skill learned). True when it had an effect: a restoring item on a character already full
-	 * has none (both full, for an item restoring both).
+	 * has none (both full, for an item restoring both). With bPerfectWorksRules, Perfect Works Build's
+	 * rebalance's stat steps: each sum capped whole, and its agility and learning-rate steps.
 	 */
-	WELTALLCORE_API bool ApplyItemInMenu(FGameState& State, int32 Character, std::span<const uint8> Item);
+	WELTALLCORE_API bool ApplyItemInMenu(FGameState& State, int32 Character, std::span<const uint8> Item, bool bPerfectWorksRules = false);
 }

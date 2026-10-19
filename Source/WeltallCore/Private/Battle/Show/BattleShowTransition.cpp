@@ -189,14 +189,14 @@ namespace Weltall
 		constexpr int32 TriangleCell = 32;
 		constexpr int32 WaveCell = 16;
 		/** The triangles: each side's place in the first cell, and the corners about a triangle's place (the shatter's). */
-		constexpr std::array<std::array<int32, 2>, FBattleSetupMesh::Sides> TrianglePlace{{{-0x960, -0x660}, {-0x8A0, -0x5A0}}};
+		constexpr std::array<std::array<int32, 2>, FBattleScreenMesh::Sides> TrianglePlace{{{-0x960, -0x660}, {-0x8A0, -0x5A0}}};
 		constexpr int32 TriangleDim = 3;
 		constexpr int32 TriangleApproach = 0x40;
 		constexpr int32 TriangleNearest = 0x3F;
 		constexpr uint8 NeutralColor = 0x80;
 		/** The wave: each side's place in the first cell, and its corners about it. */
-		constexpr std::array<std::array<int32, 2>, FBattleSetupMesh::Sides> WavePlace{{{-0x9B0, -0x6B0}, {-0x950, -0x650}}};
-		constexpr std::array<std::array<std::array<int16, 2>, 3>, FBattleSetupMesh::Sides> WaveCorners{{
+		constexpr std::array<std::array<int32, 2>, FBattleScreenMesh::Sides> WavePlace{{{-0x9B0, -0x6B0}, {-0x950, -0x650}}};
+		constexpr std::array<std::array<std::array<int16, 2>, 3>, FBattleScreenMesh::Sides> WaveCorners{{
 			{{{-0x50, -0x50}, {0xB0, -0x50}, {-0x50, 0xB0}}},
 			{{{0x50, -0xB0}, {0x50, 0x50}, {-0xB0, 0x50}}},
 		}};
@@ -218,7 +218,7 @@ namespace Weltall
 		}
 	}
 
-	void FBattleSetupMesh::Create(EBattleSetupTransition InKind)
+	void FBattleScreenMesh::Create(EBattleScreenMesh InKind)
 	{
 		Transition = InKind;
 		Count = 0;
@@ -226,22 +226,22 @@ namespace Weltall
 		Colors = {NeutralColor, NeutralColor};
 		Light = NeutralColor;
 		Approach = 0x40;
-		WaveHeight = InKind == EBattleSetupTransition::WaveSine ? 0x400 : 0;
-		WavePhase = InKind == EBattleSetupTransition::WaveSine ? 0x700 : 0;
+		WaveHeight = InKind == EBattleScreenMesh::WaveSine ? 0x400 : 0;
+		WavePhase = InKind == EBattleScreenMesh::WaveSine ? 0x700 : 0;
 	}
 
-	void FBattleSetupMesh::Step(int32 Buffer)
+	void FBattleScreenMesh::Step(int32 Buffer)
 	{
 		++Count;
 		switch (Transition)
 		{
-		case EBattleSetupTransition::Triangles:
+		case EBattleScreenMesh::Triangles:
 			Distance -= TriangleApproach;
 			[[fallthrough]];
-		case EBattleSetupTransition::TrianglesStill:
+		case EBattleScreenMesh::TrianglesStill:
 			Colors[static_cast<std::size_t>(Buffer)] = Darken(Colors[static_cast<std::size_t>(Buffer)], TriangleDim);
 			break;
-		case EBattleSetupTransition::Wave:
+		case EBattleScreenMesh::Wave:
 			Approach += 10;
 			WaveHeight += 0x600;
 			Distance -= Approach;
@@ -250,7 +250,7 @@ namespace Weltall
 				Light -= 0x14;
 			}
 			break;
-		case EBattleSetupTransition::WaveSine:
+		case EBattleScreenMesh::WaveSine:
 			Approach += 1;
 			WavePhase += 0xA0;
 			Distance -= 0x3C;
@@ -263,10 +263,21 @@ namespace Weltall
 				Light -= 0x18;
 			}
 			break;
+		case EBattleScreenMesh::ScreenWave:
+			// The phase runs faster as the count it takes a quarter of grows.
+			Approach += 1;
+			WavePhase += 0x80 + (Approach >> 2);
+			WaveHeight += 0x40;
+			Distance -= 0x1E;
+			if (Count >= 0x65)
+			{
+				Light -= 4;
+			}
+			break;
 		}
 	}
 
-	void FBattleSetupMesh::Draw(int32 Buffer, int32 FirstColumn, int32 EndColumn, std::vector<FBattleMeshTriangle>& Triangles) const
+	void FBattleScreenMesh::Draw(int32 Buffer, int32 FirstColumn, int32 EndColumn, std::vector<FBattleMeshTriangle>& Triangles) const
 	{
 		Triangles.clear();
 		const bool bWave = IsWave();
@@ -301,7 +312,7 @@ namespace Weltall
 						const int16 CornerY = static_cast<int16>(About[1] + Y);
 						// How far the corner lies from the middle sets where on the wave it rides.
 						const int32 FromMiddle = SquareRoot0(GteSquare(CornerX) + GteSquare(CornerY));
-						int32 Height = Transition == EBattleSetupTransition::Wave ? GteCos(FromMiddle * 3 / 5) * WaveHeight
+						int32 Height = Transition == EBattleScreenMesh::Wave ? GteCos(FromMiddle * 3 / 5) * WaveHeight
 							: GteSin(WavePhase + (FromMiddle << 1)) * WaveHeight;
 						if (Height < 0)
 						{
@@ -315,7 +326,7 @@ namespace Weltall
 		}
 	}
 
-	FBattleMeshLink FBattleSetupMesh::Link(const FBattleMeshTriangle& Triangle) const
+	FBattleMeshLink FBattleScreenMesh::Link(const FBattleMeshTriangle& Triangle) const
 	{
 		FGte Gte;
 		Gte.Transform = Triangle.Matrix;

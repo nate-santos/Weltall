@@ -95,9 +95,10 @@ namespace Weltall
 		}
 		for (const FGearVramMove& Move : Models.VramMoves())
 		{
-			ReadVram({Move.X, Move.Y, Move.Width, Move.Height}, Scratch);
+			const FVramRect From{Move.X, Move.Y, Move.Width, Move.Height};
+			ReadVram(From, Scratch);
 			Scratch.Rect = {Move.ToX, Move.ToY, Move.Width, Move.Height};
-			FieldVram.Upload(Scratch);
+			FieldVram.UploadCopy(Scratch, From);
 		}
 	}
 }

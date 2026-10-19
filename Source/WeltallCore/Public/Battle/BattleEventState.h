@@ -12,6 +12,8 @@
 
 namespace Weltall
 {
+	struct FReplacedMessages;
+
 	/**
 	 * What an event's instruction hands the show, beside the calls the rest of the battle makes (a
 	 * member's boarding, the markers): the instruction's operands as the machine resolved them, the
@@ -115,7 +117,22 @@ namespace Weltall
 		bool bObjectLoaded = false;
 	};
 
-	/** The next message's window: its place (7FFFh centred or the style's band), its width in 12-pixel units, its lines and its style. */
+	/** How a battle event's scripts measure their message windows: as the game's code does, or as Perfect Works Build's does. */
+	enum class EBattleMessageLayout : uint8
+	{
+		Original,
+		/**
+		 * The mod's change to the battle events' code, which its scripts (with its translation) are written for: a
+		 * window's width in the font's 4-pixel columns rather than 12-pixel letters, as many lines as the script asks
+		 * (the game's window stops at 4) but 4 beside a portrait, and the "more" arrow 2 pixels left and 1 higher.
+		 */
+		PerfectWorks,
+	};
+
+	/**
+	 * The next message's window: its place (7FFFh centred or the style's band), its width in 12-pixel units (Perfect
+	 * Works' in 4-pixel ones), its lines and its style.
+	 */
 	struct FBattleEventWindow
 	{
 		static constexpr uint16 Automatic = 0x7FFF;
@@ -208,9 +225,11 @@ namespace Weltall
 		static constexpr int32 RecordCount = 16;
 		static constexpr int32 OperandCount = 8;
 
-		/** The unpacked script and its messages, which must outlive the battle. */
+		/** The unpacked script and its messages, which must outlive the battle, and which of the messages are the player's. */
 		std::span<const uint8> Script;
 		FMessageTable Messages;
+		const FReplacedMessages* Replaced = nullptr;
+		EBattleMessageLayout Layout = EBattleMessageLayout::Original;
 		/** The script's actors, and where its code starts in it. */
 		uint32 ActorCount = 0;
 		std::size_t CodeOffset = 0;

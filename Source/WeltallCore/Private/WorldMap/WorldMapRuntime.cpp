@@ -357,6 +357,7 @@ namespace Weltall
 		Context.Text = &Services.Text;
 		Context.Sound = Services.Sound;
 		Context.Options = Services.Options;
+		Context.Encounters.Rate = Services.EncounterRate;
 		Context.Sprites.Random = Services.Random;
 		Context.Sprites.Arctangents = Services.Arctangents;
 		if (Cutscene == nullptr)
@@ -450,12 +451,11 @@ namespace Weltall
 			{
 				return MakeError("the disc lacks the world map's sprite file " + std::to_string(File));
 			}
-			TResult<std::vector<uint8>> Bytes = ReadFileSectors(*Services.Image, *Record);
+			TResult<std::vector<uint8>> Bytes = ReadFileBytes(*Services.Image, *Record);
 			if (!Bytes)
 			{
 				return Bytes.Error();
 			}
-			Bytes->resize(Record->Size);
 			return FSpriteFile::Parse(*Bytes);
 		};
 		// The world map's logic reads none of its sprites: whose files they show is the drawing's alone.

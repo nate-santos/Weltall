@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Media/DiscIdentification.h"
+#include "Media/DiscModFiles.h"
 #include "Media/Iso9660.h"
+
+#include <memory>
 
 namespace Weltall::Testing
 {
@@ -10,6 +13,17 @@ namespace Weltall::Testing
 	 * The folder is scanned once per test process.
 	 */
 	const FIso9660* FindDisc(EDiscRelease Release);
+
+	/** A mod's files given to a disc's image while it lives, the image's own again after (other tests share the disc). */
+	struct FModFilesGiven
+	{
+		FModFilesGiven(const FIso9660& InDisc, std::shared_ptr<const FDiscModFiles> Files) : Disc(InDisc) { Disc.Image().SetModFiles(std::move(Files)); }
+		~FModFilesGiven() { Disc.Image().SetModFiles(nullptr); }
+		FModFilesGiven(const FModFilesGiven&) = delete;
+		FModFilesGiven& operator=(const FModFilesGiven&) = delete;
+
+		const FIso9660& Disc;
+	};
 }
 
 /** Skips the current test, naming the missing disc, unless the release is present. */

@@ -9,6 +9,7 @@
 #include <catch_amalgamated.hpp>
 
 #include <memory>
+#include <utility>
 
 using namespace Weltall;
 
@@ -244,6 +245,32 @@ TEST_CASE("Def UP raises defense on foot, or in the original does nothing", "[Ba
 	const uint32 Plain = Damage(FBattleRuleOptions(), 0);
 	CHECK(Damage(FBattleRuleOptions(), 0x4000) < Plain);
 	CHECK(Damage(FBattleRuleOptions::Original(), 0x4000) == Plain);
+}
+
+TEST_CASE("Billy's ether guns fire the element of the ammunition loaded, or in the original their slot's old one", "[Battle]")
+{
+	// His right ether gun holds EthFire while its slot keeps the new game's wind: his action 4 fires it.
+	constexpr uint8 EthFire = 69;
+	constexpr uint8 Fire = 2;
+	constexpr uint8 Wind = 8;
+	const auto Fired = [](const FBattleRuleOptions& Options, uint8 Loaded)
+	{
+		FDuel Duel;
+		FBattleContext& Context = *Duel.Context;
+		Context.RuleOptions = Options;
+		Context.AmmunitionAttacks[EthFire - FBattleTables::FirstAmmunition] = Fire;
+		FBattleCombatant& Billy = Context.Combatants[0];
+		Billy.Character = 4;
+		Billy.Weapons[1].Attack = Wind;
+		Billy.EtherAmmunition[0] = Loaded;
+		PerformBattleCommand(Context, 0, 4, 1u << 3, 0);
+		REQUIRE(Context.Fault == EBattleFault::None);
+		return std::pair<uint8, uint8>{Context.Commands[FBattleContext::PartyCommandIndex(0, 4)].Element, Billy.Weapons[1].Attack};
+	};
+	CHECK(Fired(FBattleRuleOptions(), EthFire) == std::pair<uint8, uint8>{Fire, Fire});
+	CHECK(Fired(FBattleRuleOptions::Original(), EthFire) == std::pair<uint8, uint8>{Wind, Wind});
+	// With no ammunition named there, the slot's element stays.
+	CHECK(Fired(FBattleRuleOptions(), 0) == std::pair<uint8, uint8>{Wind, Wind});
 }
 
 TEST_CASE("Def DOWN lowers defense on foot by a third and says so, or in the original does nothing", "[Battle]")

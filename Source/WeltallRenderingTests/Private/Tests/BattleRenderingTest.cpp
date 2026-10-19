@@ -307,6 +307,35 @@ bool FBattleLayersRenderingTest::RunTest(const FString&)
 	return bPassed;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleFlashesRenderingTest, "Weltall.Rendering.BattleFlashesDrawAnEffectsFlashesAsChosen",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FBattleFlashesRenderingTest::RunTest(const FString&)
+{
+	// Fei's flash: an effect's fade adding (255, 204, 136); the battle's own subtracting fade stays as it is.
+	Weltall::FBattleShowFrame Frame;
+	Frame.Order.push_back({Weltall::EBattleShowLink::Fade, 0, 2});
+	const auto Drawn = [&Frame](uint8 Mode, bool bFromEffect, Weltall::EBattleFlashes Flashes)
+	{
+		Frame.Fade = {Mode, {255, 204, 136}, bFromEffect};
+		FFieldRenderOptions Options;
+		Options.BattleFlashes = Flashes;
+		FBattleFrameDraw Draw;
+		BuildBattleFrameDraw(Frame, nullptr, Options, Draw);
+		return Draw.Fade.Primitives.size() == 1 ? Draw.Fade.Primitives[0].Corners[0].Color : Weltall::FDrawColor{};
+	};
+	const auto Same = [this](const TCHAR* What, const Weltall::FDrawColor& Color, uint8 R, uint8 G, uint8 B)
+	{
+		TestEqual(What, FIntVector(Color.R, Color.G, Color.B), FIntVector(R, G, B));
+	};
+	Same(TEXT("an effect's flash, original"), Drawn(1, true, Weltall::EBattleFlashes::Original), 255, 204, 136);
+	Same(TEXT("an effect's flash, softer"), Drawn(1, true, Weltall::EBattleFlashes::Softer), 64, 51, 34);
+	Same(TEXT("an effect's flash, off"), Drawn(1, true, Weltall::EBattleFlashes::Off), 0, 0, 0);
+	Same(TEXT("an effect's darkening, off"), Drawn(2, true, Weltall::EBattleFlashes::Off), 255, 204, 136);
+	Same(TEXT("the battle's own fade, off"), Drawn(1, false, Weltall::EBattleFlashes::Off), 255, 204, 136);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBattleShatterRenderingTest, "Weltall.Rendering.BattleShatterBreaksThePictureOfTheScreen",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
@@ -377,12 +406,12 @@ bool FBattleSetupTransitionRenderingTest::RunTest(const FString&)
 	// averages it with the black.
 	struct FCase
 	{
-		Weltall::EBattleSetupTransition Kind;
+		Weltall::EBattleScreenMesh Kind;
 		int32 Divisor;
 	};
-	for (const FCase& Case : {FCase{Weltall::EBattleSetupTransition::TrianglesStill, 1}, FCase{Weltall::EBattleSetupTransition::Wave, 2}})
+	for (const FCase& Case : {FCase{Weltall::EBattleScreenMesh::TrianglesStill, 1}, FCase{Weltall::EBattleScreenMesh::Wave, 2}})
 	{
-		Weltall::FBattleSetupMesh Mesh;
+		Weltall::FBattleScreenMesh Mesh;
 		Mesh.Create(Case.Kind);
 		FBattleTransitionDrawBuilder Builder;
 		FBattleTransitionDraw Draw;
@@ -413,8 +442,8 @@ bool FBattleSetupTransitionRenderingTest::RunTest(const FString&)
 	}
 
 	// The triangles that come nearer: a step on, the picture is larger about the screen's middle and dimmer in the buffer drawn.
-	Weltall::FBattleSetupMesh Mesh;
-	Mesh.Create(Weltall::EBattleSetupTransition::Triangles);
+	Weltall::FBattleScreenMesh Mesh;
+	Mesh.Create(Weltall::EBattleScreenMesh::Triangles);
 	FBattleTransitionDrawBuilder Builder;
 	FBattleTransitionDraw Draw;
 	Builder.Build(Mesh, 0, 0, 1.0f, Draw);

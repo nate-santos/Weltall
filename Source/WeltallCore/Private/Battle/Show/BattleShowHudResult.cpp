@@ -20,7 +20,6 @@ namespace Weltall
 	{
 		constexpr uint8 NoMember = 0x7F;
 		/** The result sheet's frames: the party's portraits a slot each, the changes' signs, the marks of the level's and the ether level's rows. */
-		constexpr int32 PortraitFrames = 0xFC;
 		constexpr int32 PlusFrame = 0xE3;
 		constexpr int32 MinusFrame = 0xE5;
 		constexpr int32 LevelMark = 0xE8;
@@ -104,7 +103,7 @@ namespace Weltall
 			Upload(Image);
 		}
 		Sheet = &Resources.ResultSheet;
-		LoadPortraits(Resources.ResultPortraits, PortraitFrames);
+		LoadPortraits(Resources.ResultPortraits, FBattleHudResources::ResultPortraitFrame);
 		RenderLabels();
 	}
 
@@ -183,7 +182,7 @@ namespace Weltall
 			Portrait.Count = 0;
 			if (Battle->Slots[static_cast<std::size_t>(Slot)].Occupant != NoMember)
 			{
-				Portrait.Count += DrawSheet(PortraitFrames + Slot, Portrait.Parts, Portrait.Count, 0x20, 0x24 + PanelStep * Slot, FullScale);
+				Portrait.Count += DrawSheet(FBattleHudResources::ResultPortraitFrame + Slot, Portrait.Parts, Portrait.Count, 0x20, 0x24 + PanelStep * Slot, FullScale);
 			}
 			Portrait.Buffer = Buffer;
 		}
@@ -383,7 +382,7 @@ namespace Weltall
 			return;
 		}
 		FBattleHudResult& Work = *Result;
-		Work.Portrait.Count = DrawSheet(PortraitFrames + Slot, Work.Portrait.Parts, 0, 0x3E, 0xA4, FullScale);
+		Work.Portrait.Count = DrawSheet(FBattleHudResources::ResultPortraitFrame + Slot, Work.Portrait.Parts, 0, 0x3E, 0xA4, FullScale);
 		Work.Portrait.Buffer = Buffer;
 		Work.Labels.Count = 0;
 		for (const FBattleHudLevelLabel& Label : Resources.Tables.ResultLevelLabels)
@@ -498,7 +497,7 @@ namespace Weltall
 			return;
 		}
 		FBattleHudResult& Work = *Result;
-		Work.Portrait.Count = DrawSheet(PortraitFrames + Slot, Work.Portrait.Parts, 0, 0x40, 0xA4, FullScale);
+		Work.Portrait.Count = DrawSheet(FBattleHudResources::ResultPortraitFrame + Slot, Work.Portrait.Parts, 0, 0x40, 0xA4, FullScale);
 		Work.Portrait.Buffer = Buffer;
 		Work.LearnedImage = BlankImage(NarrowUnits);
 		InitTextQuads(Work.LearnedLabel, 1, 2);

@@ -103,19 +103,35 @@ namespace
 		return Entry.Image || Entry.Resident.IsValid();
 	}
 
+	/** What the cache knows of Key's picture, into Lookup: false when it has to be read. */
+	bool LookUp(uint64 Key, int64 MaxPixels, FTextureModLookup& Lookup)
+	{
+		FLoadedPicture* Entry = Loaded.Find(Key);
+		if (Entry == nullptr) return false;
+		Entry->LastUse = ++Uses;
+		Lookup.bPending = Entry->bPending;
+		if (Entry->bPending || Entry->bFailed) return true;
+		if (auto Resident = Entry->Image ? Entry->Image : Entry->Resident.Pin())
+		{
+			Lookup.Image = MoveTemp(Resident);
+			return true;
+		}
+		Lookup.bOverBudget = Entry->Width != 0 && static_cast<int64>(Entry->Width) * Entry->Height > MaxPixels;
+		return Lookup.bOverBudget;
+	}
+
 	void ForgetUnused()
 	{
 		if (Loaded.Num() < KeptEntries) return;
 		for (auto It = Loaded.CreateIterator(); It; ++It) if (!HoldsImage(It.Value()) && !It.Value().bPending) It.RemoveCurrent();
 	}
 
-	/** Reads Key's picture on a worker thread, or waits for the reading of its sheet already under way. */
-	void StartDecode(uint64 Key, int32 Width, int32 Height, int64 MaxPixels)
+	/** Reads Key's picture on a worker thread with Reader, or waits for the reading of its sheet already under way. */
+	void StartDecode(uint64 Key, int32 Sheet, TFunction<FTextureModFiles::FDecoded()> Reader)
 	{
 		FLoadedPicture& Entry = Loaded.FindOrAdd(Key);
 		Entry.bPending = true;
 		Entry.LastUse = ++Uses;
-		const int32 Sheet = Files.SheetOf(Key);
 		if (Sheet != INDEX_NONE)
 		{
 			for (const TSharedRef<FDecodeJob>& Job : DecodeJobs)
@@ -130,7 +146,7 @@ namespace
 		const TSharedRef<FDecodeJob> Job = MakeShared<FDecodeJob>();
 		Job->Sheet = Sheet;
 		Job->Waiting.Add(Key);
-		Job->Result = Async(EAsyncExecution::ThreadPool, Files.Reader(Key, Width, Height, MaxPixels));
+		Job->Result = Async(EAsyncExecution::ThreadPool, MoveTemp(Reader));
 		DecodeJobs.Add(Job);
 		++ReadingsStarted;
 	}
@@ -189,27 +205,34 @@ bool FTextureModLibrary::IsCapturing() { return bCaptures; }
 FTextureModLookup FTextureModLibrary::Find(uint64 Key, int32 Width, int32 Height, int64 MaxPixels)
 {
 	FTextureModLookup Lookup;
-	if (!bReplacements || !Files.Contains(Key)) return Lookup;
-	if (FLoadedPicture* Entry = Loaded.Find(Key))
-	{
-		Entry->LastUse = ++Uses;
-		Lookup.bPending = Entry->bPending;
-		if (Entry->bPending || Entry->bFailed) return Lookup;
-		if (auto Resident = Entry->Image ? Entry->Image : Entry->Resident.Pin())
-		{
-			Lookup.Image = MoveTemp(Resident);
-			return Lookup;
-		}
-		if (Entry->Width != 0 && static_cast<int64>(Entry->Width) * Entry->Height > MaxPixels)
-		{
-			Lookup.bOverBudget = true;
-			return Lookup;
-		}
-	}
+	if (!bReplacements || !Files.Contains(Key) || LookUp(Key, MaxPixels, Lookup)) return Lookup;
 	ForgetUnused();
-	StartDecode(Key, Width, Height, MaxPixels);
+	StartDecode(Key, Files.SheetOf(Key), Files.Reader(Key, Width, Height, MaxPixels));
 	Lookup.bPending = true;
 	return Lookup;
+}
+
+FTextureModLookup FTextureModLibrary::FindPacked(const Weltall::FVram& Vram, const Weltall::FTextureRegion& Region, uint64 RegionKey, int64 MaxPixels)
+{
+	FTextureModLookup Lookup;
+	if (!bReplacements || Files.Packs().Num() == 0) return Lookup;
+	TOptional<FBeetleTexturePacks::FCover> Cover = Files.Packs().Cover(Vram, Region, RegionKey);
+	if (!Cover) return Lookup;
+	const uint64 Key = Cover->Key;
+	if (LookUp(Key, MaxPixels, Lookup)) return Lookup;
+	ForgetUnused();
+	StartDecode(Key, INDEX_NONE, [Key, Make = Files.Packs().Maker(*Wrappers, CanonicalFolder, Vram, Region, MoveTemp(*Cover), MaxPixels)]()
+	{
+		const TSharedPtr<FTextureModImage> Made = Make();
+		return FTextureModFiles::FDecoded{Key, {Made, Made ? Made->Width : 0, Made ? Made->Height : 0, !Made}, {}};
+	});
+	Lookup.bPending = true;
+	return Lookup;
+}
+
+void FTextureModLibrary::AddPackedPartRegions(const Weltall::FVram& Vram, const Weltall::FTextureRegion& Region, TArray<Weltall::FTextureRegion>& Regions)
+{
+	if (bReplacements && Files.Packs().Num() != 0) Files.Packs().AddPartRegions(Vram, Region, Regions);
 }
 
 uint64 FTextureModLibrary::DecodesStarted() { return ReadingsStarted; }

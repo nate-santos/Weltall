@@ -19,6 +19,17 @@ namespace Weltall::BattlingFightOps
 		return Fight.Settings.Mode == EBattlingMode::Practice || Fight.Settings.Mode == EBattlingMode::Demonstration;
 	}
 
+	/** The fight plays by Perfect Works Build's arena's rules, Basic's or Expert's. */
+	inline bool ArenaRules(const FBattlingFight& Fight)
+	{
+		return Fight.Settings.Rules != EBattlingRules::Original;
+	}
+
+	inline bool ExpertRules(const FBattlingFight& Fight)
+	{
+		return Fight.Settings.Rules == EBattlingRules::PerfectWorksExpert;
+	}
+
 	// The command queue.
 	void QueuePush(FBattlingFighter& Fighter, uint8 Command);
 	uint8 QueuePop(FBattlingFighter& Fighter);

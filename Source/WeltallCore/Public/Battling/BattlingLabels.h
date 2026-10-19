@@ -20,7 +20,6 @@ namespace Weltall
 		inline constexpr std::string_view Start = "START";
 		inline constexpr std::string_view RubberBandBattle = "RUBBER BAND BATTLE";
 		inline constexpr std::string_view RubberBandMode = "RUBBER BAND MODE";
-		inline constexpr std::string_view KnockOut = "KNOCK OUT!!";
 		inline constexpr std::string_view DrawGame = "DRAW GAME";
 		inline constexpr std::string_view Replay = "REPLAY";
 		inline constexpr std::string_view YouWereVictorious = "YOU WERE VICTORIOUS";

@@ -107,7 +107,12 @@ namespace Weltall
 		{
 			return MenuProgram.Error();
 		}
-		return Parse(*GameData, *MenuProgram);
+		TResult<FGearPartTables> Tables = Parse(*GameData, *MenuProgram);
+		if (Tables)
+		{
+			Tables->SetPerfectWorksRules(Image.ModChanges().bPerfectWorksRebalance);
+		}
+		return Tables;
 	}
 
 	std::span<const uint8> FGearPartTables::Frame(uint8 Id) const

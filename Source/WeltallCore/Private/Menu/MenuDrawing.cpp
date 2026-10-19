@@ -63,16 +63,17 @@ namespace Weltall
 		 * Nothing for a picture drawn at its own size; a texel for one drawn mirrored, which the GPU shows from the texel its
 		 * corner names. The stepped texels of a picture drawn at another size reach past its first or last by part of a
 		 * texel, which the console's own pixels never show and a finer display would: Drawn keeps to the picture's own.
+		 * Places are the first three corners on the screen: as the primitive gives them, or as a layer projects them.
 		 */
-		void StepFromHalfTexel(const FMenuPrimitive& Primitive, FDrawPrimitive& Drawn)
+		void StepFromHalfTexel(const FMenuPrimitive& Primitive, const std::array<std::array<float, 2>, 3>& Places, FDrawPrimitive& Drawn)
 		{
 			const FMenuCorner& Origin = Primitive.Corners[0];
 			const FMenuCorner& Second = Primitive.Corners[1];
 			const FMenuCorner& Third = Primitive.Corners[2];
-			const float AcrossX = static_cast<float>(Second.X - Origin.X);
-			const float AcrossY = static_cast<float>(Second.Y - Origin.Y);
-			const float DownX = static_cast<float>(Third.X - Origin.X);
-			const float DownY = static_cast<float>(Third.Y - Origin.Y);
+			const float AcrossX = Places[1][0] - Places[0][0];
+			const float AcrossY = Places[1][1] - Places[0][1];
+			const float DownX = Places[2][0] - Places[0][0];
+			const float DownY = Places[2][1] - Places[0][1];
 			const float Area = AcrossX * DownY - DownX * AcrossY;
 			if (Area == 0.0f)
 			{
@@ -313,9 +314,17 @@ namespace Weltall
 				Vertex.X = X;
 				Vertex.Y = Y;
 			}
-			if (Drawn.Texture && Primitive.Space == EMenuSpace::Screen)
+			if (Drawn.Texture)
 			{
-				StepFromHalfTexel(Primitive, Drawn);
+				// A layer's primitive is stepped as the GPU steps the corners the GTE projected it to.
+				std::array<std::array<float, 2>, 3> Places{};
+				for (std::size_t Corner = 0; Corner < Places.size(); ++Corner)
+				{
+					const bool bOnScreen = Primitive.Space == EMenuSpace::Screen;
+					Places[Corner] = {bOnScreen ? static_cast<float>(Primitive.Corners[Corner].X) : Drawn.Corners[Corner].X,
+						bOnScreen ? static_cast<float>(Primitive.Corners[Corner].Y) : Drawn.Corners[Corner].Y};
+				}
+				StepFromHalfTexel(Primitive, Places, Drawn);
 			}
 			if (Primitive.bWholeScreen)
 			{

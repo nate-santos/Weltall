@@ -1,5 +1,7 @@
 #include "Graphics/Vram.h"
 
+#include "Foundation/Crc32.h"
+
 #include <algorithm>
 #include <atomic>
 
@@ -30,6 +32,24 @@ namespace Weltall
 	}
 
 	void FVram::Upload(const FVramImage& Image)
+	{
+		WriteUnits(Image);
+		Tracker.Upload(Image.Rect, Image.Units);
+	}
+
+	void FVram::UploadCopy(const FVramImage& Image, const FVramRect& From)
+	{
+		WriteUnits(Image);
+		Tracker.Copy(From, Image.Rect.X, Image.Rect.Y);
+	}
+
+	void FVram::UploadFill(const FVramImage& Image)
+	{
+		WriteUnits(Image);
+		Tracker.Fill(Image.Rect);
+	}
+
+	void FVram::WriteUnits(const FVramImage& Image)
 	{
 		++Uploads;
 		if (bTrackingWrites)
@@ -104,6 +124,20 @@ namespace Weltall
 					: 0;
 			}
 		}
+	}
+
+	void FVram::NoteReadback(const FVramRect& Rect)
+	{
+		std::vector<uint16> Read;
+		Read.reserve(static_cast<std::size_t>(std::max(0, Rect.Width * Rect.Height)));
+		for (int32 Row = 0; Row < Rect.Height; ++Row)
+		{
+			for (int32 Column = 0; Column < Rect.Width; ++Column)
+			{
+				Read.push_back(At(Rect.X + Column, Rect.Y + Row));
+			}
+		}
+		Tracker.Readback(Rect, Crc32OfUnits(Read));
 	}
 
 	FVramTiles FVram::TilesChangedSince(uint32 Earlier) const

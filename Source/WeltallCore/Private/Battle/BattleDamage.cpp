@@ -54,6 +54,33 @@ namespace Weltall
 		{
 			return static_cast<uint16>(Value + (Value >> 2));
 		}
+
+		/** The high word of the processor's signed product. */
+		uint32 ProductHigh(uint32 Value, uint32 Factor)
+		{
+			return static_cast<uint32>(static_cast<uint64>(static_cast<int64>(static_cast<int32>(Value)) * static_cast<int32>(Factor)) >> 32);
+		}
+
+		/**
+		 * Perfect Works' rebalance's formula 2: the command's power added to x/20, which it takes as the high word of
+		 * x × 66670000h, then an eighth of that. A physical command with its ether flag takes the actor's ether for its
+		 * weapons.
+		 */
+		uint16 PerfectWorksFormula2(const FBattleCommand& Command, const FBattleCombatant& Actor, uint32 Weapon, uint32 Base, uint32 Ether)
+		{
+			constexpr uint32 Twentieth = 0x66670000;
+			uint32 Product = 0;
+			if (IsEther(Command))
+			{
+				Product = (Ether & 0xFFFF) * Command.Power;
+			}
+			else
+			{
+				const uint32 Powered = (Command.Flags & BattleCommandFlags::PerfectWorksEtherPowered) != 0 ? Actor.Ether : Weapon & 0xFFFF;
+				Product = (Powered + (Base & 0xFFFF)) * Command.Power;
+			}
+			return static_cast<uint16>((ProductHigh(Product, Twentieth) + Command.Power) >> 3);
+		}
 	}
 
 	namespace BattleSteps
@@ -225,7 +252,11 @@ namespace Weltall
 				{
 					Weapon = static_cast<uint32>(static_cast<int32>(Weapon * 6) / 10);
 				}
-				if (!bEther)
+				if (Context.bPerfectWorksRebalance)
+				{
+					Attack = PerfectWorksFormula2(Command, Actor, Weapon, Base, Ether);
+				}
+				else if (!bEther)
 				{
 					Attack = static_cast<uint16>(static_cast<int32>((Weapon + (Base & 0xFFFF)) * Command.Power) / 20);
 					if (bUnsetWeapon)
@@ -292,10 +323,48 @@ namespace Weltall
 			}
 			else
 			{
-				Armor = TargetGear(Context).Defense;
+				const FBattleGearPart& Gear = TargetGear(Context);
+				Armor = Gear.Defense;
+				// Perfect Works' rebalance halves a gear's armor for its buff 2000h.
+				if (Context.bPerfectWorksRebalance && ((Gear.Buffs | Gear.PermanentBuffs) & 0x2000) != 0)
+				{
+					Armor -= Armor >> 1;
+				}
 			}
 			uint32 EtherDefense = Target.EtherDefense;
-			if (!bEther)
+			if (Context.bPerfectWorksRebalance)
+			{
+				// Perfect Works' rebalance scales a defense by quarters: two more for Def UP (Eth Def UP), two fewer for its
+				// status 40h (the mental word's 200h, which its Deathblows give).
+				if (bEther)
+				{
+					uint32 Scale = ((Target.EtherBuffs | Target.PermanentEtherBuffs) & 0x4000) != 0 ? 6 : 4;
+					if ((Target.Mental & 0x200) != 0)
+					{
+						Scale -= 2;
+					}
+					EtherDefense = EtherDefense * Scale >> 2;
+				}
+				else if (!bTargetInGear)
+				{
+					const uint16 Buffs = Target.Buffs | Target.PermanentBuffs;
+					uint32 Scale = (Buffs & 0x4000) != 0 ? 6 : 4;
+					if ((Target.Status & 0x40) != 0)
+					{
+						Scale -= 2;
+					}
+					Defense = (Defense & 0xFFFF) * Scale >> 2;
+					if ((Buffs & 0x100) != 0)
+					{
+						Defense = (Defense & 0xFFFF) * 3 >> 1;
+					}
+					if (Context.RuleOptions.bDefDownOnFoot && (Target.Status & DefDown) != 0)
+					{
+						Defense = (Defense & 0xFFFF) * 2 / 3;
+					}
+				}
+			}
+			else if (!bEther)
 			{
 				// Def UP's bit; the original tests one that nothing sets.
 				const uint16 DefUp = Context.RuleOptions.bDefUpOnFoot ? 0x4000 : 0x100;
@@ -399,13 +468,16 @@ namespace Weltall
 					Block();
 				}
 			}
+			// Perfect Works' rebalance adds weak points without a block, in the word's 10h (fire), 20h (water), 40h (wind)
+			// and 80h (earth).
+			const uint32 WeakPoints = Context.bPerfectWorksRebalance ? Guard | ((GuardWord & 0xF0) >> 4) : Guard;
 			uint32 Opposite = 0;
 			switch (Element)
 			{
-			case 1: Opposite = Guard & 2; break;
-			case 2: Opposite = Guard & 1; break;
-			case 4: Opposite = Guard & 8; break;
-			case 8: Opposite = Guard & 4; break;
+			case 1: Opposite = WeakPoints & 2; break;
+			case 2: Opposite = WeakPoints & 1; break;
+			case 4: Opposite = WeakPoints & 8; break;
+			case 8: Opposite = WeakPoints & 4; break;
 			default: break;
 			}
 			if (Opposite != 0)
@@ -417,6 +489,15 @@ namespace Weltall
 				Scale = 1;
 			}
 			Attack = static_cast<uint16>(static_cast<int32>(Attack) * static_cast<int8>(Scale) / 10);
+			// Perfect Works' rebalance scales an element's defense by tenths too: up for the target's ether buff 800h (a
+			// gear's buff 100h), down for 400h (a gear's 4000h).
+			if (Context.bPerfectWorksRebalance && Element != 0)
+			{
+				const bool bGear = InGear(Context, Context.Action.TargetSlot);
+				const uint16 Buffs = bGear ? TargetGear(Context).Buffs : Target.EtherBuffs;
+				const int32 DefenseScale = 10 + ((Buffs & (bGear ? 0x100 : 0x800)) != 0 ? 2 : 0) - ((Buffs & (bGear ? 0x4000 : 0x400)) != 0 ? 2 : 0);
+				Defense = static_cast<uint16>(static_cast<int32>(Defense) * DefenseScale / 10);
+			}
 			if ((Actor.EquipmentFlags & 0x10) != 0)
 			{
 				Attack = AddFifth(Attack);
@@ -448,7 +529,9 @@ namespace Weltall
 				Power = static_cast<uint16>(Power + Pinches * (Power >> 1));
 			}
 			const FBattleCombatant& Actor = BattleRules::Actor(Context);
-			const int32 Chance = (Actor.EquipmentFlags & 0x200) != 0 ? 60 : 10;
+			// Perfect Works' rebalance: 25 and 100 for the original's 10 and 60.
+			const bool bRebalance = Context.bPerfectWorksRebalance;
+			const int32 Chance = (Actor.EquipmentFlags & 0x200) != 0 ? (bRebalance ? 100 : 60) : (bRebalance ? 25 : 10);
 			const uint32 Scale = (Actor.EquipmentFlags & 0x400) != 0 ? 4 : 3;
 			if (Percent(Context) < Chance)
 			{
@@ -460,7 +543,9 @@ namespace Weltall
 		{
 			const FBattleCombatant& Actor = BattleRules::Actor(Context);
 			const int32 Chance = static_cast<int32>(Actor.Ether) + BattleRules::Command(Context).EtherBonus;
-			if (Chance <= Percent(Context))
+			// Perfect Works' rebalance turns the failure into a critical hit that her ether makes likelier.
+			const int32 Roll = Percent(Context);
+			if (Context.bPerfectWorksRebalance ? Roll < Chance : Chance <= Roll)
 			{
 				Context.Action.Message = 0x38;
 				Context.Action.bEtherFailed = true;
@@ -489,10 +574,12 @@ namespace Weltall
 			if ((ActorEther & 4) != 0) Attack = static_cast<uint16>(Attack - Attack / 5);
 			if ((ActorEther & 1) != 0) Attack = static_cast<uint16>(Attack - Attack / 10);
 			const uint16 TargetEther = Target.EtherBuffs | Target.PermanentEtherBuffs;
+			// Perfect Works' rebalance moves the tenths of the target's to 200h and 100h.
+			const bool bRebalance = Context.bPerfectWorksRebalance;
 			if ((TargetEther & 4) != 0) Defense = static_cast<uint16>(Defense + Defense / 5);
-			if ((TargetEther & 1) != 0) Defense = static_cast<uint16>(Defense + Defense / 10);
+			if ((TargetEther & (bRebalance ? 0x200 : 1)) != 0) Defense = static_cast<uint16>(Defense + Defense / 10);
 			if ((TargetEther & 8) != 0) Defense = static_cast<uint16>(Defense - Defense / 5);
-			if ((TargetEther & 2) != 0) Defense = static_cast<uint16>(Defense - Defense / 10);
+			if ((TargetEther & (bRebalance ? 0x100 : 2)) != 0) Defense = static_cast<uint16>(Defense - Defense / 10);
 			if ((Command.Element & 0x10) != 0)
 			{
 				if ((Target.MentalImmunity & 0x40) == 0)
@@ -515,24 +602,53 @@ namespace Weltall
 			{
 				Target.Mental |= 0x80;
 			}
-			if ((Target.Mental & 0x40) != 0)
+			// Perfect Works' rebalance adds the mental words' 4000h and 8000h.
+			if ((Target.Mental & (bRebalance ? 0x4040 : 0x40)) != 0)
 			{
 				Defense = static_cast<uint16>(Defense - (Defense >> 2));
 				Target.Mental &= 0xFFBF;
 			}
-			if ((Actor.Mental & 0x80) != 0)
+			if ((Actor.Mental & (bRebalance ? 0x8080 : 0x80)) != 0)
 			{
 				Attack = static_cast<uint16>(Attack - (Attack >> 2));
 				Actor.Mental &= 0xFF7F;
 			}
-			if ((Command.Flags & BattleCommandFlags::Deathblow) != 0)
+			if (bRebalance)
+			{
+				// Its Pierce leaves the defense out unless the actor's permanent elements have bit 1; either gives power
+				// 20, and a Deathblow keeps its own.
+				const bool bKeepsDefense = (Actor.PermanentElements & 1) != 0;
+				const bool bPierce = (Command.Flags & BattleCommandFlags::PerfectWorksPierce) != 0;
+				if (bPierce && !bKeepsDefense)
+				{
+					Defense = 0;
+				}
+				if (bPierce || bKeepsDefense)
+				{
+					Power = 20;
+				}
+			}
+			else if ((Command.Flags & BattleCommandFlags::Deathblow) != 0)
 			{
 				Power = 20;
 			}
 			ApplyElement(Context, Attack, Defense, Hit);
 			const int32 AttackScale = bEther ? 5 : 4;
 			const int32 DefenseScale = bEther ? 4 : 3;
-			int32 Damage = Defense == 0 ? AttackScale * Attack : AttackScale * Attack - DefenseScale * Defense;
+			int32 Damage = 0;
+			if (bRebalance)
+			{
+				// Its base adds the power and takes a quarter of the attack off.
+				Damage = AttackScale * Attack - (Attack >> 2) + Power;
+				if (Defense != 0)
+				{
+					Damage -= DefenseScale * Defense;
+				}
+			}
+			else
+			{
+				Damage = Defense == 0 ? AttackScale * Attack : AttackScale * Attack - DefenseScale * Defense;
+			}
 			if (Command.AttackFormula < 2)
 			{
 				Damage = Power * Damage / 20;
@@ -574,7 +690,8 @@ namespace Weltall
 			}
 			if (Action.bEtherFailed && bEther && Damage != 0)
 			{
-				Damage /= 3;
+				// Perfect Works' rebalance: Elly's critical hit doubles it.
+				Damage = bRebalance ? Damage * 2 : Damage / 3;
 			}
 			Action.Amounts[Action.TargetSlot] = static_cast<uint32>(std::clamp(Damage, 0, 9999));
 		}

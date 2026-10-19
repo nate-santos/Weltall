@@ -6,15 +6,17 @@ make the game feel like a modern PC release while keeping the original gameplay 
 You'll need your own copy of the USA release or a supported English undub. Weltall doesn't include
 any game data. Put your disc images in the `Games` folder and the game will find them automatically.
 BIN/CUE and CHD preserve movie audio; ISO/IMG also work, but the movies will be silent. Convert PBP,
-ECM or other formats to BIN/CUE first. You can add Disc 2 while the game is running when it asks for it.
+ECM or other formats to BIN/CUE first. You can add Disc 2 while the game is running when it asks for
+it. You can also start with only Disc 2, as on the PlayStation, to load your Disc 2 saves.
 
-The undub plays with English text and Japanese voices. If you have both versions, choose which voices
-you hear under **Options → Sound → Voices**. Japanese retail discs aren't playable, but you can dump
-their files (see [the modding guide](Docs/Modding.md)).
+The undub plays with English text and Japanese voices, and its subtitles appear in the movies. If you
+have both versions, choose which voices you hear under **Options → Sound → Voices**. **Options → Sound →
+Subtitles** can also show the undub's subtitles with the English voices, or turn them off. Japanese
+retail discs aren't playable, but you can dump their files (see [the modding guide](Docs/Modding.md)).
 
 **Status:** Both discs are playable, including field exploration, character and Gear battles, the
 world map, menus, the Battling arena and movies. Gameplay behavior has been checked against the
-original game's code. My own playthrough is still in progress, with around 16 hours played without
+original game's code. My own playthrough is still in progress, with over 18 hours played without
 a hang. Automated tests have run every map and story battle, along with long stretches of the story
 from save to save. You should be able to play from start to finish, and I'm fixing reported issues as
 they come in. If something goes wrong, the game displays an error and tells you which log to include
@@ -26,9 +28,12 @@ in a bug report.
 - **Smooth motion at any refresh rate**, including 120 Hz and above, without changing the game's pace.
 - **A free camera** on the field and world map, with rotation, tilt and zoom using a mouse or right stick.
 - **Per-pixel depth sorting** to fix characters, Gears and scenery clipping or flickering over each other.
-- **Graphics options** for sharper or smoother scenery and sprites, anti-aliasing and upscaled movies.
+- **Graphics options** for sharper or smoother scenery and sprites, anti-aliasing, upscaled movies and a CRT filter.
+- **Softer battle flashes**, or none at all, for the bright screen flashes from attacks and Ether.
 - **3D Gears** on the field and world map, using their battle models, plus full-size party sprites in Gear areas.
 - **Battle speeds of 2x and 4x**, and faster text up to instant. Timed dialogue still leaves you time to read it.
+- **Balance options** to earn up to four times the experience and gold, and to have fewer random battles, more of
+  them, or none at all.
 - **Chapter titles** displayed when each chapter begins.
 - **Custom party order**, so any character can lead the party (see below).
 - **Always run**, and doors that open when you walk into them.
@@ -37,8 +42,10 @@ in a bug report.
 - **Save options** to load from the menu anywhere, import PlayStation memory-card or emulator saves, and export
   memory-card images.
 - **Fixes for bugs in the original game**.
-- **Modding options** to export the game's textures as PNG and its music as WAV, dump the disc's files, and
-  load your replacements from the `Assets` folder. See [the modding guide](Docs/Modding.md) for the details.
+- **Modding options** to export the game's textures as PNG, its music as WAV and its text and font to edit, dump
+  the disc's files, and load your replacements from the `Assets` folder, including texture packs made for
+  RetroArch's Beetle PSX HW core. You can also use parts of the fan mod Perfect Works Build from your own copy. See
+  [the modding guide](Docs/Modding.md) for the details.
 
 You can adjust these in Options from the title screen or in-game menu, including switching back to the
 original behavior.
@@ -54,13 +61,15 @@ trademarks belong to their respective owners.
 Download the build for your system and unzip it wherever you want. Put the USA or undub disc images in
 the `Games` folder (subfolders work too), then run `Weltall.exe` on Windows or `Weltall.sh` on Linux.
 Windows requires 64-bit Windows 10 or 11 and a DirectX 12 graphics card. Linux requires a 64-bit
-system with a Vulkan graphics driver. If Disc 1 is missing, the game shows where it looked and what
-it found, then starts once you add the disc.
+system with a Vulkan graphics driver. If neither disc is there, the game shows where it looked and what
+it found, then starts once you add one. If you start with only Disc 2, the game asks for Disc 1 when you
+choose New Game or load a Disc 1 save, as the original does.
 
-Linux testing has been limited to Windows Subsystem for Linux (WSL) with software rendering so far.
+Players have run the Linux build on a Steam Deck and on CachyOS with an AMD graphics card.
 
-Options covers display, sound, camera, text speed, bug fixes and controls. During battles, R1 increases
-the speed from 1x to 2x to 4x, and L1 decreases it.
+Options covers display, sound, camera, text speed, bug fixes, controls, and a Modding page with the
+balance options and the Assets page. During battles, R1 increases the speed from 1x to 2x to 4x, and
+L1 decreases it.
 
 To keep the original PlayStation button symbols in prompts and menus, turn on **Original PSX icons**
 under **Options → Controls**. Your bindings still apply, and the rebinding rows show your actual keys.
@@ -160,12 +169,19 @@ builds share the same settings and saves in your user folders.
 `python Scripts/package.py --archive Shipping` also creates a release zip in `out/releases`, without
 disc images, and a separate debug symbols archive.
 
-`python Scripts/release.py 0.8.1` builds both Shipping packages from a pushed commit whose
+`python Scripts/release.py 0.8.2` builds both Shipping packages from a pushed commit whose
 `ProjectVersion` matches that version. It creates the archives and a GitHub draft release with the
 player downloads and release notes, using the GitHub CLI. Publish the draft from the release page.
 
 Packages leave out the `disc2` pack and play the original Disc 2 without asking you to choose a mode.
 Build with `--expansion` to include the examples; those archives are marked in the filename.
+
+## Credits
+
+Four of Weltall's bug fixes come from the fan mod
+[Perfect Works Build](https://github.com/PWBuild-Team/Perfect_Works_Build). When you use your own copy of the mod,
+Weltall also recreates the mod's changes to the game's code: the battle dialogue windows, the rebalanced party and
+items, and the Battling arena modes. All of this is done with the Perfect Works Build team's permission.
 
 ## License
 

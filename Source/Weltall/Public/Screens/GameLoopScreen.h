@@ -5,6 +5,7 @@
 #include "Game/PlayerSettings.h"
 #include "Input/PadLatch.h"
 #include "Media/DiscIdentification.h"
+#include "Menu/MenuProgram.h"
 #include "Rendering/FieldSceneRendering.h"
 #include "Screens/GameScreen.h"
 #include "Screens/MoviePictureView.h"
@@ -20,6 +21,7 @@ class FBattleView;
 class FBattlingView;
 class FBootNoticeView;
 class FChapterCardView;
+class FTitleMarkView;
 class FFieldView;
 class FMenuView;
 class FWorldMapView;
@@ -130,6 +132,8 @@ public:
 	/** The player's keys, which the options screen's Controls page rebinds; it must outlive the screen. None: no Controls page. */
 	void SetMenuKeys(Weltall::IMenuKeys* InKeys);
 	void SetMenuAssets(Weltall::IMenuAssets* InAssets);
+	/** The mods the game found, which the options screen's Modding page lists. */
+	void SetMenuMods(Weltall::FMenuMods InMods);
 
 	/** What the display offers the options screen's Display page, asked as the screen opens. None: the page offers no window sizes. */
 	void SetDisplayModes(FDisplayModesAsked InDisplayModes);
@@ -223,6 +227,7 @@ private:
 	FSettingsKept SettingsFollowed;
 	Weltall::IMenuKeys* MenuKeys = nullptr;
 	Weltall::IMenuAssets* MenuAssets = nullptr;
+	Weltall::FMenuMods MenuMods;
 	FDisplayModesAsked DisplayModes;
 	FQuit Quit;
 	FStopped Stopped;
@@ -253,6 +258,7 @@ private:
 	TUniquePtr<FBattleView> Battle;
 	TUniquePtr<FBattlingView> Battling;
 	TUniquePtr<FChapterCardView> ChapterCard;
+	TUniquePtr<FTitleMarkView> TitleMark;
 	TUniquePtr<FBattleSpeedMarkView> BattleSpeedMark;
 	TSharedRef<const IScreenFrame> Blank;
 	/** The last frame the display was given: the picture of the screen a battle's transition breaks. */

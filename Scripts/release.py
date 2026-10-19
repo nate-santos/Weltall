@@ -34,16 +34,62 @@ You'll need your own copy of the USA release or a supported English undub. No ga
 
 ## What's new
 
-- Fixed a crash at startup on Linux with AMD graphics cards (Mesa's RADV driver). The game was compiling
-  Unreal Engine shaders it never uses, and two of them crash that driver.
-- Fixed the floor hiding characters' legs in some battles.
-- Added support for the English undub, which plays with English text and Japanese voices. If you have
-  both versions, choose the voices under Options → Sound → Voices.
-- Added an Original PSX icons option under Options → Controls. It keeps the PlayStation button symbols
-  in prompts and menus while your own bindings still apply.
-- Added modding options on a new Assets page in Options. You can export the game's textures as PNG and
-  its music as WAV, dump the disc's files, and load your own replacements. See the
-  [modding guide](https://github.com/Roman215/Weltall/blob/main/Docs/Modding.md).
+### Display and sound
+
+- Added a CRT filter under Options → Display. Monitor looks like a studio monitor, flat with sharp scanlines. TV
+  looks like a home television, with curved glass and a softer picture. Press Confirm on the row to adjust each part
+  of the look yourself, from the scanlines to the curve of the glass. It's off by default.
+- Added a Battle flashes option under Options → Display. Softer dims the bright screen flashes from attacks and Ether
+  to a quarter of their brightness, and Off removes them. It's set to Original by default.
+- The undub's subtitles now show in its movies with the Japanese voices. The new Subtitles option under
+  Options → Sound can also show them with the English voices, as long as the undub discs are in `Games`, or turn
+  them off.
+- Weltall's version now shows under the logo on the title screen.
+
+### Gameplay
+
+- Added a Modding page to Options. Its Balance options let you get up to four times the experience and gold from
+  battles, and make random battles rarer, more frequent or stop them altogether. Everything stays as in the original
+  game until you change it. The Assets page now opens from here.
+- You can now start the game with only Disc 2 in `Games` to load your Disc 2 saves, as on the PlayStation. New Game
+  and Disc 1 saves ask for Disc 1.
+- In the Battling arena, how far you push a controller's stick now sets how fast your Gear moves, as with an analog
+  controller on the PlayStation. The d-pad and keyboard still move at full speed.
+
+### Modding
+
+- You can now mod the game's text and font. Export text, on the Assets page, saves every message as text files and
+  the font as a picture. To change a message, copy it into a file of your own in `Assets/text` and edit it. To redraw
+  letters or add new ones, such as accented letters for a translation, edit a copy of the font in `Assets/font`.
+  Dialogue windows resize to fit your text.
+- Texture packs made for RetroArch's Beetle PSX HW core now work as they are, such as Perfect ART Works and the
+  Xenogears HD Portraits Project. Put the pack's folder in `Assets/textures` and turn on External assets. Replacements
+  named the way Weltall's texture export names them still work, and they take priority over a pack's pictures.
+- The battle screen's pictures, from the command ring to the HP digits, gauges and damage numbers, now have the same
+  names in every battle, so one replacement covers them everywhere. Before, their names changed from battle to
+  battle. Export textures saves them in `battle/hud`, and the results screen's pictures in `battle/result`.
+- You can now use the fan mod Perfect Works Build from your own copy. Unpack it into a `PerfectWorks` folder inside
+  `Mods`, next to `Games`, then choose which parts to use on the Modding page: its new script with its battle
+  dialogue, story mode, the rebalanced party, items and enemies, its Battling arena modes, music, portraits, Emeralda
+  cafe fix and title screen. This works with version 0.11.4 of the mod.
+
+The [modding guide](https://github.com/Roman215/Weltall/blob/main/Docs/Modding.md) explains each of these.
+
+### Fixes
+
+- Fixed El-Fenrir's sword missing in the Battling arena.
+- Fixed the picture freezing for about five seconds during Alkanshel's Mass Limit. The screen now ripples, smears and
+  fades to black as it should.
+- Fixed faint squares around the clouds in Shevat's sky.
+- Fixed the corners of the menu windows, such as the gold and play time boxes, sitting a pixel off their edges.
+- Fixed a lock of Billy's hair floating off his head when he shakes it, a mistake in the original game's sprite.
+- Fixed a freeze in Deus's first fight. His attack on one Gear could stop the game, depending on the camera.
+- Fixed Billy's ether guns always firing wind and fire. They now fire the element of the ammo loaded in them.
+- Fixed the shop's pointer covering the words Buy, Sell and Exit.
+- Fixed Member Change showing MP instead of EP.
+
+The last five fix mistakes in the original game. Like the other fixes on the Fixes page, they're on by default, and you
+can turn each one off there. The last four come from the Perfect Works Build team.
 
 ## Playing
 
@@ -60,22 +106,17 @@ controls and more details.
 ## What to expect
 
 Both discs are playable, and gameplay behavior has been checked against the original game's code.
-My own playthrough is still in progress, with around 16 hours played without a hang. Automated tests
+My own playthrough is still in progress, with over 18 hours played without a hang. Automated tests
 have run every map and story battle, along with long stretches of the story from save to save. You
 should be able to play from start to finish, and I'm fixing reported issues as they come in.
 
-The Linux build has only been tested in Windows Subsystem for Linux (WSL), using software rendering.
-It still needs testing on a Linux system with a graphics card. If you try it, please report any problems
-you run into.
+Players have run the Linux build on a Steam Deck and on CachyOS with an AMD graphics card. If you run
+into problems on Linux, please report them.
 
 If the game stops with an error on screen, attach the log file it names to a
 [bug report](https://github.com/Roman215/Weltall/issues/new?template=bug_report.md) and describe what you
 were doing. If it crashes, zip and attach the newest folder in `%LOCALAPPDATA%\\Weltall\\Saved\\Crashes`
 (Windows) or `~/.config/Epic/Weltall/Saved/Crashes` (Linux). A save from just before the problem helps too.
-
-This release doesn't support the Japanese discs or starting Disc 2 without Disc 1 in the `Games`
-folder. It also doesn't include a message log, auto-advancing text, quick saves, analog movement, or
-El-Fenrir and analog steering in the Battling arena.
 """
 
 
@@ -84,7 +125,7 @@ def unwrapped(text):
     lines = []
     for line in text.splitlines():
         joins = lines and lines[-1].strip() and line.strip() and not line.startswith("#") and not lines[-1].startswith("#")
-        if joins and not re.match(r"\d+\. ", line):
+        if joins and not re.match(r"(\d+\.|[-*]) ", line):
             lines[-1] += " " + line.strip()
         else:
             lines.append(line)

@@ -137,3 +137,63 @@ TEST_CASE("Ether level 99 still rolls its EP growth, or in the original divides 
 	CHECK(EpAfter(FBattleRuleOptions()) == 11);
 	CHECK(EpAfter(FBattleRuleOptions::Original()) == 10);
 }
+
+TEST_CASE("The player's balance multiplies the battle's EXP and gold, the gold still capped", "[Battle][Balance][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	const auto Index = FGameFileIndex::Read(*Executable);
+	REQUIRE(Index);
+	const auto Growth = FBattleGrowthTable::Load(Disc->Image(), *Index);
+	REQUIRE(Growth);
+	// Fei alone; two defeated enemies give 7 and 2 EXP, 101 and 0 gold; a third, alive, gives nothing.
+	struct FRewards
+	{
+		uint32 Exp = 0;
+		uint32 Gold = 0;
+		uint32 Purse = 0;
+	};
+	const auto Rewards = [&](const FGameBalance& Balance, uint32 Purse)
+	{
+		FGameState State;
+		State.SetGold(Purse);
+		FPsxRandom Random(1);
+		auto Context = std::make_unique<FBattleContext>();
+		Context->GameState = &State;
+		Context->Random = &Random;
+		Context->Balance = Balance;
+		Context->PartyCharacters = {0, 0xFF, 0xFF};
+		for (const std::size_t Slot : {3, 4, 5})
+		{
+			Context->InBattle[Slot] = true;
+		}
+		Context->Combatants[3].Status = 0x8000;
+		Context->Combatants[3].ExpReward = 7;
+		Context->Combatants[3].GoldReward = 101;
+		Context->Combatants[4].Status = 0x8000;
+		Context->Combatants[4].ExpReward = 2;
+		Context->Combatants[5].ExpReward = 1000;
+		Context->Combatants[5].GoldReward = 1000;
+		GiveBattleRewards(*Context, *Growth);
+		REQUIRE(Context->Fault == EBattleFault::None);
+		return FRewards{Context->Result.TotalExp, Context->Result.GoldGained, State.Gold()};
+	};
+	const FRewards Original = Rewards({}, 50);
+	CHECK(Original.Exp == 9);
+	CHECK(Original.Gold == 101);
+	CHECK(Original.Purse == 151);
+	const FRewards Half = Rewards({ERewardRate::OneAndAHalf, ERewardRate::OneAndAHalf}, 50);
+	CHECK(Half.Exp == 13);
+	CHECK(Half.Gold == 151);
+	CHECK(Half.Purse == 201);
+	const FRewards Gold = Rewards({ERewardRate::Original, ERewardRate::Quadruple}, 50);
+	CHECK(Gold.Exp == 9);
+	CHECK(Gold.Gold == 404);
+	CHECK(Gold.Purse == 454);
+	// The window shows what was gained; the purse stops at the original's cap.
+	const FRewards Full = Rewards({ERewardRate::Triple, ERewardRate::Triple}, 9999900);
+	CHECK(Full.Exp == 27);
+	CHECK(Full.Gold == 303);
+	CHECK(Full.Purse == 9999999);
+}

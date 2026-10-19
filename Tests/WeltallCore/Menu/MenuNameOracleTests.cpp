@@ -88,3 +88,23 @@ TEST_CASE("Enter Name cuts a confirmed name's trailing s, as the original does, 
 	}
 	CHECK(Changed > 0);
 }
+
+TEST_CASE("Enter Name keeps a confirmed name's trailing blanks, as the original does, and trims them with the fix", "[Content][Menu]")
+{
+	// Fei's name with two blanks after it, confirmed as it is.
+	constexpr uint8 Blank = 0x10;
+	FMenuScenario Scenario{"name_blanks", EMenuMode::EnterName, 0, {{0, 70}, {Start, 2}, {0, 60}}, 300};
+	Scenario.Pokes = {{3, {Blank, Blank}}};
+
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const FMenuRun Original = RunMenuScenario(*Disc, Scenario);
+	Scenario.Options = FMenuOptions();
+	const FMenuRun Fixed = RunMenuScenario(*Disc, Scenario);
+	const std::span<const uint8> Kept = Original.Game.Name(0);
+	const std::span<const uint8> Trimmed = Fixed.Game.Name(0);
+	REQUIRE(Kept.size() == 5);
+	CHECK(Kept[3] == Blank);
+	CHECK(Kept[4] == Blank);
+	REQUIRE(Trimmed.size() == 3);
+	CHECK(std::equal(Trimmed.begin(), Trimmed.end(), Kept.begin()));
+}

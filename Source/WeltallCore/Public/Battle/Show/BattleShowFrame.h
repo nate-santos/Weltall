@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Battle/Show/BattleStageBackdrop.h"
+#include "Field/FieldRenderOptions.h"
 #include "Foundation/Types.h"
 #include "Graphics/GteMatrix.h"
 #include "Graphics/MdlModel.h"
@@ -228,7 +229,22 @@ namespace Weltall
 		/** 0 half, 1 add, 2 subtract, 3 add a quarter. */
 		uint8 Mode = 0;
 		std::array<uint8, 3> Color{};
+		/** An effect's script started it, not the battle's own start, escape, result or events. */
+		bool bFromEffect = false;
 	};
+
+	/**
+	 * The share of the fade's colour drawn: of an effect's adding fade (its flashes, added whole or a quarter) all of it,
+	 * a quarter or none, as the player chose; of every other fade all of it.
+	 */
+	constexpr float DrawnFadeShare(const FBattleShowFade& Fade, EBattleFlashes Flashes)
+	{
+		if (!Fade.bFromEffect || (Fade.Mode != 1 && Fade.Mode != 3))
+		{
+			return 1.0f;
+		}
+		return Flashes == EBattleFlashes::Off ? 0.0f : Flashes == EBattleFlashes::Softer ? 0.25f : 1.0f;
+	}
 
 	/**
 	 * What the renderer reads of one step of the battle's show, as

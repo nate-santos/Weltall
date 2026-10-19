@@ -30,6 +30,7 @@ namespace
 	constexpr uint8 FeiGear = 0;
 	constexpr uint8 Ganador = 17;
 	constexpr uint8 TinRobo = 28;
+	constexpr uint8 ElFenrir = 13;
 	constexpr uint8 StateTutorial = 7;
 	constexpr uint8 ResultScriptedEnding = 0x7F;
 	constexpr uint32 SettingsDefaults = 1 | 2 << 6;
@@ -756,4 +757,87 @@ TEST_CASE("A bout the story starts takes the vibration switches the player last 
 		CHECK(Arena->Fight().Settings.WinsPerSet == 1);
 		CHECK(Game->Session->Game().ArenaSettings() == Word);
 	}
+}
+
+TEST_CASE("A gamepad's stick steers an arena bout by how far it is pushed, and the d-pad and the keyboard at full speed", "[Content][GameLoop][Battling]")
+{
+	REQUIRE_DISC(Iso, EDiscRelease::UsaDisc1);
+	const auto Game = Testing::FGameLoopSession::Start(*Iso);
+	REQUIRE(Game);
+	StartArena(*Game, {0, 0, FeiGear, TinRobo, 1, 0});
+	INFO(Stopped(*Game));
+	const FBattlingGameProgram* Arena = Game->Loop->Battling();
+	REQUIRE(Arena != nullptr);
+	REQUIRE_FALSE(Game->Frame(FPadState{FPadState::Bit(EPadButton::Cross)}));
+	for (int32 Frame = 0; Frame < 200 && Arena->Stage() != EBattlingGameStage::Bout; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame());
+	}
+	REQUIRE(Arena->Stage() == EBattlingGameStage::Bout);
+	// The round's opening, before the pads steer.
+	for (int32 Frame = 0; Frame < 64; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame());
+	}
+	const FBattlingFighter& Player = Arena->Fight().Fighters[0].IsComputer() ? Arena->Fight().Fighters[1] : Arena->Fight().Fighters[0];
+	REQUIRE_FALSE(Player.IsComputer());
+
+	// Right pushed half way on the stick, which holds the direction through the bindings as well.
+	FPadState Half{FPadState::Bit(EPadButton::Right)};
+	Half.StickButtons = FPadState::Bit(EPadButton::Right);
+	Half.StickX = 0xC0;
+	Half.bAnalog = true;
+	FPadState Dpad{FPadState::Bit(EPadButton::Right)};
+	Dpad.bAnalog = true;
+	FPadState Keyboard = Half;
+	Keyboard.bAnalog = false;
+	const auto Steer = [&Game, &Player](FPadState Pad)
+	{
+		for (int32 Frame = 0; Frame < 24; ++Frame)
+		{
+			REQUIRE_FALSE(Game->Frame(Pad));
+		}
+		return Player.Stick;
+	};
+	CHECK(Steer(Half) == 0x80);
+	CHECK(Steer(Dpad) == 0x100);
+	CHECK(Steer(Half) == 0x80);
+	CHECK(Steer(Keyboard) == 0x100);
+}
+
+TEST_CASE("El-Fenrir carries the program's own part on its joint 12, in place of its own joint 13", "[Content][GameLoop][Battling]")
+{
+	REQUIRE_DISC(Iso, EDiscRelease::UsaDisc1);
+	const auto Game = Testing::FGameLoopSession::Start(*Iso);
+	REQUIRE(Game);
+	StartArena(*Game, {0, 0, ElFenrir, TinRobo, 1, 0});
+	INFO(Stopped(*Game));
+	const FBattlingGameProgram* Arena = Game->Loop->Battling();
+	REQUIRE(Arena != nullptr);
+	REQUIRE_FALSE(Game->Frame(FPadState{FPadState::Bit(EPadButton::Cross)}));
+	for (int32 Frame = 0; Frame < 200 && Arena->Stage() != EBattlingGameStage::Bout; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame());
+	}
+	for (int32 Frame = 0; Frame < 64; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame());
+	}
+	const FBattlingFighter& Fenrir = Arena->Fight().Fighters[0];
+	REQUIRE(Fenrir.Gear == ElFenrir);
+	const FBattlingSkeleton& Skeleton = Fenrir.Skeleton;
+	REQUIRE(Skeleton.Joints.size() == Fenrir.File->Joints.size() + 1);
+	const FBattlingJoint& Carried = Skeleton.Joints.back();
+	CHECK(Carried.Parent == 12);
+	CHECK(Carried.Angles == FGteVector{0, 0xC00, 0x400});
+	CHECK(Carried.Translation == FGteVector{});
+	CHECK(Carried.bOwnTextures);
+	CHECK_FALSE(Carried.bHidden);
+	REQUIRE(Carried.Part == static_cast<int16>(Skeleton.Model.Parts.size() - 1));
+	CHECK(Skeleton.Model.Parts.back().Primitives.size() == 70);
+	CHECK(Skeleton.Joints[13].bHidden);
+	// The part goes where its parent goes: the pose turns it about joint 12's place.
+	CHECK(Carried.World.T == Skeleton.Joints[12].World.T);
+	// The other side's gear carries nothing of the program's.
+	CHECK(Arena->Fight().Fighters[1].Skeleton.Joints.size() == Arena->Fight().Fighters[1].File->Joints.size());
 }

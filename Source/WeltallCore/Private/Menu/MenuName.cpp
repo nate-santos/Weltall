@@ -31,6 +31,8 @@ namespace Weltall
 		constexpr std::size_t CopiedBytes = 18;
 		/** The byte a confirmed name is trimmed of at its end: a blank in the Japanese font, "s" in the American. */
 		constexpr uint8 TrimmedByte = 0x4F;
+		/** The American font's blank, which the fix trims instead. */
+		constexpr uint8 AmericanBlank = 0x10;
 		constexpr int32 GridWindow = 2;
 		constexpr int32 PromptWindow = 3;
 		constexpr int32 PiecesEntry = 4;
@@ -367,8 +369,9 @@ namespace Weltall
 
 	void FMenuName::WriteNames()
 	{
-		// The same name into each slot: copied up to its end, then (the original) cut after its last byte other than 4Fh.
+		// The same name into each slot: copied up to its end, then cut after its last byte that is not a blank.
 		const std::span<uint8> Block = Services.Game->Block();
+		const uint8 Trimmed = Services.Options.bNamesKeepTrailingS ? AmericanBlank : TrimmedByte;
 		std::size_t Kept = 0;
 		for (const uint8 Slot : NameSlots)
 		{
@@ -378,7 +381,7 @@ namespace Weltall
 			while (Copied < CopiedBytes && Text[Copied] != 0)
 			{
 				Name[Copied] = Text[Copied];
-				if (Services.Options.bNamesKeepTrailingS || Text[Copied] != TrimmedByte)
+				if (Text[Copied] != Trimmed)
 				{
 					Kept = Copied;
 				}

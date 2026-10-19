@@ -12,7 +12,7 @@
 
 void FollowTextureModSources(FVramTexture& Texture, const Weltall::FVram& Vram, const FFieldSceneMesh* Mesh,
 	std::initializer_list<const FFieldSceneDraw*> Draws, std::initializer_list<const Weltall::FDrawList*> Lists,
-	std::span<const Weltall::FTexturePictureSeed> Models)
+	std::span<const Weltall::FTexturePictureSeed> Models, std::span<const Weltall::FTextureRegion> Sheets)
 {
 	if (!FTextureModLibrary::IsActive()) return;
 	static TArray<Weltall::FTextureRegion> Regions;
@@ -24,6 +24,7 @@ void FollowTextureModSources(FVramTexture& Texture, const Weltall::FVram& Vram, 
 	Pages.Reset();
 	if (Mesh != nullptr) Regions.Append(Mesh->TextureRegions().GetData(), Mesh->TextureRegions().Num());
 	for (const Weltall::FTexturePictureSeed& Model : Models) Regions.Add(Model.Region);
+	Regions.Append(Sheets.data(), static_cast<int32>(Sheets.size()));
 	for (const FFieldSceneDraw* Draw : Draws)
 	{
 		if (Draw == nullptr) continue;
@@ -71,6 +72,14 @@ void FollowTextureModSources(FVramTexture& Texture, const Weltall::FVram& Vram, 
 		Weltall::AddPictureRegionsInView(Vram.Pictures(), Page, InPictures);
 		if (InPictures.empty()) Regions.Add(Weltall::WholeTextureView(Page));
 		else Regions.Append(InPictures.data(), static_cast<int32>(InPictures.size()));
+	}
+	// A whole page holds what the game draws through other CLUTs too, such as the menus' text beside the save icons: a pack's
+	// pictures cover only their own uploads in it, as in Beetle, each a region of its own after the page's (which Weltall's
+	// own picture of the page, where it has one, comes before).
+	for (int32 Index = 0, Count = Regions.Num(); Index < Count; ++Index)
+	{
+		const Weltall::FTextureRegion Whole = Regions[Index];
+		if (Whole == Weltall::WholeTextureView(Whole.View)) FTextureModLibrary::AddPackedPartRegions(Vram, Whole, Regions);
 	}
 	Texture.Follow(Vram, std::span<const Weltall::FTextureRegion>(Regions.GetData(), Regions.Num()), Models);
 }

@@ -100,6 +100,7 @@ namespace Weltall
 
 	void FBattleShow::StoreImage(const FVramRect& Rect, std::span<uint16> Into)
 	{
+		Vram.NoteReadback(Rect);
 		std::size_t Unit = 0;
 		for (int32 Row = 0; Row < Rect.Height; ++Row)
 		{

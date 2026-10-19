@@ -26,8 +26,9 @@ struct FBoundTextureRegion
 };
 
 /**
- * Which replacement each region a frame draws stands for. A region's texels are read again only when VRAM under them
- * changes; its CLUT's colours whenever they change. A region keeps its replacement while only its colours change (a
+ * Which replacement each region a frame draws stands for: a replacement of its own key, else the picture Beetle PSX HW
+ * texture packs give the uploads under it (FTextureModLibrary::FindPacked), else what was learned (below). A region's
+ * texels are read again only when VRAM under them changes; its CLUT's colours whenever they change. A region keeps its replacement while only its colours change (a
  * fade, palette animation), unless another replacement stands for the new colours: the drawing then follows the
  * colours from the matched ones. A region of the same indices as one that has matched a replacement (the same picture
  * through another CLUT: a fog level, a colour variant) takes that replacement, following its colours from the matched

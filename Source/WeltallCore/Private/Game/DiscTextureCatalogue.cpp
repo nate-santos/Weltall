@@ -3,6 +3,7 @@
 #include "Battle/Show/BattleModelTextures.h"
 #include "Battle/Show/BattleObjectFiles.h"
 #include "Battle/Show/BattleSceneGraphics.h"
+#include "Battle/Show/BattleShowHud.h"
 #include "Battle/Show/BattleSpriteFiles.h"
 #include "Battle/Show/BattleSpriteTextures.h"
 #include "Battle/Show/BattleStageFiles.h"
@@ -152,6 +153,8 @@ namespace Weltall
 				Items.push_back({EItem::BattleEffect, Effect});
 			}
 		}
+		Items.push_back({EItem::BattleHud, 0});
+		Items.push_back({EItem::BattleHud, 1});
 		for (int32 GearModel = 0; GearModel < FGearFileNumbers::ModelCount; ++GearModel)
 		{
 			Items.push_back({EItem::FieldGear, GearModel});
@@ -212,6 +215,9 @@ namespace Weltall
 				std::snprintf(Folder, sizeof(Folder), "battle/effects/%03d", Of.Number);
 			}
 			break;
+		case EItem::BattleHud:
+			std::snprintf(Folder, sizeof(Folder), "%s", Of.Number == 0 ? "battle/hud" : "battle/result");
+			break;
 		case EItem::FieldGear:
 			std::snprintf(Folder, sizeof(Folder), "gears/%02d", Of.Number);
 			break;
@@ -234,6 +240,7 @@ namespace Weltall
 			: Item.Kind == EItem::BattleModels ? AddBattleModels(Item, Pictures)
 			: Item.Kind == EItem::BattleParty ? AddBattleParty(Item.Number, Pictures)
 			: Item.Kind == EItem::BattleEffect ? AddBattleEffect(Item.Number, Pictures)
+			: Item.Kind == EItem::BattleHud ? AddBattleHud(Item.Number != 0, Pictures)
 			: Item.Kind == EItem::FieldGear ? AddFieldGear(Item.Number, Pictures)
 			: AddFilePictures(static_cast<std::size_t>(Item.Number), Pictures);
 		++Next;
@@ -395,6 +402,11 @@ namespace Weltall
 			Add(Cells, Cell, Pictures, Sheet);
 		};
 		return Effect < 0 ? ForEachBattleCommonEffectCell(*BattleSprites, Take) : ForEachBattleEffectCell(*BattleSprites, Effect, Take);
+	}
+
+	std::optional<FError> FDiscTextureCatalogue::AddBattleHud(bool bResult, std::vector<FDiscTexture>& Pictures)
+	{
+		return ForEachBattleHudPicture(Image, Index, bResult, [this, &Pictures](const FVram& Vram, const FTextureRegion& Region) { Add(Vram, Region, Pictures); });
 	}
 
 	std::optional<FError> FDiscTextureCatalogue::AddFieldGear(int32 GearModel, std::vector<FDiscTexture>& Pictures)

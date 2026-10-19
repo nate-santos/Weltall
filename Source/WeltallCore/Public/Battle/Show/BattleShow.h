@@ -13,6 +13,7 @@
 #include "Battle/Show/BattleShowOptions.h"
 #include "Battle/Show/BattleShowPlayback.h"
 #include "Battle/Show/BattleShowScreen.h"
+#include "Battle/Show/BattleShowScreenWave.h"
 #include "Battle/Show/BattleShowSeams.h"
 #include "Battle/Show/BattleShowSprites.h"
 #include "Battle/Show/BattleShowTasks.h"
@@ -226,11 +227,14 @@ namespace Weltall
 		int32 ExtensionModule() const { return LoadedExtension; }
 		/**
 		 * EXT6's screen wave ran in the frame begun: its own vertical blanks come before the frame's display, each one
-		 * `HoldBlank`, while nothing of the battle steps. The frame then goes on as any other.
+		 * `HoldBlank`, while nothing of the battle steps. The frame then goes on, black but for what it links after the
+		 * wave (the HUD).
 		 */
-		bool IsHolding() const { return HoldFrames > 0; }
+		bool IsHolding() const { return WaveHold.IsRunning(); }
 		/** One of the screen wave's vertical blanks. */
 		WELTALLCORE_API void HoldBlank();
+		/** The screen wave, while the frame begun holds for it. */
+		const FBattleScreenWave& ScreenWave() const { return WaveHold; }
 		/** The steps the frame begun runs beyond its own: the vertical blanks the frame before overran, at most four. */
 		int32 FrameCatchUpSteps() const { return CatchUpSteps; }
 
@@ -398,8 +402,13 @@ namespace Weltall
 		 */
 		int32 CatchUpSteps = 0;
 		int32 PendingCatchUp = 0;
-		/** The vertical blanks the screen wave still holds the frame begun for, before its display. */
-		int32 HoldFrames = 0;
+		/** The screen wave the frame begun holds for, before its display. */
+		FBattleScreenWave WaveHold;
+		/**
+		 * The screen wave ran in the frame begun: what the frame linked before it is gone with the ordering tables the
+		 * wave's frames cleared, and a black screen lies behind what it links after.
+		 */
+		bool bCoveredByWave = false;
 		/** The animation extension module in memory. */
 		int32 LoadedExtension = 0;
 		bool bStarted = false;

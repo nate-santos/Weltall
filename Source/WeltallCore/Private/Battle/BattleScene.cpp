@@ -3,6 +3,8 @@
 #include "Battle/BattleRecordBytes.h"
 #include "Foundation/LittleEndian.h"
 #include "Media/GameFileIndex.h"
+#include "Text/MessageOverrides.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
 #include <string>
@@ -34,13 +36,34 @@ namespace Weltall
 			{
 				return MakeError("the disc lacks file " + std::to_string(Number) + " of directory " + std::to_string(Directory));
 			}
-			TResult<std::vector<uint8>> Sectors = ReadFileSectors(Image, *Record);
-			if (!Sectors)
+			return ReadFileBytes(Image, *Record);
+		}
+
+		/** A scene file's word naming where its name table is: its enemies' names, then what their scripts say. */
+		constexpr std::size_t NameTableOffset = 0x30;
+
+		/** The scene's file with the player's names and messages in place: a changed table after the file's end, its word moved there. */
+		void UsePlayersNames(const FCdImage& Image, int32 Scene, std::vector<uint8>& File)
+		{
+			const uint16 At = File.size() >= NameTableOffset + 2 ? LittleEndian::ReadU16(File, NameTableOffset) : 0;
+			if (At == 0 || At >= File.size())
 			{
-				return Sectors.Error();
+				return;
 			}
-			Sectors->resize(static_cast<std::size_t>(Record->Size));
-			return std::move(*Sectors);
+			const std::string Table = MessageTables::Enemies(Scene);
+			std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, Table, std::span<const uint8>(File).subspan(At), EMessageWindows::Program);
+			if (!Applied)
+			{
+				return;
+			}
+			const std::size_t End = File.size();
+			if (End > 0xFFFF)
+			{
+				Applied->Replaced.Overrides->ReportOnce(Table, Applied->Replaced.Messages.front(), "its scene's file is too large to take it: the disc's text is kept");
+				return;
+			}
+			File.insert(File.end(), Applied->Table.begin(), Applied->Table.end());
+			LittleEndian::WriteU16(File, NameTableOffset, static_cast<uint16>(End));
 		}
 	}
 
@@ -93,6 +116,7 @@ namespace Weltall
 		{
 			return File.Error();
 		}
+		UsePlayersNames(Image, Number, *File);
 		return Parse(std::move(*File));
 	}
 

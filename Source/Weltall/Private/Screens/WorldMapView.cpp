@@ -71,6 +71,11 @@ public:
 		AddDrawListPasses(GraphBuilder, *Vram, Frame, Output, Area, WorldMapScreen);
 	}
 
+	virtual Weltall::FScreenSize ScreenSize() const override
+	{
+		return Picture.IsValid() ? Picture->ScreenSize() : WorldMapScreen;
+	}
+
 private:
 	TSharedPtr<const IScreenFrame> Picture;
 	TSharedRef<FVramTexture> Vram;
@@ -96,6 +101,11 @@ public:
 		const FIntPoint Origin = Area.Min + FIntPoint(Placed.X, Placed.Y);
 		AddLayerPasses(GraphBuilder, *Vram, Overlays, Alpha, Output, FIntRect(Origin, Origin + FIntPoint(Placed.Width, Placed.Height)));
 		AddLayerPasses(GraphBuilder, *Vram, Fade, Alpha, Output, Area);
+	}
+
+	virtual Weltall::FScreenSize ScreenSize() const override
+	{
+		return WorldMapScreen;
 	}
 
 	FFieldSceneDraw Draw;

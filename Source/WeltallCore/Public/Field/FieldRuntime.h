@@ -60,6 +60,8 @@ namespace Weltall
 		FKernelVibration* Vibration = nullptr;
 		FMesContext Text;
 		FEventOptions Options;
+		/** How often the player asked random battles to come. */
+		EEncounterRate EncounterRate = EEncounterRate::Original;
 		/** The port's own documents, added to the maps they are written for as they load; none: nothing is added. */
 		const FStoryPacks* Story = nullptr;
 		/** Where the cases no script reaches are noted and carried past; none: the field stops at them. */
@@ -178,6 +180,12 @@ namespace Weltall
 		{
 			bWalkIntoDoors = bOpens;
 			FieldContext.bWalkIntoDoors = bOpens;
+		}
+		/** How often random battles come, from the next step on (the maps entered later included). */
+		void SetEncounterRate(EEncounterRate Rate)
+		{
+			Services.EncounterRate = Rate;
+			FieldContext.EncounterRate = Rate;
 		}
 		/** How fast messages are typed, from now on (the maps entered later included). */
 		void SetTextSpeed(EMesTextSpeed Speed)

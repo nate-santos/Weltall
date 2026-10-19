@@ -7,7 +7,7 @@ namespace Weltall
 {
 	bool FMenuMain::OnAssetsPage() const
 	{
-		return Services.Settings->Assets() != nullptr && OptionsState.Turned == TurnedPages() - 1;
+		return OptionsState.bAssetsOpened;
 	}
 
 	void FMenuMain::FillAssetRows()

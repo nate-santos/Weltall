@@ -32,6 +32,25 @@ namespace
 	/** Map 35: a village square. */
 	constexpr int32 VillageMap = 35;
 	constexpr int32 SecondOpeningMovie = 13;
+
+	/** The host's drive, which finds the disc the game asks for once the player has put it where the game looks. */
+	class FLateDrive final : public IGameDiscDrive
+	{
+	public:
+		FLateDrive(Testing::FGameLoopSession& InOwner, const FIso9660& InLateDisc) : Owner(InOwner), LateDisc(InLateDisc) {}
+		void Seek(int32 Number) override
+		{
+			Asked.push_back(Number);
+			if (bThere)
+			{
+				Owner.AddDisc(LateDisc);
+			}
+		}
+		Testing::FGameLoopSession& Owner;
+		const FIso9660& LateDisc;
+		std::vector<int32> Asked;
+		bool bThere = false;
+	};
 }
 
 TEST_CASE("On the title's map Load Game runs in the loop, and its New Game plays the opening's second movie", "[Menu][Content]")
@@ -331,23 +350,7 @@ TEST_CASE("A disc 2 not yet found keeps INSERT DISC 2 up at each confirmation un
 	Game->Session->SetMenus(&Menus);
 
 	// The player puts disc 2 where the game looks only after the first confirmation.
-	class FLateDrive final : public IGameDiscDrive
-	{
-	public:
-		FLateDrive(Testing::FGameLoopSession& InOwner, const FIso9660& InLateDisc) : Owner(InOwner), LateDisc(InLateDisc) {}
-		void Seek(int32 Number) override
-		{
-			Asked.push_back(Number);
-			if (bThere)
-			{
-				Owner.AddDisc(LateDisc);
-			}
-		}
-		Testing::FGameLoopSession& Owner;
-		const FIso9660& LateDisc;
-		std::vector<int32> Asked;
-		bool bThere = false;
-	} Drive(*Game, *Second);
+	FLateDrive Drive(*Game, *Second);
 	Game->Session->SetDiscDrive(&Drive);
 	Game->EnterField(VillageMap);
 	FFieldProgram* Field = Game->Loop->Field();
@@ -393,6 +396,114 @@ TEST_CASE("A disc 2 not yet found keeps INSERT DISC 2 up at each confirmation un
 	CHECK(Drive.Asked == std::vector<int32>{1, 1});
 	CHECK(Game->Session->DiscNumber() == 1);
 	CHECK(Runtime.Context().Disc == 2);
+}
+
+TEST_CASE("Powered on with disc 2 alone, New Game asks for disc 1 and the game goes on from disc 1's files", "[Menu][Content]")
+{
+	REQUIRE_DISC(Second, EDiscRelease::UsaDisc2);
+	REQUIRE_DISC(First, EDiscRelease::UsaDisc1);
+	auto Game = Testing::FGameLoopSession::Start(*Second);
+	FMenuGameMenus Menus(*Game->Executable);
+	Game->Session->SetMenus(&Menus);
+	FLateDrive Drive(*Game, *First);
+	Game->Session->SetDiscDrive(&Drive);
+	Game->PowerOn();
+	FGameLoop& Loop = *Game->Loop;
+	// Disc 2's opening and title, read from disc 2.
+	Game->RunUntil([&] { return Menus.Running() != nullptr; }, 2000, CrossHeld);
+	REQUIRE(Menus.Running() != nullptr);
+	CHECK(Game->Session->DiscNumber() == 1);
+	CHECK(&Game->Session->Image() == &Second->Image());
+	for (int32 Frame = 0; Frame < 40; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame(CrossHeld));
+	}
+
+	// New Game: "INSERT DISC 1" stays up, disc 1 looked for at each confirmation until it is there.
+	REQUIRE_FALSE(Game->Frame(UpHeld));
+	REQUIRE_FALSE(Game->Frame(NoButtons));
+	REQUIRE_FALSE(Game->Frame(CrossHeld));
+	for (int32 Frame = 0; Frame < 200; ++Frame)
+	{
+		REQUIRE_FALSE(Game->Frame());
+	}
+	REQUIRE(Menus.Running() != nullptr);
+	CHECK(Drive.Asked.empty());
+	for (const bool bThere : {false, true})
+	{
+		Drive.bThere = bThere;
+		for (int32 Frame = 0; Frame < 2; ++Frame)
+		{
+			REQUIRE_FALSE(Game->Frame(CrossHeld));
+		}
+		for (int32 Frame = 0; Frame < 30; ++Frame)
+		{
+			REQUIRE_FALSE(Game->Frame());
+		}
+	}
+	Game->RunUntil([&] { return Menus.Running() == nullptr; }, 200);
+	REQUIRE(Menus.Running() == nullptr);
+	CHECK(Drive.Asked == std::vector<int32>{0, 0});
+	CHECK(Game->Session->DiscNumber() == 0);
+	CHECK(&Game->Session->Image() == &First->Image());
+	CHECK(Game->Session->Game().Place() == FirstMap);
+
+	// The opening's second movie is disc 1's, and the first map, whose file disc 2 holds only a stand-in for, is read from disc 1.
+	FFieldProgram* Field = Loop.Field();
+	REQUIRE(Field != nullptr);
+	Game->RunUntil([&] { return Field->Movie() != nullptr; }, 600);
+	REQUIRE(Field->Runtime().Request().Kind == EFieldRequest::Movie);
+	CHECK(Field->Runtime().Request().Movie.Movie == SecondOpeningMovie);
+	Game->RunUntil([&] { return Loop.Field() != nullptr && Loop.Field()->Runtime().Context().RunningMap == FirstMap; }, 3000, CrossHeld);
+	REQUIRE(Loop.Field() != nullptr);
+	CHECK(Loop.Field()->Runtime().Context().RunningMap == FirstMap);
+}
+
+TEST_CASE("Powered on with disc 2 alone, Continue with a disc 1 save asks for disc 1 and goes on at the save's map from its files", "[Menu][Content]")
+{
+	REQUIRE_DISC(Second, EDiscRelease::UsaDisc2);
+	REQUIRE_DISC(First, EDiscRelease::UsaDisc1);
+	auto Game = Testing::FGameLoopSession::Start(*Second);
+	FMenuGameMenus Menus(*Game->Executable);
+	Game->Session->SetMenus(&Menus);
+	FLateDrive Drive(*Game, *First);
+	Drive.bThere = true;
+	Game->Session->SetDiscDrive(&Drive);
+	const std::filesystem::path Folder = std::filesystem::temp_directory_path() / "WeltallMenuGameLoopSecondDiscContinue";
+	std::error_code Error;
+	std::filesystem::remove_all(Folder, Error);
+	FSaveStore Store(Folder);
+	FGameState Saved = Game->Session->Game();
+	Saved.SetPlace(VillageMap);
+	REQUIRE_FALSE(Store.Write(0, WriteOriginalSave(Saved, 0, 0, Game->Session->Text().NameTables, Game->Session->Text().Font.LeadByte())));
+	Game->Session->SetSaves(&Store);
+	Game->PowerOn();
+	FGameLoop& Loop = *Game->Loop;
+	Game->RunUntil([&] { return Menus.Running() != nullptr; }, 2000, CrossHeld);
+	REQUIRE(Menus.Running() != nullptr);
+
+	// Continue, Load, the save, "Load this file?" Yes, "Finished", then "INSERT DISC 1" confirmed with it there.
+	const std::array<std::pair<FPadState, int32>, 14> Presses{{{NoButtons, 40}, {CrossHeld, 2}, {NoButtons, 70}, {CrossHeld, 2}, {NoButtons, 40},
+		{CrossHeld, 2}, {NoButtons, 30}, {LeftHeld, 2}, {NoButtons, 6}, {CrossHeld, 2}, {NoButtons, 60}, {CrossHeld, 2}, {NoButtons, 120},
+		{CrossHeld, 2}}};
+	for (const auto& [Held, Frames] : Presses)
+	{
+		for (int32 Frame = 0; Frame < Frames; ++Frame)
+		{
+			REQUIRE_FALSE(Game->Frame(Held));
+		}
+	}
+	Game->RunUntil([&] { return Menus.Running() == nullptr; }, 200);
+	REQUIRE(Menus.Running() == nullptr);
+	CHECK(Drive.Asked == std::vector<int32>{0});
+	CHECK(Game->Session->DiscNumber() == 0);
+	CHECK(&Game->Session->Image() == &First->Image());
+	const auto OnSavedMap = [&] {
+		return Loop.Field() != nullptr && Loop.Field()->Runtime().Context().MapNumber == VillageMap && Loop.Field()->Runtime().Context().bFieldRunning;
+	};
+	Game->RunUntil(OnSavedMap, 600);
+	CHECK(OnSavedMap());
+	std::filesystem::remove_all(Folder, Error);
 }
 
 TEST_CASE("With no controller the Menu holds its frame with the sound paused, and the wait is no play time", "[Menu][Content]")

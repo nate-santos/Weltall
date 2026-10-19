@@ -21,7 +21,25 @@ namespace Weltall
 			{
 				return false;
 			}
-			return Context.Encounters.Period != 0 && Context.PlayerLock != PlayerLocked && Context.bFieldRunning;
+			return Context.Encounters.Period != 0 && Context.EncounterRate != EEncounterRate::None && Context.PlayerLock != PlayerLocked
+				&& Context.bFieldRunning;
+		}
+
+		/**
+		 * The ticks a period lasts at Rate. A changed period holds the period's encounters (at least as many ticks as
+		 * they need, unless the script's own period has fewer) and leaves the last pending value free for "none".
+		 */
+		int32 ScheduledPeriod(const FFieldEncounters& Encounters, EEncounterRate Rate)
+		{
+			const int32 Period = Encounters.Period;
+			const int32 Scaled = EncounterPeriodAt(Period, Rate);
+			if (Scaled > Period)
+			{
+				constexpr int32 Longest = FFieldEncounters::NoEncounter - 2;
+				return std::min(Scaled, std::max(Period, Longest));
+			}
+			const int32 Shortest = std::max(Encounters.PerPeriod - 1, 1);
+			return std::max(Scaled, std::min(Period, Shortest));
 		}
 
 		/**
@@ -49,11 +67,12 @@ namespace Weltall
 		}
 	}
 
-	bool FFieldEncounters::Schedule(FPsxRandom& Random)
+	bool FFieldEncounters::Schedule(FPsxRandom& Random, EEncounterRate Rate)
 	{
 		// Enough draws for any schedule the original finishes: it needs few more than PerPeriod.
 		constexpr int32 DrawLimit = 1 << 20;
-		Countdown = Period;
+		const int32 Ticks = ScheduledPeriod(*this, Rate);
+		Countdown = Ticks;
 		if (PerPeriod == 0)
 		{
 			Period = 0;
@@ -69,7 +88,7 @@ namespace Weltall
 				{
 					return false;
 				}
-				const int32 Tick = static_cast<int32>(static_cast<uint32>(static_cast<uint64>(int64{Random.Next()} * (int64{Period} + 1)))) >> 15;
+				const int32 Tick = static_cast<int32>(static_cast<uint32>(static_cast<uint64>(int64{Random.Next()} * (int64{Ticks} + 1)))) >> 15;
 				if (std::find(Pending.begin(), Pending.end(), static_cast<uint16>(Tick)) == Pending.end())
 				{
 					Pending[static_cast<std::size_t>(Index)] = static_cast<uint16>(Tick);
@@ -95,7 +114,7 @@ namespace Weltall
 		{
 			return false;
 		}
-		if (--Encounters.Countdown == 0 && !Encounters.Schedule(*Context.Random))
+		if (--Encounters.Countdown == 0 && !Encounters.Schedule(*Context.Random, Context.EncounterRate))
 		{
 			return false;
 		}

@@ -27,7 +27,7 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 	const UGameScreenSubsystem* Screens = Game != nullptr ? Game->GetSubsystem<UGameScreenSubsystem>() : nullptr;
 	TSharedPtr<const IScreenFrame> Frame = Screens != nullptr ? Screens->CaptureFrame() : nullptr;
 	const UPlayerSettingsSubsystem* Settings = Game != nullptr ? Game->GetSubsystem<UPlayerSettingsSubsystem>() : nullptr;
-	const Weltall::EDisplayAspect Aspect = Settings != nullptr ? Settings->Settings().Display.Aspect : Weltall::EDisplayAspect::Window;
+	const Weltall::FDisplayOptions Options = Settings != nullptr ? Settings->Settings().Display : Weltall::FDisplayOptions{};
 	const FIntPoint Size = InViewport->GetSizeXY();
 	if (Size.X <= 0 || Size.Y <= 0)
 	{
@@ -50,7 +50,7 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 	const FIntPoint PictureMin = SafeMin + FIntPoint(FMath::RoundToInt(Picture.X), FMath::RoundToInt(Picture.Y));
 	Display = FIntRect(PictureMin, PictureMin + FIntPoint(FMath::RoundToInt(Picture.Width), FMath::RoundToInt(Picture.Height)));
 #endif
-	ENQUEUE_RENDER_COMMAND(DrawGameScreen)([InViewport, Frame = MoveTemp(Frame), Size, Display, Aspect](FRHICommandListImmediate& RHICmdList)
+	ENQUEUE_RENDER_COMMAND(DrawGameScreen)([InViewport, Frame = MoveTemp(Frame), Size, Display, Options](FRHICommandListImmediate& RHICmdList)
 	{
 		FRHITexture* Target = InViewport->GetRenderTargetTexture();
 		if (Target == nullptr)
@@ -66,7 +66,7 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 		{
 			AddClearRenderTargetPass(GraphBuilder, Output, FLinearColor::Black);
 		}
-		AddDisplayFramePasses(GraphBuilder, Output, Picture, Aspect, Frame.Get());
+		AddDisplayFramePasses(GraphBuilder, Output, Picture, Options, Frame.Get());
 		GraphBuilder.Execute();
 	});
 }

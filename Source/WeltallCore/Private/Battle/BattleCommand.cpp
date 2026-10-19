@@ -9,6 +9,7 @@ namespace Weltall
 		FBattleCommand Command;
 		VisitBattleCommandLayout(Command, BattleRecordBytes::FReader{Record});
 		BattleRecordBytes::Read(Record, 0x04, Command.Bytes04);
+		BattleRecordBytes::Read(Record, 0x12, Command.OwnStatusTurns);
 		return Command;
 	}
 

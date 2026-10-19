@@ -1,7 +1,6 @@
 #include "Text/MesText.h"
 
 #include "Foundation/NumberText.h"
-#include "Text/MesGlyphs.h"
 
 #include <algorithm>
 #include <array>
@@ -52,20 +51,6 @@ namespace Weltall
 			{"page", {NewPage}, 1}, {"more", {More}, 1}, {"Circle", {0x6E}, 1}, {"Square", {0x6F}, 1},
 			{"Triangle", {0x70}, 1}, {"Cross", {0x7F}, 1}, {"box", {BoxByte, BoxByte}, 2},
 		}};
-
-		/** The plain character of each one-byte glyph that has one. */
-		std::array<char, 0x100> PlainCharacters()
-		{
-			std::array<char, 0x100> Plain{};
-			for (int32 Character = 0x20; Character < 0x7F; ++Character)
-			{
-				if (const std::optional<FMesCode> Code = MesCodeOfCharacter(static_cast<char>(Character)); Code && Code->Lead == 0)
-				{
-					Plain[Code->Code] = static_cast<char>(Character);
-				}
-			}
-			return Plain;
-		}
 
 		const FNamedCode* NamedCodeOf(std::span<const uint8> Codes)
 		{
@@ -168,7 +153,66 @@ namespace Weltall
 
 	std::string MesTextOfCodes(std::span<const uint8> Codes)
 	{
-		static const std::array<char, 0x100> Plain = PlainCharacters();
+		return MesTextOfCodes(Codes, FMesCharacters::Plain());
+	}
+
+	std::optional<std::vector<uint8>> MesCodesOfText(std::string_view Text)
+	{
+		return MesCodesOfText(Text, FMesCharacters::Plain());
+	}
+
+	std::size_t MesMessageSize(std::span<const uint8> Codes)
+	{
+		std::size_t At = 0;
+		while (At < Codes.size() && Codes[At] != End)
+		{
+			const std::span<const uint8> Rest = Codes.subspan(At);
+			std::size_t Taken = 1;
+			if (const FNamedCode* Named = NamedCodeOf(Rest))
+			{
+				Taken = Named->Count;
+			}
+			else if (Rest[0] == Extended && Rest.size() > 1 && Rest.size() > ExtendedBytes(Rest[1]))
+			{
+				Taken = 1 + ExtendedBytes(Rest[1]);
+			}
+			else if (Rest[0] >= LeadByte && Rest.size() > 1)
+			{
+				Taken = 2;
+			}
+			At += Taken;
+		}
+		return std::min(At + 1, Codes.size());
+	}
+
+	std::vector<FMesCode> MesGlyphsOfCodes(std::span<const uint8> Codes)
+	{
+		std::vector<FMesCode> Glyphs;
+		Codes = Codes.first(MesMessageSize(Codes));
+		while (!Codes.empty() && Codes.front() != End)
+		{
+			const uint8 Code = Codes.front();
+			std::size_t Taken = 1;
+			if (Code == Extended && Codes.size() > 1 && Codes.size() > ExtendedBytes(Codes[1]))
+			{
+				Taken = 1 + ExtendedBytes(Codes[1]);
+			}
+			else if (Code >= LeadByte && Codes.size() > 1)
+			{
+				Glyphs.push_back({Code, Codes[1]});
+				Taken = 2;
+			}
+			else if (Code >= FirstGlyph)
+			{
+				Glyphs.push_back({0, Code});
+			}
+			Codes = Codes.subspan(Taken);
+		}
+		return Glyphs;
+	}
+
+	std::string MesTextOfCodes(std::span<const uint8> Codes, const FMesCharacters& Characters)
+	{
 		std::string Text;
 		while (!Codes.empty() && Codes.front() != End)
 		{
@@ -199,12 +243,19 @@ namespace Weltall
 			}
 			else if (Code >= LeadByte && Codes.size() > 1)
 			{
-				AppendRaw(Text, Codes.first(2));
+				if (const std::string_view Character = Characters.CharacterOf({Code, Codes[1]}); !Character.empty())
+				{
+					Text += Character;
+				}
+				else
+				{
+					AppendRaw(Text, Codes.first(2));
+				}
 				Taken = 2;
 			}
-			else if (Plain[Code] != 0)
+			else if (const std::string_view Character = Characters.CharacterOf({0, Code}); !Character.empty())
 			{
-				Text += Plain[Code];
+				Text += Character;
 			}
 			else
 			{
@@ -215,7 +266,7 @@ namespace Weltall
 		return Text;
 	}
 
-	std::optional<std::vector<uint8>> MesCodesOfText(std::string_view Text)
+	std::optional<std::vector<uint8>> MesCodesOfText(std::string_view Text, const FMesCharacters& Characters)
 	{
 		std::vector<uint8> Codes;
 		while (!Text.empty())
@@ -233,22 +284,32 @@ namespace Weltall
 			if (Text.front() == '\n')
 			{
 				Codes.push_back(NewLine);
+				Text.remove_prefix(1);
+				continue;
 			}
-			else if (const std::optional<FMesCode> Code = MesCodeOfCharacter(Text.front()); Code && Code->Lead == 0)
-			{
-				Codes.push_back(Code->Code);
-			}
-			else
+			const std::optional<FMesCharacterCode> Code = Characters.CodeAt(Text);
+			if (!Code)
 			{
 				return std::nullopt;
 			}
-			Text.remove_prefix(1);
+			if (Code->Code.Lead != 0)
+			{
+				Codes.push_back(Code->Code.Lead);
+			}
+			Codes.push_back(Code->Code.Code);
+			Text.remove_prefix(Code->Bytes);
 		}
 		Codes.push_back(End);
 		return Codes;
 	}
 
 	FMesExtent MesExtentOfCodes(std::span<const uint8> Codes)
+	{
+		static const FMesGlyphWidths GamesOwn;
+		return MesExtentOfCodes(Codes, GamesOwn);
+	}
+
+	FMesExtent MesExtentOfCodes(std::span<const uint8> Codes, const FMesGlyphWidths& Widths)
 	{
 		FMesExtent Extent{0, 1};
 		int32 LineUnits = 0;
@@ -274,7 +335,8 @@ namespace Weltall
 			else if (Code >= FirstGlyph)
 			{
 				Taken = Code >= LeadByte && Codes.size() > 1 ? 2 : 1;
-				LineUnits += Code < FirstWideGlyph ? NarrowUnits : WideUnits;
+				const auto Own = Widths.empty() ? Widths.end() : Widths.find(static_cast<uint16>(Taken == 2 ? Code << 8 | Codes[1] : Code));
+				LineUnits += Own != Widths.end() ? Own->second : Code < FirstWideGlyph ? NarrowUnits : WideUnits;
 			}
 			Extent.WidthUnits = std::max(Extent.WidthUnits, LineUnits);
 			Extent.Lines = std::max(Extent.Lines, PageLines);

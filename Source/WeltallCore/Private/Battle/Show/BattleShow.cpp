@@ -178,7 +178,8 @@ namespace Weltall
 		CatchUp = std::max(Models / 2 - 1, 0);
 		CatchUpSteps = 0;
 		PendingCatchUp = 0;
-		HoldFrames = 0;
+		WaveHold.Stop();
+		bCoveredByWave = false;
 		Battle.DrawBuffer = 1;
 		bStarted = false;
 	}
@@ -316,16 +317,13 @@ namespace Weltall
 
 	void FBattleShow::HoldBlank()
 	{
-		if (HoldFrames > 0)
-		{
-			--HoldFrames;
-		}
+		WaveHold.Blank();
 	}
 
 	void FBattleShow::DisplayFrame()
 	{
 		// The screen wave's blanks come before the display; a host that does not show them leaves them out.
-		HoldFrames = 0;
+		WaveHold.Stop();
 		// The frame took one vertical blank, unless the screen wave ran in it: then the next one catches up.
 		CatchUp = PendingCatchUp;
 		CatchUpSteps = PendingCatchUp;
@@ -335,8 +333,9 @@ namespace Weltall
 		Sprites.FlushUploads(Vram);
 		Shown.Vram = &Vram;
 		Shown.VramRevision = Vram.Revision();
-		Shown.bCleared = Battle.Clear[0] != 0;
-		Shown.ClearColor = {Battle.Clear[1], Battle.Clear[2], Battle.Clear[3]};
+		Shown.bCleared = Battle.Clear[0] != 0 || bCoveredByWave;
+		Shown.ClearColor = bCoveredByWave ? std::array<uint8, 3>{} : std::array<uint8, 3>{Battle.Clear[1], Battle.Clear[2], Battle.Clear[3]};
+		bCoveredByWave = false;
 		BuildOrder();
 		// The frame is whole: it is the one shown until the next is.
 		Objects.ExchangeFrame(DisplayedObjects);

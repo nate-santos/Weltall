@@ -2,10 +2,13 @@
 
 #include "Formats/SectionContainer.h"
 #include "Formats/Tim.h"
+#include "Game/ChapterTitles.h"
 #include "Foundation/LittleEndian.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
 #include "Menu/MenuPortFrames.h"
+#include "Text/MessageOverrides.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
 
@@ -458,6 +461,29 @@ namespace Weltall
 		return GearCommandTables[static_cast<std::size_t>(Gear)];
 	}
 
+	int32 FMenuResources::SectionOfText(EText Which)
+	{
+		return static_cast<int32>(TextSections[static_cast<std::size_t>(Which)]);
+	}
+
+	void FMenuResources::UsePlayersMessages(const FCdImage& Image)
+	{
+		if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, MessageTables::Menu, TextBytes, EMessageWindows::Program))
+		{
+			TextBytes = std::move(Applied->Table);
+			TextTable = *FMessageTable::Parse(TextBytes);
+		}
+		for (std::size_t Kind = 0; Kind < TextSections.size(); ++Kind)
+		{
+			const std::string Table = MessageTables::MenuHelp(static_cast<int32>(TextSections[Kind]));
+			if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, Table, TextBytesByKind[Kind], EMessageWindows::Program))
+			{
+				TextBytesByKind[Kind] = std::move(Applied->Table);
+				Texts[Kind] = *FMessageTable::Parse(TextBytesByKind[Kind]);
+			}
+		}
+	}
+
 	TResult<FMenuResources> FMenuResources::Load(const FCdImage& Image, const FGameFileIndex& Index, const FPsxExecutable& Kernel)
 	{
 		const TResult<std::vector<uint8>> Data = ReadMenuFile(Image, Index, DataFileNumber);
@@ -490,6 +516,7 @@ namespace Weltall
 		{
 			return Resources;
 		}
+		Resources->UsePlayersMessages(Image);
 		const TResult<std::vector<uint8>> Member = ReadMenuFile(Image, Index, MemberModuleFile);
 		if (!Member)
 		{
@@ -551,7 +578,7 @@ namespace Weltall
 			return PlaceNames.Error();
 		}
 		PlaceNames->resize(static_cast<std::size_t>(Places->Size));
-		Resources->PlaceNameBytes = std::move(*PlaceNames);
+		Resources->PlaceNameBytes = WithPlayersChapterTitles(Image, *PlaceNames);
 		TResult<FGteArctangents> Arctangents = FGteArctangents::Read(Kernel);
 		if (!Arctangents)
 		{

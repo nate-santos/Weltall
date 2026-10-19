@@ -1,5 +1,7 @@
 #include "TextureModFiles.h"
 
+#include "Algo/AnyOf.h"
+#include "Algo/NoneOf.h"
 #include "Graphics/TextureRegion.h"
 #include "HAL/FileManager.h"
 #include "IImageWrapper.h"
@@ -148,6 +150,44 @@ void FTextureModFiles::Empty()
 	Pngs.Empty();
 	Sheets.Empty();
 	Cells.Empty();
+	Beetle.Empty();
+}
+
+void FTextureModFiles::FindPacks(const FString& Folder, const TCHAR* Originals)
+{
+	static const TCHAR* const Read[] = {TEXT("png"), TEXT("jpg"), TEXT("jpeg"), TEXT("bmp"), TEXT("tga")};
+	static const TCHAR* const Unreadable[] = {TEXT("webp"), TEXT("dds")};
+	int32 Repeated = 0;
+	int32 Unread = 0;
+	int32 Pages = 0;
+	for (const FString& File : FilesBelow(Folder, Originals, TEXT("*.*")))
+	{
+		const auto Name = Weltall::BeetleTextureNameOf(TCHAR_TO_UTF8(*FPaths::GetBaseFilename(File)));
+		if (!Name) continue;
+		const FString Extension = FPaths::GetExtension(File);
+		const auto IsExtension = [&Extension](const TCHAR* Format) { return Extension.Equals(Format, ESearchCase::IgnoreCase); };
+		if (Algo::NoneOf(Read, IsExtension))
+		{
+			Unread += Algo::AnyOf(Unreadable, IsExtension) ? 1 : 0;
+			continue;
+		}
+		const FString Within = File.RightChop(Folder.Len());
+		// Pages packs name whole VRAM pages rather than uploads.
+		if (Within.Contains(TEXT("-texture-replacements-pages/"), ESearchCase::IgnoreCase))
+		{
+			++Pages;
+			continue;
+		}
+		int32 Depth = 0;
+		for (const TCHAR Character : Within) Depth += Character == TEXT('/') ? 1 : 0;
+		if (!Beetle.Add(*Name, File, Depth)) ++Repeated;
+	}
+	if (Beetle.Num() > 0 || Repeated > 0)
+	{
+		UE_LOG(LogWeltall, Log, TEXT("Texture pack pictures found: %d, and %d more of the same names in folders farther in, not used"), Beetle.Num(), Repeated);
+	}
+	if (Unread > 0) UE_LOG(LogWeltall, Warning, TEXT("%d texture pack pictures are WEBP or DDS, which are not read: convert them to PNG"), Unread);
+	if (Pages > 0) UE_LOG(LogWeltall, Warning, TEXT("%d texture pack pictures name whole VRAM pages (a -texture-replacements-pages folder), which are not read"), Pages);
 }
 
 void FTextureModFiles::Find(IImageWrapperModule& InWrappers, const FString& Folder, const std::filesystem::path& InRoot, const TCHAR* Originals)
@@ -185,6 +225,7 @@ void FTextureModFiles::Find(IImageWrapperModule& InWrappers, const FString& Fold
 	}
 	UE_LOG(LogWeltall, Log, TEXT("Texture replacements found: %d, and %d on %d sheets"), Pngs.Num(), Cells.Num(), Sheets.Num());
 	if (Repeated > 0) UE_LOG(LogWeltall, Warning, TEXT("%d texture replacements repeat another's key; the first by path is used"), Repeated);
+	FindPacks(Folder, Originals);
 }
 
 TFunction<FTextureModFiles::FDecoded()> FTextureModFiles::Reader(uint64 Key, int32 Width, int32 Height, int64 MaxPixels) const

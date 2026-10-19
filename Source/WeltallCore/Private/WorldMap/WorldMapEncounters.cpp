@@ -3,12 +3,15 @@
 #include "Game/PsxRandom.h"
 #include "WorldMap/WorldMapScene.h"
 
+#include <algorithm>
+
 namespace Weltall
 {
 	namespace
 	{
 		constexpr int32 ForestType = 4;
 		constexpr int16 NoticeKind = 4;
+		constexpr int32 MostTicks = 0x7FFF;
 	}
 
 	void FWorldMapEncounters::Reset(bool bInVehicle)
@@ -22,9 +25,16 @@ namespace Weltall
 
 	void FWorldMapEncounters::Tick(FPsxRandom& Random)
 	{
+		if (Rate == EEncounterRate::None)
+		{
+			Fired = 0;
+			return;
+		}
 		--Left;
 		if (Left == 0)
 		{
+			// The player's rate stretches or shrinks the period as it starts; the timers count to it in 16 bits.
+			const int32 Ticks = std::min(EncounterPeriodAt(Period, Rate), MostTicks);
 			// Each slot's tick is drawn again until it differs from the slots' before it.
 			for (int32 Slot = 0; Slot < Slots; ++Slot)
 			{
@@ -32,7 +42,7 @@ namespace Weltall
 				bool bTaken = true;
 				while (bTaken)
 				{
-					Draw = Random.Next() % Period + 1;
+					Draw = Random.Next() % Ticks + 1;
 					bTaken = false;
 					for (int32 Earlier = 0; Earlier < Slot; ++Earlier)
 					{
@@ -41,7 +51,7 @@ namespace Weltall
 				}
 				Timers[static_cast<std::size_t>(Slot)] = static_cast<int16>(Draw);
 			}
-			Left = Period;
+			Left = Ticks;
 		}
 		Fired = 0;
 		for (int32 Slot = 0; Slot < Slots; ++Slot)

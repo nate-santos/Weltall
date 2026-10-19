@@ -16,7 +16,7 @@
 namespace Weltall
 {
 	class FBattleDefaultTransition;
-	class FBattleSetupMesh;
+	class FBattleScreenMesh;
 	class FBattleEventArchive;
 	class FBattleGrowthTable;
 	class FBattleProgramTables;
@@ -45,6 +45,10 @@ namespace Weltall
 		FBattleEventOptions EventOptions;
 		/** The fixes of the battle rules' broken effects in use. */
 		FBattleRuleOptions RuleOptions;
+		/** Perfect Works Build's rebalance in play: its rules of battle in place of the original's. */
+		bool bPerfectWorksRebalance = false;
+		/** The player's changes to the balance: how much experience and gold the battle gives. */
+		FGameBalance Balance;
 	};
 
 	/** What a battle reads and changes but does not own; everything must outlive the battle. */
@@ -115,7 +119,7 @@ namespace Weltall
 		/** The default transition while it runs (the battles of kinds 0 and 5 on), null otherwise. */
 		WELTALLCORE_API const FBattleDefaultTransition* DefaultTransition() const;
 		/** The mesh of the setup's own transition while it runs (the battles of kinds 1 to 4), null otherwise. */
-		WELTALLCORE_API const FBattleSetupMesh* SetupTransition() const;
+		WELTALLCORE_API const FBattleScreenMesh* SetupTransition() const;
 		/** Whether the battle is still in its transition. */
 		bool IsInTransition() const { return Pc == EPc::Transition; }
 		/**
@@ -187,7 +191,7 @@ namespace Weltall
 		FBattleStage Stage;
 		std::unique_ptr<FBattleContext> Battle;
 		std::unique_ptr<FBattleDefaultTransition> Transition;
-		std::unique_ptr<FBattleSetupMesh> SetupMesh;
+		std::unique_ptr<FBattleScreenMesh> SetupMesh;
 		FSetupLoop SetupLoop;
 		int32 TransitionFramesRun = 0;
 		FBattleInputStep InputStep;

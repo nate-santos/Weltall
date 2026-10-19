@@ -1,6 +1,7 @@
 #include "Menu/MenuMain.h"
 
 #include "Game/GameState.h"
+#include "Media/CdImage.h"
 #include "Menu/MenuResources.h"
 
 namespace Weltall
@@ -190,5 +191,10 @@ namespace Weltall
 		{
 			co_await Frame();
 		} while (Buffer != 0);
+	}
+
+	bool FMenuMain::UsesPerfectWorksRules() const
+	{
+		return Services.Image != nullptr && Services.Image->ModChanges().bPerfectWorksRebalance;
 	}
 }

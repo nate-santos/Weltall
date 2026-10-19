@@ -27,6 +27,30 @@ namespace
 	constexpr uint32 Seed = 0xBA77E002;
 	constexpr int32 Cases = 2000;
 	constexpr const char* OriginalDigest = "6dc201d2595c2a336db528f2bf554daf4076a038";
+	/** The same cases on Perfect Works Build's bug-fix Battle (`battle_rules_digests --perfect-works`). */
+	constexpr const char* PerfectWorksDigest = "aa705ad48dc71a45ce2d4e8f1865d28308dff29f";
+	/** The same cases on its rebalanced party's Battle (`battle_rules_digests --perfect-works-rebalance`). */
+	constexpr const char* RebalanceDigest = "de27b4008c1238dd2e332ff842fb73755ab6d042";
+
+	/** Whose rules a case is played by: the original's, or Perfect Works Build's bug-fix or rebalanced party's Battle. */
+	enum class ERules
+	{
+		Original,
+		PerfectWorks,
+		Rebalance,
+	};
+
+	/** Every loaded command's own status turns, which only the rebalance's rules read, in the commands' order. */
+	void DrawRebalanceData(FXorShift32& G, FBattleContext& Context)
+	{
+		for (int32 Index = 0; Index < FBattleContext::CommandRecordCount; ++Index)
+		{
+			if (FBattleContext::IsLoadedCommand(Index))
+			{
+				Context.Commands[static_cast<std::size_t>(Index)].OwnStatusTurns = static_cast<uint8>(G.Next());
+			}
+		}
+	}
 
 	void PerformCommand(FXorShift32& G, FBattleContext& Context, bool bInGear)
 	{
@@ -144,11 +168,25 @@ namespace
 		}
 	}
 
-	/** One case: a state, then one to eight operations, the state digested after each. */
-	void RunCase(FXorShift32& G, FBattleContext& Context, FOracleDigest& Digest)
+	/** One case: a state, then one to eight operations, the state digested after each; for the mod's Battles its data and the fixes its code makes. */
+	void RunCase(FXorShift32& G, FBattleContext& Context, FOracleDigest& Digest, ERules Rules = ERules::Original)
 	{
 		FGameState State;
 		FPsxRandom Random(Testing::DrawBattleState(G, Context, State));
+		Context.bPerfectWorksRebalance = Rules == ERules::Rebalance;
+		if (Rules == ERules::PerfectWorks)
+		{
+			Testing::DrawPerfectWorksData(G, Context, true);
+			Context.RuleOptions.bDefUpOnFoot = true;
+			Context.RuleOptions.bEtherAmmunitionElement = true;
+			Context.RuleOptions.bDeusKeepsCamera = true;
+		}
+		else if (Rules == ERules::Rebalance)
+		{
+			Testing::DrawPerfectWorksData(G, Context, false);
+			DrawRebalanceData(G, Context);
+			Context.RuleOptions.bEtherAmmunitionElement = true;
+		}
 		Context.Random = &Random;
 		Testing::DigestBattleState(Digest, Context, State, Random);
 		for (uint32 Operation = 1 + G.Next() % 8; Operation > 0; --Operation)
@@ -173,4 +211,38 @@ TEST_CASE("The rules on foot and in gears act, heal, inflict, count down and pic
 		Whole.Raw(CaseDigest);
 	}
 	CHECK(Whole.Hex() == OriginalDigest);
+}
+
+// Perfect Works Build's bug-fix Battle is the original's with Def UP's bit, Billy's ether guns' element and Deus's camera
+// mark (and a Charge that the game's own fuel costs leave the same): the port with those fixes plays its cases alike.
+TEST_CASE("The rules with Def UP, the ether guns' and Deus's fixes act as Perfect Works Build's bug-fix Battle", "[Battle]")
+{
+	FXorShift32 G(Seed);
+	FOracleDigest Whole;
+	auto Context = std::make_unique<FBattleContext>();
+	for (int32 Case = 0; Case < Cases; ++Case)
+	{
+		FOracleDigest One;
+		RunCase(G, *Context, One, ERules::PerfectWorks);
+		const FSha1::FDigest CaseDigest = One.Finish();
+		Whole.Raw(CaseDigest);
+	}
+	CHECK(Whole.Hex() == PerfectWorksDigest);
+}
+
+// Perfect Works Build's rebalanced party's Battle as Weltall plays it (the oracle's description): the port's rebalance rules,
+// with the ether guns' fix its code also makes, play alike.
+TEST_CASE("The rules of Perfect Works Build's rebalance act as its rebalanced party's Battle", "[Battle]")
+{
+	FXorShift32 G(Seed);
+	FOracleDigest Whole;
+	auto Context = std::make_unique<FBattleContext>();
+	for (int32 Case = 0; Case < Cases; ++Case)
+	{
+		FOracleDigest One;
+		RunCase(G, *Context, One, ERules::Rebalance);
+		const FSha1::FDigest CaseDigest = One.Finish();
+		Whole.Raw(CaseDigest);
+	}
+	CHECK(Whole.Hex() == RebalanceDigest);
 }

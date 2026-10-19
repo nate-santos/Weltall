@@ -22,13 +22,12 @@ namespace Weltall
 		{
 			return MakeError("the disc lacks file " + std::to_string(Number) + " of directory " + std::to_string(Directory));
 		}
-		TResult<std::vector<uint8>> Sectors = ReadFileSectors(Image, *Record);
-		if (!Sectors)
+		TResult<std::vector<uint8>> Bytes = ReadFileBytes(Image, *Record);
+		if (!Bytes)
 		{
-			return Sectors.Error();
+			return Bytes.Error();
 		}
-		Sectors->resize(static_cast<std::size_t>(Record->Size));
-		TResult<TFile> Parsed = TFile::Parse(std::move(*Sectors));
+		TResult<TFile> Parsed = TFile::Parse(std::move(*Bytes));
 		if constexpr (std::is_same_v<TFile, FSoundSequenceFile>)
 		{
 			if (Parsed)

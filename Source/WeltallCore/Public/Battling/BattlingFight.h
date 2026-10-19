@@ -100,6 +100,8 @@ namespace Weltall
 		uint16 Repeated = 0;
 		uint8 LeftX = 0x80;
 		uint8 LeftY = 0x80;
+		/** The port's own: the directions among Held that only the stick holds, which a DualShock's stick never does (its bindings). */
+		uint16 StickHeld = 0;
 		/** The port's own: a controller of another kind whose motor the kernel's vibration runs, which gets the VIBRATION switch too. */
 		bool bMotor = false;
 	};
@@ -111,9 +113,21 @@ namespace Weltall
 		bool bOverflowed = false;
 	};
 
+	/**
+	 * Whose rules the fight plays by: the game's, or Perfect Works Build's arena's (its Basic mode, or its Expert mode, Basic's
+	 * with tweaks for two players), which its gears and gear table are made for.
+	 */
+	enum class EBattlingRules : uint8
+	{
+		Original,
+		PerfectWorksBasic,
+		PerfectWorksExpert,
+	};
+
 	/** The bout's settings: the menus' or the field's. */
 	struct FBattlingSettings
 	{
+		EBattlingRules Rules = EBattlingRules::Original;
 		EBattlingMode Mode = EBattlingMode::VersusComputer;
 		/** The bout was chosen in the arena's menus (the field's first byte was 1), not by the story: its set ends back in them. */
 		bool bFromMenus = false;

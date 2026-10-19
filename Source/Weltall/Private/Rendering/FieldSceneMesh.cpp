@@ -2,6 +2,7 @@
 
 #include "FieldDrawBuilder.h"
 #include "Field/FieldTextureRegions.h"
+#include "Graphics/Texture.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "Rendering/VramTexture.h"
@@ -167,7 +168,7 @@ void BuildFieldSceneDraw(const Weltall::FFieldScene& Scene, const Weltall::FFiel
 		Builder.PaintersOrder();
 	}
 	const Weltall::FMdlColor& Background = Scene.State.BackgroundColor;
-	Draw.Background = FColor(Background.R, Background.G, Background.B).ReinterpretAsLinear();
+	Draw.Background = FColor(Weltall::FilledChannel(Background.R), Weltall::FilledChannel(Background.G), Weltall::FilledChannel(Background.B)).ReinterpretAsLinear();
 	Draw.ProjectionDistance = View.ProjectionDistance;
 	Draw.Filter = Options.Filter;
 	Draw.SpriteFilter = Options.SpriteFilter;

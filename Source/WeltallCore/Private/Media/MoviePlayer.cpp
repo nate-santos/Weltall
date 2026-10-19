@@ -32,8 +32,9 @@ namespace Weltall
 		}
 	}
 
-	FMoviePlayer::FMoviePlayer(const FCdImage& InImage, FMovieLocation InLocation, const FMoviePlayback& InPlayback, FGameSoundSystem& InSound)
-		: Image(InImage), Location(InLocation), Playback(InPlayback), Sound(InSound)
+	FMoviePlayer::FMoviePlayer(const FCdImage& InImage, FMovieLocation InLocation, const FMoviePlayback& InPlayback, FGameSoundSystem& InSound,
+		std::optional<FMovieSubtitles> InSubtitles)
+		: Image(InImage), Location(InLocation), Playback(InPlayback), Sound(InSound), Subtitles(std::move(InSubtitles))
 	{
 	}
 
@@ -126,6 +127,7 @@ namespace Weltall
 			}
 			ShownFrame = Decoded.front().FrameNumber;
 			Shown = std::move(Decoded.front().Picture);
+			ShownSubtitle = std::move(Decoded.front().Subtitle);
 			Decoded.pop_front();
 			++PicturesShown;
 			FadeFor(ShownFrame);
@@ -197,6 +199,11 @@ namespace Weltall
 		const uint32 First = Location.FirstLba + std::min(Playback.StartSector, Location.SectorCount);
 		Stream.emplace(Image, First, Location.SectorCount - (First - Location.FirstLba));
 		Decoded.clear();
+		// The undub's subtitles start again as the player asks for the movie's file again.
+		if (Subtitles)
+		{
+			Subtitles->Restart();
+		}
 		bStreamEnded = false;
 		bFadedIn = false;
 		bFadingOut = false;
@@ -248,7 +255,8 @@ namespace Weltall
 		{
 			return Picture.Error();
 		}
-		Decoded.push_back({std::make_shared<const FMdecPicture>(std::move(*Picture)), Compressed.FrameNumber});
+		Decoded.push_back({std::make_shared<const FMdecPicture>(std::move(*Picture)), Compressed.FrameNumber,
+			Subtitles ? Subtitles->At(Compressed.FrameNumber) : nullptr});
 		return true;
 	}
 

@@ -8,6 +8,7 @@
 #include "Graphics/MdlLights.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
+#include "Mods/PerfectWorks.h"
 #include "Support/BattlingFightDigest.h"
 #include "Support/GameDiscs.h"
 #include "Support/MenuFrameDigest.h"
@@ -18,8 +19,10 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -28,6 +31,7 @@ using namespace Weltall;
 using Weltall::Testing::BattlingFightPartBytes;
 using Weltall::Testing::BattlingFightParts;
 using Weltall::Testing::FBattlingSoundRecorder;
+using Weltall::Testing::FModFilesGiven;
 using Weltall::Testing::FXorShift32;
 
 // Battling's fight against the original program run whole: two gears loaded from
@@ -112,6 +116,8 @@ namespace
 
 	struct FBattlingDisc
 	{
+		/** The rules its files are for: the game's, or a mode of Perfect Works' arena given to the disc. */
+		EBattlingRules Rules = EBattlingRules::Original;
 		FBattlingProgramTables Tables;
 		FBattlingTerrain Terrain;
 		FBattlingGearTable GearTable;
@@ -289,6 +295,7 @@ namespace
 		Fight->InitSplashTiles();
 		Fight->InitSparkTiles();
 		Random = FPsxRandom(Case.Seed);
+		Fight->Settings.Rules = Disc.Rules;
 		Fight->Settings.Mode = Case.Mode;
 		Fight->Settings.Level = Case.Level;
 		Fight->Settings.Computer = Case.Computer;
@@ -417,6 +424,80 @@ TEST_CASE("Battling's fight matches the original pass for pass", "[Content][Orac
 		if (Case.bScripted)
 		{
 			CHECK(Run.Result == 0x7F);
+		}
+	}
+}
+
+// Sixteen of the cases with Perfect Works Build's arena (`battling_fight_digests --perfect-works basic` and `expert`): the
+// mod's Battling with each mode's gear table and gear files, its slips played as their code means, against the port's
+// re-creation of its rules with the files the mod gives the disc.
+namespace
+{
+	struct FArenaCase
+	{
+		std::size_t Fight;
+		EBattlingRules Rules;
+		const char* Digest;
+		int32 TicksRun;
+	};
+
+	constexpr EBattlingRules Basic = EBattlingRules::PerfectWorksBasic;
+	constexpr EBattlingRules Expert = EBattlingRules::PerfectWorksExpert;
+	constexpr std::array<FArenaCase, 32> ArenaCases{{
+		{0, Basic, "a358ec8e406ff9db6eeb32b733a17a5105b79969", 1200}, {2, Basic, "0562dbd5fef8033c3e36b7092eeb040ae4a9978e", 944},
+		{3, Basic, "d76f97922f99b794837f2b3260582e0ab7c8fc91", 1200}, {4, Basic, "fb7e2e2bc014f080ba0a6710812ee16a6a91df89", 758},
+		{5, Basic, "f5d97bad7f7969bed639c04a5585f8fcae9c252c", 900}, {6, Basic, "5b24e3b2ef1e74b7cb065d18e010dd1828ba31eb", 900},
+		{10, Basic, "53f8d059e82c7ce2e40e894cf636ce791d5014ab", 4000}, {11, Basic, "6079f6151d0901e35e7824efb04831164027955a", 942},
+		{12, Basic, "3faf720261c5777ef52bc61feae16cbb506ad4e1", 3000}, {15, Basic, "c8b3467a53575dc50477ab1ce45f4d891f2f1b3b", 820},
+		{17, Basic, "26679bb7fc97c9931aec4a34d646795ba02251bc", 1333}, {19, Basic, "3e18319197bf79ea284785414e721737be3b3190", 232},
+		{22, Basic, "6d3ecddc4c8c8dd03074ed7650813668634a2d8b", 820}, {26, Basic, "ba23d388bd228549abbd53f25b814c931da21896", 400},
+		{28, Basic, "457a5097fb0607462c88800c3d29bb207b58ff11", 466}, {31, Basic, "f51f7340b09d46a3ee98ce438ca0bbb1ce260a83", 1500},
+		{0, Expert, "2c5b7b72dc7166aee0c93ed287711564cb293f23", 1200}, {2, Expert, "19df994147587f48f15996fc0981e81aa76a1530", 848},
+		{3, Expert, "e03c5906b50d55e079daae927f33368e9010d44b", 1200}, {4, Expert, "c27aa542fc3c9c443e8ca89f07d660813358cc1d", 758},
+		{5, Expert, "de56274eeef71d2e1238324edf336ab4e12c0dbb", 900}, {6, Expert, "09a8b16835764dea0c7ed338d862b8c0a9d1dba0", 900},
+		{10, Expert, "ac531bae751c1285aedab01d12954288fadf2410", 2802}, {11, Expert, "ba84111b2cb3b246b134e2ac900c643f31a1c924", 942},
+		{12, Expert, "85c2fac7d0b196e096911efd8bf6fe655c5f60b2", 3000}, {15, Expert, "837fccc1c76e048afee036fcfe21de81384e1717", 820},
+		{17, Expert, "91c8c435c173dec74eda0e3d4e5c86ae06a8d4b9", 1333}, {19, Expert, "3e18319197bf79ea284785414e721737be3b3190", 232},
+		{22, Expert, "1109be4f17476e23791cffd2f297812a1b82c149", 820}, {26, Expert, "517ebcd0b82145b044b5a5ced0e39b7a913136a1", 400},
+		{28, Expert, "b19e29068946fb18b1d112ddb33d8be90f89a789", 466}, {31, Expert, "989d7b81561de64d3716c6f141b0f2fb97a9ceb8", 1500},
+	}};
+}
+
+TEST_CASE("With Perfect Works' arena Battling's fight runs as the mod's Battling runs it", "[Content][Oracle][Battling][Mods]")
+{
+	constexpr std::string_view Version = "0.11.4";
+	REQUIRE_DISC(Iso, EDiscRelease::UsaDisc1);
+	const std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
+	if (!Release || Release->Version() != Version)
+	{
+		SKIP("Perfect Works Build 0.11.4 not found in Mods/PerfectWorks");
+	}
+	const auto Executable = ReadBootExecutable(*Iso);
+	REQUIRE(Executable);
+	const auto Index = FGameFileIndex::Read(*Executable);
+	REQUIRE(Index);
+	for (const EPerfectWorksArena Arena : {EPerfectWorksArena::Basic, EPerfectWorksArena::Expert})
+	{
+		FPerfectWorksOptions Options;
+		Options.bEnabled = true;
+		Options.bScript = false;
+		Options.Arena = Arena;
+		const std::vector<FModFile> Files = Release->Files(Options, 1);
+		const FModFilesGiven Given(*Iso, FDiscModFiles::Make(*Index, 1, Files, Release->Changes(Options, Files)));
+		REQUIRE(Iso->Image().ModChanges().PerfectWorksArena == Arena);
+		FBattlingDisc Disc;
+		ReadDisc(Disc, Iso);
+		Disc.Rules = Arena == EPerfectWorksArena::Basic ? Basic : Expert;
+		for (const FArenaCase& Case : ArenaCases)
+		{
+			if (Case.Rules != Disc.Rules)
+			{
+				continue;
+			}
+			const FCaseRun Run = RunCase(Disc, Cases[Case.Fight]);
+			INFO((Arena == EPerfectWorksArena::Basic ? "basic" : "expert") << " case " << Case.Fight << ": " << Run.Digest << " after " << Run.Ticks << " ticks");
+			CHECK(Run.Ticks == Case.TicksRun);
+			CHECK(Run.Digest == Case.Digest);
 		}
 	}
 }

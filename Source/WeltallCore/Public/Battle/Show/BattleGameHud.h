@@ -44,6 +44,8 @@ namespace Weltall
 		WELTALLCORE_API EBattleHudFault Fault() const;
 		/** Whether the lists' cursor's sprites are shown (a list's cursor or the event's arrow). */
 		WELTALLCORE_API bool IsListCursorShown() const;
+		/** The pictures the HUD's sheet holds (FBattleHud::TextureRegions); none before the battle begins. */
+		WELTALLCORE_API std::span<const FTextureRegion> TextureRegions() const;
 
 	private:
 		/** Entry Number of Table as the game reads it; past the table the HUD stops. */

@@ -244,3 +244,62 @@ TEST_CASE("Deus's second form takes the HP its first turn sets, or in the origin
 	// Another scene's write through an empty mask stays the original's.
 	CHECK(Run(FBattleRuleOptions(), 62) == std::pair{uint32{70000}, uint32{74992}});
 }
+
+TEST_CASE("A queue write's third byte keeps the battle camera with the fix, which marks Deus's attack on one gear", "[Battle]")
+{
+	SECTION("the byte as the scene's file gives it")
+	{
+		const auto Kept = [](const FBattleRuleOptions& Options, uint8 Third)
+		{
+			FAiBattle Battle({W(0x80), W(0x01, 1, 0x11, 0), W(0x01, 0, 1, Third), End, Stop});
+			Battle.Context->RuleOptions = Options;
+			RunBattleTurnScript(*Battle.Context, 3);
+			REQUIRE(Battle.Context->Fault == EBattleFault::None);
+			return Battle.Context->KeepCamera;
+		};
+		CHECK(Kept(FBattleRuleOptions(), 1) == 1);
+		CHECK(Kept(FBattleRuleOptions(), 0) == 0);
+		CHECK(Kept(FBattleRuleOptions::Original(), 1) == 0);
+	}
+	SECTION("Deus's word in his first fight, whose byte the disc leaves 0")
+	{
+		// Scene 64's type 0: the attack's commands, its entry committed by the word at C22h.
+		constexpr uint32 Attack = 0xC22;
+		const auto Kept = [](const FBattleRuleOptions& Options, uint8 Scene, uint32 At)
+		{
+			FAiBattle Battle({End});
+			Battle.Scene.assign(At - 8, 0);
+			Battle.Append({W(0x80), W(0x01, 1, 0x11, 0), W(0x01, 0, 1, 0), End, Stop}, 0);
+			FBattleContext& Context = *Battle.Context;
+			Context.SceneFile = Battle.Scene;
+			Context.RuleOptions = Options;
+			Context.Formation.Scene = Scene;
+			RunBattleTurnScript(Context, 3);
+			REQUIRE(Context.Fault == EBattleFault::None);
+			REQUIRE(Context.AiQueue[1] == 0x11);
+			return Context.KeepCamera;
+		};
+		CHECK(Kept(FBattleRuleOptions(), 64, Attack) == 1);
+		CHECK(Kept(FBattleRuleOptions::Original(), 64, Attack) == 0);
+		CHECK(Kept(FBattleRuleOptions(), 63, Attack) == 0);
+		CHECK(Kept(FBattleRuleOptions(), 64, Attack + 4) == 0);
+	}
+}
+
+// Perfect Works Build's rebalanced party's Battle reads the queue write's third byte as its bug-fix Battle does, with the fix's
+// row or without it; the word that follows doesn't count.
+TEST_CASE("A queue write's third byte keeps the battle camera under Perfect Works Build's rebalance", "[Battle]")
+{
+	const auto Kept = [](const FBattleRuleOptions& Options, uint8 Third)
+	{
+		FAiBattle Battle({W(0x80), W(0x01, 0, 1, Third), W(0x80), End, Stop});
+		Battle.Context->RuleOptions = Options;
+		Battle.Context->bPerfectWorksRebalance = true;
+		RunBattleTurnScript(*Battle.Context, 3);
+		REQUIRE(Battle.Context->Fault == EBattleFault::None);
+		return Battle.Context->KeepCamera;
+	};
+	CHECK(Kept(FBattleRuleOptions::Original(), 1) == 1);
+	CHECK(Kept(FBattleRuleOptions::Original(), 0) == 0);
+	CHECK(Kept(FBattleRuleOptions(), 0) == 0);
+}

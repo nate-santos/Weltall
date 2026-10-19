@@ -177,7 +177,12 @@ namespace Weltall
 			{
 				const FBattleGearPart& Gear = ActorGear(Context);
 				uint32 Amplifier = Gear.EtherAmplifier;
-				if ((Gear.Status & 0x100) != 0 || Amplifier == 0)
+				if (Context.bPerfectWorksRebalance)
+				{
+					// Perfect Works' rebalance halves the amplifier for the status, then keeps it at 4 at least.
+					Amplifier = std::max<uint32>((Gear.Status & 0x100) != 0 ? Amplifier >> 1 : Amplifier, 4);
+				}
+				else if ((Gear.Status & 0x100) != 0 || Amplifier == 0)
 				{
 					Amplifier = 4;
 				}
@@ -212,7 +217,8 @@ namespace Weltall
 				{
 					Defense += EtherDefense;
 				}
-				if (((Gear.Buffs | Gear.PermanentBuffs) & 0x20) != 0)
+				// Perfect Works' rebalance moves the buff to 80h.
+				if (((Gear.Buffs | Gear.PermanentBuffs) & (Context.bPerfectWorksRebalance ? 0x80 : 0x20)) != 0)
 				{
 					Defense = Defense + ((Defense & 0xFFFF) >> 1);
 				}
@@ -234,16 +240,19 @@ namespace Weltall
 			uint16 Attack = GearCalcAttack(Context);
 			uint16 Defense = GearCalcDefense(Context);
 			ApplyElement(Context, Attack, Defense, Hit);
-			const uint16 GearBuffs = Gear.Buffs | Gear.PermanentBuffs;
+			// Perfect Works' rebalance reads the buffs without their permanent halves and moves the tenths taken off to
+			// 10h and 20h.
+			const bool bRebalance = Context.bPerfectWorksRebalance;
+			const uint16 GearBuffs = bRebalance ? Gear.Buffs : static_cast<uint16>(Gear.Buffs | Gear.PermanentBuffs);
 			if ((GearBuffs & 8) != 0) Attack = static_cast<uint16>(Attack + Attack / 5);
 			if ((GearBuffs & 2) != 0) Attack = static_cast<uint16>(Attack + Attack / 10);
 			if ((GearBuffs & 4) != 0) Attack = static_cast<uint16>(Attack - Attack / 5);
-			if ((GearBuffs & 1) != 0) Attack = static_cast<uint16>(Attack - Attack / 10);
-			const uint16 TargetBuffs = TargetPart.Buffs | TargetPart.PermanentBuffs;
+			if ((GearBuffs & (bRebalance ? 0x10 : 1)) != 0) Attack = static_cast<uint16>(Attack - Attack / 10);
+			const uint16 TargetBuffs = bRebalance ? TargetPart.Buffs : static_cast<uint16>(TargetPart.Buffs | TargetPart.PermanentBuffs);
 			if ((TargetBuffs & 4) != 0) Defense = static_cast<uint16>(Defense + Defense / 5);
 			if ((TargetBuffs & 1) != 0) Defense = static_cast<uint16>(Defense + Defense / 10);
 			if ((TargetBuffs & 8) != 0) Defense = static_cast<uint16>(Defense - Defense / 5);
-			if ((TargetBuffs & 2) != 0) Defense = static_cast<uint16>(Defense - Defense / 10);
+			if ((TargetBuffs & (bRebalance ? 0x20 : 2)) != 0) Defense = static_cast<uint16>(Defense - Defense / 10);
 			if ((Command.Element & 0x10) != 0)
 			{
 				if ((Target.MentalImmunity & 0x40) == 0)
@@ -282,7 +291,20 @@ namespace Weltall
 			}
 			const int32 AttackScale = bEther ? 5 : 4;
 			const int32 DefenseScale = bEther ? 4 : 3;
-			int32 Damage = Defense == 0 ? AttackScale * Attack : AttackScale * Attack - DefenseScale * Defense;
+			int32 Damage = 0;
+			if (bRebalance)
+			{
+				// Its base adds the command's own power and takes an eighth of the attack off.
+				Damage = AttackScale * Attack - (Attack >> 3) + Command.Power;
+				if (Defense != 0)
+				{
+					Damage -= DefenseScale * Defense;
+				}
+			}
+			else
+			{
+				Damage = Defense == 0 ? AttackScale * Attack : AttackScale * Attack - DefenseScale * Defense;
+			}
 			if (Command.AttackFormula < 2)
 			{
 				Damage = Power * Damage / 20;
@@ -327,7 +349,8 @@ namespace Weltall
 			}
 			if (Action.bEtherFailed && bEther && Damage != 0)
 			{
-				Damage /= 3;
+				// Perfect Works' rebalance: Elly's critical hit doubles it.
+				Damage = bRebalance ? Damage * 2 : Damage / 3;
 			}
 			Action.Amounts[Action.TargetSlot] = static_cast<uint32>(std::clamp(Damage, 0, 9999));
 		}

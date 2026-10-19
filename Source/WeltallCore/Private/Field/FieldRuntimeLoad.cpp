@@ -110,6 +110,10 @@ namespace Weltall
 	{
 		Services.Options = Options;
 		FieldContext.Options = Options;
+		if (Services.PartySprites != nullptr)
+		{
+			Services.PartySprites->SetFramesAligned(Options.bSpriteFramesAligned);
+		}
 	}
 
 	void FFieldRuntime::SetDisc(uint8 Disc)
@@ -289,6 +293,7 @@ namespace Weltall
 		Context.Files = &DiscFiles;
 		Context.GameState = Services.Game;
 		Context.Options = Services.Options;
+		Context.EncounterRate = Services.EncounterRate;
 		Context.Unreached = Services.Unreached;
 		Context.ViewTurn = ViewTurn;
 		Context.bAlwaysRun = bAlwaysRun;
@@ -325,6 +330,7 @@ namespace Weltall
 		Context.PartySprites = Services.PartySprites;
 		FFieldMessages& Windows = Context.Messages;
 		Windows.Table = std::move(*Messages);
+		Windows.Replaced = &MapData->ReplacedMessages;
 		Windows.Text = Services.Text;
 		Windows.EnterMap();
 		// The init's scripts project through the view the lights' setup leaves: a look-at of nothing.

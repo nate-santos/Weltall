@@ -47,7 +47,6 @@ namespace Weltall
 		/** Far past any display's edge, on the 320 x 224 screen's scale. */
 		constexpr int16 Beyond = 8192;
 		/** The menu's shading: grey subtracted 4 a step (its tile's key is apart from the fades' and the windows'). */
-		constexpr int32 MenuShadeStep = 4;
 
 		/** The frame's pieces as drawn: top left, right edge, top right, left edge, bottom left, top edge, bottom right, bottom edge. */
 		struct FPiecePlace
@@ -131,7 +130,7 @@ namespace Weltall
 				{
 					return;
 				}
-				const uint8 Grey = static_cast<uint8>(Shade.Level * MenuShadeStep);
+				const uint8 Grey = static_cast<uint8>(Shade.Level * FFieldMenuShade::GreyPerLevel);
 				FDrawPrimitive Tile = Rectangle(-Beyond, -Beyond, ScreenWidth + 2 * Beyond, ScreenHeight + 2 * Beyond, {Grey, Grey, Grey});
 				Tile.bGouraud = false;
 				Tile.Blend = EDrawBlend::SemiTransparent;

@@ -1,9 +1,11 @@
 #include "Rendering/MovieRendering.h"
 
+#include "GlobalRenderResources.h"
 #include "GlobalShader.h"
 #include "Graphics/Mdec.h"
 #include "Graphics/MovieCleanup.h"
 #include "Graphics/MovieUpscale.h"
+#include "Media/MovieSubtitles.h"
 #include "PixelShaderUtils.h"
 #include "RHICommandList.h"
 #include "RHIStaticStates.h"
@@ -22,6 +24,7 @@ namespace
 		BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 			SHADER_PARAMETER_TEXTURE(Texture2D, Luma)
 			SHADER_PARAMETER_TEXTURE(Texture2D, Chroma)
+			SHADER_PARAMETER_TEXTURE(Texture2D<float4>, Subtitle)
 			SHADER_PARAMETER_SAMPLER(SamplerState, LinearClamp)
 			SHADER_PARAMETER(FVector4f, ScreenRect)
 			SHADER_PARAMETER(FVector2f, ScreenSize)
@@ -44,6 +47,8 @@ namespace
 		SHADER_PARAMETER(FIntVector4, DisplayRect)
 		SHADER_PARAMETER(FIntPoint, ScreenSize)
 		SHADER_PARAMETER(FIntVector4, Placement)
+		SHADER_PARAMETER_TEXTURE(Texture2D<float4>, Subtitle)
+		SHADER_PARAMETER_SAMPLER(SamplerState, SubtitleSampler)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -114,8 +119,31 @@ IMPLEMENT_GLOBAL_SHADER(FMovieBlurPS, "/Weltall/Private/MovieUpscale.usf", "Blur
 IMPLEMENT_GLOBAL_SHADER(FMovieWarpPS, "/Weltall/Private/MovieUpscale.usf", "WarpPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FMovieDisplayPS, "/Weltall/Private/MovieUpscale.usf", "DisplayPS", SF_Pixel);
 
-FMoviePictureTexture::FMoviePictureTexture(const Weltall::FMdecPicture& Picture, Weltall::EMovieFilter InFilter)
-	: PictureSize(Picture.Width, Picture.Height), PictureFilter(InFilter), QuantScale(Picture.QuantScale)
+FMovieSubtitleTexture::FMovieSubtitleTexture(const Weltall::FMovieSubtitlePicture& Line, FIntPoint PictureSize)
+	: Size(PictureSize)
+{
+	Texels.SetNumZeroed(Size.X * Size.Y * 4);
+	const int32 Left = FMath::Max(Line.X, 0);
+	const int32 Right = FMath::Min(Line.X + Line.Width, Size.X);
+	for (int32 Row = FMath::Max(Line.Y, 0); Row < FMath::Min(Line.Y + Line.Height, Size.Y) && Left < Right; ++Row)
+	{
+		FMemory::Memcpy(&Texels[(Row * Size.X + Left) * 4], &Line.Pixels[static_cast<std::size_t>(((Row - Line.Y) * Line.Width + Left - Line.X) * 4)],
+			(Right - Left) * 4);
+	}
+}
+
+void FMovieSubtitleTexture::InitRHI(FRHICommandListBase& RHICmdList)
+{
+	SubtitleTexture = CreatePlane(RHICmdList, TEXT("MovieSubtitle"), Size, PF_R8G8B8A8, 4, Texels.GetData());
+}
+
+void FMovieSubtitleTexture::ReleaseRHI()
+{
+	SubtitleTexture.SafeRelease();
+}
+
+FMoviePictureTexture::FMoviePictureTexture(const Weltall::FMdecPicture& Picture, Weltall::EMovieFilter InFilter, TSharedPtr<FMovieSubtitleTexture> InSubtitle)
+	: PictureSize(Picture.Width, Picture.Height), PictureFilter(InFilter), SubtitleLine(MoveTemp(InSubtitle)), QuantScale(Picture.QuantScale)
 {
 	if (PictureFilter == Weltall::EMovieFilter::Upscaled)
 	{
@@ -158,6 +186,11 @@ void FMoviePictureTexture::InitRHI(FRHICommandListBase& RHICmdList)
 	}
 	LumaTexture = CreatePlane(RHICmdList, TEXT("MovieLuma"), PictureSize, PF_R32_FLOAT, sizeof(float), LumaTexels.GetData());
 	ChromaTexture = CreatePlane(RHICmdList, TEXT("MovieChroma"), PictureSize / 2, PF_G32R32F, 2 * sizeof(float), ChromaTexels.GetData());
+}
+
+FRHITexture* FMoviePictureTexture::Subtitle() const
+{
+	return SubtitleLine.IsValid() && SubtitleLine->Texture() != nullptr ? SubtitleLine->Texture() : GTransparentBlackTexture->TextureRHI.GetReference();
 }
 
 void FMoviePictureTexture::ReleaseRHI()
@@ -240,6 +273,8 @@ void AddMoviePasses(FRDGBuilder& GraphBuilder, const FMoviePictureTexture& Pictu
 		Parameters->DisplayRect = FIntVector4(ScreenRect.Min.X, ScreenRect.Min.Y, ScreenRect.Width(), ScreenRect.Height());
 		Parameters->ScreenSize = FIntPoint(Screen.Width, Screen.Height);
 		Parameters->Placement = FIntVector4(Placement.X, Placement.Y, Placement.Width, Placement.Height);
+		Parameters->Subtitle = Picture.Subtitle();
+		Parameters->SubtitleSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 		Parameters->RenderTargets[0] = FRenderTargetBinding(Output, ERenderTargetLoadAction::ELoad);
 		const TShaderMapRef<FMovieDisplayPS> PixelShader(ShaderMap);
 		FPixelShaderUtils::AddFullscreenPass(GraphBuilder, ShaderMap, RDG_EVENT_NAME("ScreenMovieUpscaled"), PixelShader, Parameters, ScreenRect);
@@ -248,6 +283,7 @@ void AddMoviePasses(FRDGBuilder& GraphBuilder, const FMoviePictureTexture& Pictu
 	FScreenMoviePS::FParameters* Parameters = GraphBuilder.AllocParameters<FScreenMoviePS::FParameters>();
 	Parameters->Luma = Picture.Luma();
 	Parameters->Chroma = Picture.Chroma();
+	Parameters->Subtitle = Picture.Subtitle();
 	Parameters->LinearClamp = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 	Parameters->ScreenRect = FVector4f(ScreenRect.Min.X, ScreenRect.Min.Y, ScreenRect.Width(), ScreenRect.Height());
 	Parameters->ScreenSize = FVector2f(Screen.Width, Screen.Height);

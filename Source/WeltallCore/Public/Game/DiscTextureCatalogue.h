@@ -49,7 +49,8 @@ namespace Weltall
 	 * TIM pictures every other file holds, as it is, unpacked or in a container's sections (the world map's, the
 	 * field's system images and screens, the menus', Battling's), each whole through its own colours, then Battle's
 	 * stages, each scene's enemies (its models, its sprites' cells), every gear with each of its variants, the special
-	 * models, the party's battle sprites and attacks, the common effects and every effect's sprites, then the gear models
+	 * models, the party's battle sprites and attacks, the common effects and every effect's sprites, the battle HUD's and the
+	 * result screen's pictures (each character's portrait among them), then the gear models
 	 * the field and the gear shop load. A
 	 * streamed file's cells come with the name of the sheet of its palette set they are saved on. Each item is loaded
 	 * through the game's own readers into a VRAM of its own, so a picture's key is the one its drawing gives it.
@@ -73,7 +74,7 @@ namespace Weltall
 		 * An item's folder: "field/0002" for map 2, "sprites/04-0005" for sprite file 5 of directory 4, "files/36/0002" for
 		 * file 2 of directory 36, "battle/stages/007", "battle/enemies/012" (scene 12), "battle/gears/03-1" (gear 3, variant
 		 * 1), "battle/special/2", "battle/party/03" (character 3's battle sprites), "battle/effects/common",
-		 * "battle/effects/042" (effect 42), "gears/07" (the field's gear model 7).
+		 * "battle/effects/042" (effect 42), "battle/hud", "battle/result", "gears/07" (the field's gear model 7).
 		 */
 		WELTALLCORE_API std::string FolderOf(std::size_t Item) const;
 		/** Every item each picture was found in so far, in the order found. */
@@ -92,6 +93,8 @@ namespace Weltall
 			BattleParty,
 			/** An effect's sprites (Number), or the common effects' (Number -1). */
 			BattleEffect,
+			/** The battle HUD's pictures (Number 0), or the result screen's (Number 1). */
+			BattleHud,
 			/** A gear model of the field's (FGearFileNumbers). */
 			FieldGear,
 		};
@@ -111,6 +114,7 @@ namespace Weltall
 		std::optional<FError> AddBattleModels(const FItem& Item, std::vector<FDiscTexture>& Pictures);
 		std::optional<FError> AddBattleParty(int32 Character, std::vector<FDiscTexture>& Pictures);
 		std::optional<FError> AddBattleEffect(int32 Effect, std::vector<FDiscTexture>& Pictures);
+		std::optional<FError> AddBattleHud(bool bResult, std::vector<FDiscTexture>& Pictures);
 		std::optional<FError> AddFieldGear(int32 GearModel, std::vector<FDiscTexture>& Pictures);
 		void AddSeeds(const FVram& Vram, std::span<const FTexturePictureSeed> Seeds, std::vector<FDiscTexture>& Pictures);
 		void AddPictures(std::span<const uint8> Bytes, std::vector<FDiscTexture>& Pictures);

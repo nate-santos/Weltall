@@ -19,8 +19,8 @@ namespace Weltall
 		FSpriteSystem* Sprites = nullptr;
 		FBattleFade Fade;
 
-		/** A fade's start. */
-		WELTALLCORE_API void Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue);
+		/** A fade's start; bEffect for an effect's script's. */
+		WELTALLCORE_API void Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue, bool bEffect = false);
 		void Update() override;
 	};
 

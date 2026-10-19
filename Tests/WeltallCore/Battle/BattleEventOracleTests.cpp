@@ -5,6 +5,7 @@
 #include "Game/PsxRandom.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
+#include "Mods/PerfectWorks.h"
 #include "Support/BattleAiScenario.h"
 #include "Support/BattleEventScenario.h"
 #include "Support/BattleScenario.h"
@@ -15,9 +16,13 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <filesystem>
 #include <memory>
+#include <string>
+#include <string_view>
 
 using namespace Weltall;
+using Weltall::Testing::FModFilesGiven;
 using Weltall::Testing::FOracleDigest;
 using Weltall::Testing::FXorShift32;
 
@@ -59,7 +64,7 @@ namespace
 			Frames.DigestEvent();
 		};
 
-		BeginBattleEvent(Context, Case.Script, Case.Messages);
+		BeginBattleEvent(Context, Case.Script, Case.Messages, Archive.Layout());
 		if (!Frames.Run())
 		{
 			Context.Show = nullptr;
@@ -114,6 +119,27 @@ namespace
 	}
 }
 
+namespace
+{
+	/** Every case's digest in turn, the scripts, font and names read from Disc's image as it serves them. */
+	std::string DigestCases(const FIso9660& Disc, const FGameFileIndex& Index)
+	{
+		const auto Archive = FBattleEventArchive::Load(Disc.Image(), Index);
+		REQUIRE(Archive);
+		const FMesResident Resident = Testing::LoadMesResident(Disc);
+		FXorShift32 G(Seed);
+		FOracleDigest Whole;
+		auto Context = std::make_unique<FBattleContext>();
+		for (int32 Case = 0; Case < Cases; ++Case)
+		{
+			FOracleDigest One;
+			RunCase(G, *Context, *Archive, Resident, One);
+			Whole.Raw(One.Finish());
+		}
+		return Whole.Hex();
+	}
+}
+
 TEST_CASE("Battle events load, run at the battle's hooks and end as the original's, frame by frame", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
@@ -121,17 +147,28 @@ TEST_CASE("Battle events load, run at the battle's hooks and end as the original
 	REQUIRE(Executable);
 	const auto Index = FGameFileIndex::Read(*Executable);
 	REQUIRE(Index);
-	const auto Archive = FBattleEventArchive::Load(Disc->Image(), *Index);
-	REQUIRE(Archive);
-	const FMesResident Resident = Testing::LoadMesResident(*Disc);
-	FXorShift32 G(Seed);
-	FOracleDigest Whole;
-	auto Context = std::make_unique<FBattleContext>();
-	for (int32 Case = 0; Case < Cases; ++Case)
+	CHECK(DigestCases(*Disc, *Index) == OriginalDigest);
+}
+
+// The same cases with Perfect Works Build's battle events, font and names, and its own BATTLE_EVENT in the oracle
+// (`battle_event_digests --perfect-works`): the port's re-creation of its message windows (EBattleMessageLayout).
+TEST_CASE("With Perfect Works' files battle events run as the mod's code runs them", "[Battle][Mods][Content]")
+{
+	constexpr std::string_view Version = "0.11.4";
+	constexpr const char* PerfectWorksDigest = "632b4dc89505a21ad4dcb6c9b1822fb17605a214";
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
+	if (!Release || Release->Version() != Version)
 	{
-		FOracleDigest One;
-		RunCase(G, *Context, *Archive, Resident, One);
-		Whole.Raw(One.Finish());
+		SKIP("Perfect Works Build 0.11.4 not found in Mods/PerfectWorks");
 	}
-	CHECK(Whole.Hex() == OriginalDigest);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	const auto Index = FGameFileIndex::Read(*Executable);
+	REQUIRE(Index);
+	FPerfectWorksOptions Options;
+	Options.bEnabled = true;
+	const std::vector<FModFile> Files = Release->Files(Options, 1);
+	const FModFilesGiven Given(*Disc, FDiscModFiles::Make(*Index, 1, Files, Release->Changes(Options, Files)));
+	CHECK(DigestCases(*Disc, *Index) == PerfectWorksDigest);
 }

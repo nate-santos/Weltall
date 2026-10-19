@@ -1,7 +1,10 @@
 #include "Menu/MenuSpriteSheet.h"
 
 #include "Foundation/LittleEndian.h"
+#include "Graphics/TextureRegion.h"
 #include "Menu/MenuButtonIcons.h"
+
+#include <algorithm>
 
 namespace Weltall
 {
@@ -241,5 +244,27 @@ namespace Weltall
 			Primitives.push_back(Quad);
 		}
 		return static_cast<int32>(Parts.size());
+	}
+
+	std::vector<FTextureRegion> MenuSheetTextureRegions(const FMenuSpriteSheet& Sheet)
+	{
+		std::vector<FTextureRegion> Footprints;
+		for (int32 Frame = 0; Frame < Sheet.FrameCount(); ++Frame)
+		{
+			for (const FMenuSpritePart& Part : Sheet.Frame(Frame))
+			{
+				if (Part.Width <= 0 || Part.Height <= 0)
+				{
+					continue;
+				}
+				const uint32 View = PackTextureView(FTexturePage::FromAttribute(MenuGpu::TexturePage(Part.Depth, 0, Part.ImageX, Part.ImageY)),
+					FClutPosition::FromAttribute(MenuGpu::Clut(Part.ClutX, Part.ClutY)));
+				const uint8 U = static_cast<uint8>(Part.U);
+				const uint8 V = static_cast<uint8>(Part.V);
+				Footprints.push_back(TextureRegionBetween(View, U, V, static_cast<uint8>(std::min(U + Part.Width - 1, 255)),
+					static_cast<uint8>(std::min(V + Part.Height - 1, 255))));
+			}
+		}
+		return MergeTextureRegions(std::move(Footprints));
 	}
 }

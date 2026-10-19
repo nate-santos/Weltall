@@ -107,9 +107,16 @@ namespace Weltall
 	{
 		static constexpr std::size_t RecordSize = 0x170;
 		static constexpr std::size_t CharacterRecordSize = 0xA4;
+		static constexpr std::size_t EtherAmmunitionOffset = 0x70;
+		static constexpr std::size_t ExtraBonusesOffset = 0x20;
 		static constexpr int32 DurationCount = 14;
 
 		std::array<FBattleWeaponSlot, 4> Weapons{};
+		/**
+		 * Perfect Works' rebalance: what its equipment and items add besides to attack, defense, ether, ether defense and
+		 * agility (record 20h-24h). Only its rules read them, so they lie outside the layout of the original's.
+		 */
+		std::array<uint8, 5> ExtraBonuses{};
 		/** What the equipment adds to attack, defense, agility, ether, ether defense, armor, hit and evade. */
 		std::array<uint8, 8> EquipmentBonuses{};
 		/** Max HP and max EP added at the battle's start, in twentieths. */
@@ -155,6 +162,11 @@ namespace Weltall
 		/** Billy's guns: the ammunition each fires. */
 		uint8 PistolAmmunition = 0;
 		uint8 BigGunAmmunition = 0;
+		/**
+		 * Billy's ether guns, right and left: the ether ammunition each holds (record 70h, 71h). Only the ether guns' fix
+		 * reads them, so they lie outside the layout of the original's rules.
+		 */
+		std::array<uint8, 2> EtherAmmunition{};
 		/** The party's commands switched off: bit 0x8000 >> i for command i of the menu. */
 		uint16 DisabledCommands = 0;
 		/** KO, Stop, Slow, Poison, ACC and Atk DOWN, Play Dead... */

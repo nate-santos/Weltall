@@ -17,6 +17,9 @@ namespace Weltall
 		/** Def DOWN in the statuses' word, and the battle messages' "Def DOWN". */
 		constexpr uint16 DefDown = 0x0100;
 		constexpr uint8 DefDownMessage = 6;
+		/** The messages Perfect Works' rebalance gives its status 40h and its mental 800h (Can't use Ether): its own, and Block ETH effects'. */
+		constexpr uint8 PerfectWorksDefDownMessage = 0x28;
+		constexpr uint8 BlockEtherMessage = 13;
 
 		/** Which duration counter a status's bits have: only these exact values have one. */
 		uint8 DurationIndex(uint8 Group, uint16 Bits)
@@ -41,10 +44,26 @@ namespace Weltall
 			}
 		}
 
-		/** The duration counters a status sets, one bit each: the original's one, and with the fix Atk UP's, ACC UP's and EV UP's. */
-		uint16 DurationCounters(uint8 Group, uint16 Bits, bool bEveryBuffExpires)
+		/**
+		 * Perfect Works' rebalance's counters: Can't use Ether and Def UP have none, and an element change counts by
+		 * any of its guard's or its attack's bits.
+		 */
+		uint8 PerfectWorksDurationIndex(uint8 Group, uint16 Bits)
 		{
-			const uint8 Index = DurationIndex(Group, Bits);
+			switch (Group)
+			{
+			case 2: return Bits == 0x1000 ? 2 : NoDuration;
+			case 5: return Bits == 0x8000 ? 4 : NoDuration;
+			case 9: return (Bits & 0x0F00) != 0 ? 13 : (Bits & 0xF000) != 0 ? 12 : NoDuration;
+			default: return DurationIndex(Group, Bits);
+			}
+		}
+
+		/** The duration counters a status sets, one bit each: the original's one, and with the fix Atk UP's, ACC UP's and EV UP's. */
+		uint16 DurationCounters(const FBattleContext& Context, uint8 Group, uint16 Bits)
+		{
+			const bool bEveryBuffExpires = Context.RuleOptions.bEveryBuffExpires;
+			const uint8 Index = Context.bPerfectWorksRebalance ? PerfectWorksDurationIndex(Group, Bits) : DurationIndex(Group, Bits);
 			uint16 Counters = Index == NoDuration ? 0 : static_cast<uint16>(1u << Index);
 			if (Group == 5 && bEveryBuffExpires)
 			{
@@ -111,16 +130,16 @@ namespace Weltall
 			return (Word & Bit) != 0 && (Permanent & Bit) == 0;
 		}
 
-		/**
-		 * Citan's ether records (and his gear's) as the target-all ether marks them: 1 for the whole party,
-		 * 2000h back to one. The game works out the records from the slot as if every slot had the party's
-		 * tables; an enemy in a gear in slot 8 to 10 would reach past them (a fault).
-		 */
-		void SetEtherTargeting(FBattleContext& Context, uint8 Slot, bool bGear, uint16 Targeting)
+		/** Citan's ether records and his gear's, which the target-all ether marks. */
+		constexpr std::array<int32, 10> FootEtherCommands{22, 24, 25, 26, 27, 28, 29, 30, 31, 32};
+		constexpr std::array<int32, 7> GearEtherCommands{21, 23, 24, 25, 26, 27, 28};
+		/** Perfect Works' rebalance: Bart's records the target-all ether marks, the first four reset to 2000h and the others to 4000h. */
+		constexpr std::array<int32, 4> BartEtherCommands{28, 29, 30, 31};
+		constexpr std::array<int32, 2> BartOtherCommands{25, 26};
+		constexpr uint8 Bart = 3;
+
+		void SetCommandsTargeting(FBattleContext& Context, uint8 Slot, bool bGear, std::span<const int32> Commands, uint16 Targeting)
 		{
-			constexpr std::array<int32, 10> FootCommands{22, 24, 25, 26, 27, 28, 29, 30, 31, 32};
-			constexpr std::array<int32, 7> GearCommands{21, 23, 24, 25, 26, 27, 28};
-			const std::span<const int32> Commands = bGear ? std::span<const int32>(GearCommands) : std::span<const int32>(FootCommands);
 			for (const int32 Command : Commands)
 			{
 				const int32 Index = bGear ? FBattleContext::GearCommandIndex(Slot, Command) : FBattleContext::PartyCommandIndex(Slot, Command);
@@ -131,6 +150,31 @@ namespace Weltall
 				}
 				Context.Commands[static_cast<std::size_t>(Index)].Targeting = Targeting;
 			}
+		}
+
+		/**
+		 * Citan's ether records (and his gear's) as the target-all ether marks them: 1 for the whole party,
+		 * 2000h back to one. The game works out the records from the slot as if every slot had the party's
+		 * tables; an enemy in a gear in slot 8 to 10 would reach past them (a fault).
+		 */
+		void SetEtherTargeting(FBattleContext& Context, uint8 Slot, bool bGear, uint16 Targeting)
+		{
+			SetCommandsTargeting(Context, Slot, bGear, bGear ? std::span<const int32>(GearEtherCommands) : std::span<const int32>(FootEtherCommands), Targeting);
+		}
+
+		/**
+		 * Perfect Works' rebalance marks the records on foot in a gear too, and Bart's own: Targeting, and for the
+		 * mark's end (2000h) Bart's other records 4000h.
+		 */
+		void SetPerfectWorksEtherTargeting(FBattleContext& Context, uint8 Slot, uint16 Targeting)
+		{
+			if (Context.Combatants[Slot].Character != Bart)
+			{
+				SetCommandsTargeting(Context, Slot, false, FootEtherCommands, Targeting);
+				return;
+			}
+			SetCommandsTargeting(Context, Slot, false, BartEtherCommands, Targeting);
+			SetCommandsTargeting(Context, Slot, false, BartOtherCommands, Targeting == 1 ? Targeting : uint16{0x4000});
 		}
 	}
 
@@ -291,7 +335,7 @@ namespace Weltall
 			{
 				Value = (Value & 0xFF) << 1;
 			}
-			const uint16 Counters = DurationCounters(Group, Bits, Context.RuleOptions.bEveryBuffExpires);
+			const uint16 Counters = DurationCounters(Context, Group, Bits);
 			if (Counters == 0)
 			{
 				return;
@@ -326,6 +370,12 @@ namespace Weltall
 
 		void SetStatusMessage(FBattleContext& Context, uint8 Group, uint16 Bits)
 		{
+			// Perfect Works' rebalance's own: its status 40h, which lowers defense, and Can't use Ether shown as Block ETH effects.
+			if (Context.bPerfectWorksRebalance && ((Group == 0 && Bits == 0x40) || (Group == 2 && Bits == 0x800)))
+			{
+				Context.Action.Message = Group == 0 ? PerfectWorksDefDownMessage : BlockEtherMessage;
+				return;
+			}
 			// The table's message 6, which the original's status table leaves out.
 			if (Context.RuleOptions.bDefDownOnFoot && Group == 0 && Bits == DefDown)
 			{
@@ -350,6 +400,11 @@ namespace Weltall
 			{
 				return;
 			}
+			if (Context.bPerfectWorksRebalance)
+			{
+				SetPerfectWorksEtherTargeting(Context, Slot, 1);
+				return;
+			}
 			SetEtherTargeting(Context, Slot, bGear, 1);
 		}
 
@@ -363,6 +418,12 @@ namespace Weltall
 			const bool bGear = Combatant.IsInGear();
 			if (bGear ? (Combatant.GearPart.Buffs & 0x2000) == 0 : (Combatant.EtherBuffs & 0x400) == 0)
 			{
+				return;
+			}
+			if (Context.bPerfectWorksRebalance)
+			{
+				SetPerfectWorksEtherTargeting(Context, Slot, 0x2000);
+				Combatant.EtherBuffs &= 0xFBFF;
 				return;
 			}
 			SetEtherTargeting(Context, Slot, bGear, 0x2000);

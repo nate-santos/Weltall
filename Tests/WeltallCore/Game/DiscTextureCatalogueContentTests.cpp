@@ -80,16 +80,19 @@ TEST_CASE("The texture export walks every map and the field's streamed sprite fi
 	CHECK(Catalogue.FolderOf(153) == "sprites/04-2034");
 	CHECK(Catalogue.FolderOf(33 + 121 + FieldMapCount - 1) == "field/0729");
 	CHECK(Catalogue.FolderOf(33 + 121 + FieldMapCount).starts_with("files/"));
-	// The party's battle sprites and the effects follow Battle's models; the field's gear models come last, the gear
-	// shop's among them.
+	// The party's battle sprites, the effects and the HUD follow Battle's models; the field's gear models come last, the
+	// gear shop's among them.
 	const std::size_t FieldGears = Catalogue.TotalItems() - FGearFileNumbers::ModelCount;
+	constexpr std::size_t Hud = 2;
 	constexpr std::size_t Effects = 251 + 1;
-	const std::size_t Party = FieldGears - Effects - FBattleSpriteFiles::CharacterCount;
+	const std::size_t Party = FieldGears - Hud - Effects - FBattleSpriteFiles::CharacterCount;
 	CHECK(Catalogue.FolderOf(Party - 1) == "battle/special/2");
 	CHECK(Catalogue.FolderOf(Party) == "battle/party/00");
-	CHECK(Catalogue.FolderOf(FieldGears - Effects - 1) == "battle/party/10");
-	CHECK(Catalogue.FolderOf(FieldGears - Effects) == "battle/effects/common");
-	CHECK(Catalogue.FolderOf(FieldGears - 1) == "battle/effects/250");
+	CHECK(Catalogue.FolderOf(FieldGears - Hud - Effects - 1) == "battle/party/10");
+	CHECK(Catalogue.FolderOf(FieldGears - Hud - Effects) == "battle/effects/common");
+	CHECK(Catalogue.FolderOf(FieldGears - Hud - 1) == "battle/effects/250");
+	CHECK(Catalogue.FolderOf(FieldGears - Hud) == "battle/hud");
+	CHECK(Catalogue.FolderOf(FieldGears - 1) == "battle/result");
 	CHECK(Catalogue.FolderOf(FieldGears) == "gears/00");
 	CHECK(Catalogue.FolderOf(Catalogue.TotalItems() - 1) == "gears/71");
 	// Fei's field sprites: streamed cells, each a picture of its own, under its one palette set.

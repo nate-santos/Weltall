@@ -29,8 +29,8 @@ namespace
 	}
 }
 
-FFrameProfile::FFrameProfile(FIntPoint InSize, Weltall::EDisplayAspect InAspect, double InFrom)
-	: Size(InSize), Aspect(InAspect), From(InFrom)
+FFrameProfile::FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom)
+	: Size(InSize), Options(InOptions), From(InFrom)
 {
 }
 
@@ -59,7 +59,7 @@ void FFrameProfile::Draw(const IScreenFrame& Frame, double Update, double Captur
 			// The display's picture outlives the frame, as a window's back buffer does, so none of the passes drawing it are culled.
 			FRDGTextureRef Output = Display.IsValid() ? GraphBuilder.RegisterExternalTexture(Display) : GraphBuilder.CreateTexture(
 				FRDGTextureDesc::Create2D(Size, PF_B8G8R8A8, FClearValueBinding::Black, TexCreate_RenderTargetable | TexCreate_ShaderResource), TEXT("ProfiledDisplay"));
-			AddDisplayFramePasses(GraphBuilder, Output, FIntRect(FIntPoint::ZeroValue, Size), Aspect, &Frame);
+			AddDisplayFramePasses(GraphBuilder, Output, FIntRect(FIntPoint::ZeroValue, Size), Options, &Frame);
 			if (!Display.IsValid())
 			{
 				GraphBuilder.QueueTextureExtraction(Output, &Display);

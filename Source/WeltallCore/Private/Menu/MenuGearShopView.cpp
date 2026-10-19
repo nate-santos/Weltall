@@ -107,7 +107,7 @@ namespace Weltall
 					Copy.Units.push_back(MenuVram.At(Move.X + Column, Move.Y + Row));
 				}
 			}
-			MenuVram.Upload(Copy);
+			MenuVram.UploadCopy(Copy, {Move.X, Move.Y, Move.Width, Move.Height});
 		}
 		Models.TakeVramChanges();
 	}

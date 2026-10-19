@@ -32,11 +32,17 @@ public:
 	/** Whether a gamepad fills the second port. */
 	bool HasSecond() const { return Second.IsValid(); }
 
-	/** The buttons held on the second port's gamepad, by the bindings' gamepad keys. */
+	/**
+	 * The buttons held on the second port's gamepad, by the bindings' gamepad keys, with the directions only its
+	 * stick holds and that stick's tilt (PadStick): an analog pad.
+	 */
 	Weltall::FPadState SecondHeld(const Weltall::FControlBindings& Bindings) const;
 
 	/** A key of a device went down or up. True when this press made its gamepad the second player's. */
 	bool KeyChanged(const FKey& Key, FInputDeviceId Device, bool bDown);
+
+	/** An axis of a device moved. */
+	void AxisChanged(const FKey& Key, FInputDeviceId Device, float Value);
 
 	/** A device is gone. */
 	void DeviceDisconnected(FInputDeviceId Device);
@@ -56,8 +62,9 @@ private:
 	/** The gamepad the first player was using as the second port began to be read; none when that was the keyboard. */
 	FInputDeviceId First;
 	FInputDeviceId Second;
-	/** The gamepad keys held on the second port's gamepad. */
+	/** The gamepad keys held on the second port's gamepad, and where its axes stand. */
 	TSet<FName> SecondDown;
+	TMap<FName, float> SecondAxes;
 	bool bFirstMotor = false;
 	bool bSecondMotor = false;
 	/** The gamepad the second port's motor was last sent on to, which is sent off once the port has lost it. */

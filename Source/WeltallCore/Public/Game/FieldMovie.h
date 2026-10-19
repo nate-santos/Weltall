@@ -48,7 +48,8 @@ namespace Weltall
 		EFieldMovieView View() const { return MovieView; }
 
 	private:
-		FFieldMovie(FGameSession& InSession, const FFieldRequest& Request, const FCdImage& Image, FMovieLocation Location);
+		FFieldMovie(FGameSession& InSession, const FFieldRequest& Request, const FCdImage& Image, FMovieLocation Location,
+			std::optional<FMovieSubtitles> Subtitles);
 
 		std::optional<FError> LoadCues();
 		void PlayCues();

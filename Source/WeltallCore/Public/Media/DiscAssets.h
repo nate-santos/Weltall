@@ -10,6 +10,8 @@
 
 namespace Weltall
 {
+	class FMesFontSheet;
+	class FMessageOverrides;
 	class FMusicReplacements;
 
 	struct FDiscAssetExportStatus
@@ -57,6 +59,14 @@ namespace Weltall
 		/** The music recordings the store reads while enabled, shared by every disc's store. */
 		WELTALLCORE_API void SetMusic(std::shared_ptr<const FMusicReplacements> Music);
 		WELTALLCORE_API TResult<std::optional<std::vector<uint8>>> ReadMusic(uint64 Key) const;
+		/** The player's messages the store gives while enabled, shared by every disc's store. */
+		WELTALLCORE_API void SetMessages(std::shared_ptr<const FMessageOverrides> Messages);
+		/** The player's messages while the store is enabled; none otherwise. */
+		WELTALLCORE_API std::shared_ptr<const FMessageOverrides> Messages() const;
+		/** The player's font sheet the store gives while enabled, shared by every disc's store. */
+		WELTALLCORE_API void SetFontSheet(std::shared_ptr<const FMesFontSheet> Sheet);
+		/** The player's font sheet while the store is enabled; none otherwise. */
+		WELTALLCORE_API std::shared_ptr<const FMesFontSheet> FontSheet() const;
 		WELTALLCORE_API TResult<bool> ReadMovieSector(uint32 Lba, std::span<uint8> Destination) const;
 		/** Creates the manifest and an incremental export job; refuses a different source layout. */
 		WELTALLCORE_API TResult<std::unique_ptr<FDiscAssetExport>> Export() const;

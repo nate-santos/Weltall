@@ -71,10 +71,10 @@ TArray<FColor> RenderPassesOffscreen(FIntPoint Size, TFunctionRef<void(FRDGBuild
 	});
 }
 
-TArray<FColor> RenderScreenFrameOffscreen(const IScreenFrame& Frame, FIntPoint Size, Weltall::EDisplayAspect Aspect)
+TArray<FColor> RenderScreenFrameOffscreen(const IScreenFrame& Frame, FIntPoint Size, const Weltall::FDisplayOptions& Options)
 {
-	return RenderOffscreen(Size, [&Frame, Size, Aspect](FRDGBuilder& GraphBuilder, FRDGTextureRef Color)
+	return RenderOffscreen(Size, [&Frame, Size, &Options](FRDGBuilder& GraphBuilder, FRDGTextureRef Color)
 	{
-		AddDisplayFramePasses(GraphBuilder, Color, FIntRect(FIntPoint::ZeroValue, Size), Aspect, &Frame);
+		AddDisplayFramePasses(GraphBuilder, Color, FIntRect(FIntPoint::ZeroValue, Size), Options, &Frame);
 	});
 }

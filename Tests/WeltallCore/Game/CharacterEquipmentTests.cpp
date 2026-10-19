@@ -11,6 +11,7 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <string>
 #include <vector>
 
 using namespace Weltall;
@@ -40,55 +41,74 @@ namespace
 
 // The Menu's own recomputation of a character's equipment and stats on random tables and records
 // under the oracle harness.
+namespace
+{
+	/** The oracle's random equipment and states, recomputed and their stats shown as the original's display shows them. */
+	std::string StatsDigest(bool bPerfectWorksRules)
+	{
+		Testing::FXorShift32 Random(0x57A7E5ED);
+		std::vector<uint8> Weapons = RandomBytes(Random, 256 * FEquipmentTables::RecordSize);
+		for (std::size_t Weapon = 0; Weapon < 256; ++Weapon)
+		{
+			if (Random.Next() % 4 == 0)
+			{
+				Weapons[Weapon * FEquipmentTables::RecordSize + 0x0B] = 100;
+			}
+		}
+		std::vector<uint8> Accessories = RandomBytes(Random, 256 * FEquipmentTables::RecordSize);
+		for (std::size_t Accessory = 0; Accessory < 256; ++Accessory)
+		{
+			Accessories[Accessory * FEquipmentTables::RecordSize + 0x09] = static_cast<uint8>(Random.Next() % 12);
+		}
+		const FEquipmentTables Tables = FEquipmentTables::Make(std::move(Weapons), std::move(Accessories));
+		FSha1 Digest;
+		FGameState State;
+		for (int32 Case = 0; Case < 400; ++Case)
+		{
+			const std::vector<uint8> Block = RandomBytes(Random, FGameState::BlockSize);
+			std::copy(Block.begin(), Block.end(), State.Block().begin());
+			const int32 Character = static_cast<int32>(Random.Next() % 11);
+			const uint32 Draw = Random.Next();
+			Record(State, Character)[IdOffset] = Draw % 3 == 0 ? Billy : static_cast<uint8>(Random.Next() % 11);
+			RecomputeCharacterEquipment(State, Character, Tables);
+			const FCharacterStats Stats = ComputeCharacterStats(State, Character, true, bPerfectWorksRules);
+			Digest.Update(State.Block());
+			std::array<uint8, 14> Values{};
+			for (std::size_t Stat = 0; Stat < Stats.Values.size(); ++Stat)
+			{
+				LittleEndian::WriteU16(Values, Stat * 2, Stats.Values[Stat]);
+			}
+			Digest.Update(Values);
+		}
+		return FSha1::ToHex(Digest.Finish());
+	}
+}
+
 TEST_CASE("A character's equipment and stats are computed as the Menu computes them", "[Game][Menu]")
 {
-	Testing::FXorShift32 Random(0x57A7E5ED);
-	std::vector<uint8> Weapons = RandomBytes(Random, 256 * FEquipmentTables::RecordSize);
-	for (std::size_t Weapon = 0; Weapon < 256; ++Weapon)
-	{
-		if (Random.Next() % 4 == 0)
-		{
-			Weapons[Weapon * FEquipmentTables::RecordSize + 0x0B] = 100;
-		}
-	}
-	std::vector<uint8> Accessories = RandomBytes(Random, 256 * FEquipmentTables::RecordSize);
-	for (std::size_t Accessory = 0; Accessory < 256; ++Accessory)
-	{
-		Accessories[Accessory * FEquipmentTables::RecordSize + 0x09] = static_cast<uint8>(Random.Next() % 12);
-	}
-	const FEquipmentTables Tables = FEquipmentTables::Make(std::move(Weapons), std::move(Accessories));
-	FSha1 Digest;
-	FGameState State;
-	for (int32 Case = 0; Case < 400; ++Case)
-	{
-		const std::vector<uint8> Block = RandomBytes(Random, FGameState::BlockSize);
-		std::copy(Block.begin(), Block.end(), State.Block().begin());
-		const int32 Character = static_cast<int32>(Random.Next() % 11);
-		const uint32 Draw = Random.Next();
-		Record(State, Character)[IdOffset] = Draw % 3 == 0 ? Billy : static_cast<uint8>(Random.Next() % 11);
-		RecomputeCharacterEquipment(State, Character, Tables);
-		const FCharacterStats Stats = ComputeCharacterStats(State, Character, true);
-		Digest.Update(State.Block());
-		std::array<uint8, 14> Values{};
-		for (std::size_t Stat = 0; Stat < Stats.Values.size(); ++Stat)
-		{
-			LittleEndian::WriteU16(Values, Stat * 2, Stats.Values[Stat]);
-		}
-		Digest.Update(Values);
-	}
-	CHECK(FSha1::ToHex(Digest.Finish()) == "d369d9cf9b2215d3c450dbb88d3c665d6a65d8cb");
+	CHECK(StatsDigest(false) == "d369d9cf9b2215d3c450dbb88d3c665d6a65d8cb");
+}
+
+// Perfect Works Build's rebalanced party's MENU_MAIN shows agility up to 20 (stat_digests --perfect-works-rebalance).
+TEST_CASE("A character's stats are shown as Perfect Works Build's rebalanced Menu shows them", "[Game][Menu]")
+{
+	CHECK(StatsDigest(true) == "6cf4539a5d09e39dee898b0e69c37b392704180b");
 }
 
 TEST_CASE("Agility shows at most 16 unless the original's display is asked for, where only more than 20 becomes 16", "[Game][Menu]")
 {
 	const FEquipmentTables Tables = FEquipmentTables::Make({}, {});
 	FGameState State;
-	for (const auto& [Agility, Fixed, Original] : std::initializer_list<std::array<uint16, 3>>{{12, 12, 12}, {18, 16, 18}, {20, 16, 20}, {21, 16, 16}})
+	// Perfect Works Build's rebalanced menu shows at most 20; its battle caps agility at 16 as the original's does.
+	for (const auto& [Agility, Fixed, Original, PerfectWorks] :
+		std::initializer_list<std::array<uint16, 4>>{{12, 12, 12, 12}, {18, 16, 18, 18}, {20, 16, 20, 20}, {21, 16, 16, 20}})
 	{
 		Record(State, 0)[0x5A] = static_cast<uint8>(Agility);
 		RecomputeCharacterEquipment(State, 0, Tables);
 		CHECK(ComputeCharacterStats(State, 0, false).Values[FCharacterStats::Agility] == Fixed);
 		CHECK(ComputeCharacterStats(State, 0, true).Values[FCharacterStats::Agility] == Original);
+		CHECK(ComputeCharacterStats(State, 0, false, true).Values[FCharacterStats::Agility] == Fixed);
+		CHECK(ComputeCharacterStats(State, 0, true, true).Values[FCharacterStats::Agility] == PerfectWorks);
 	}
 }
 

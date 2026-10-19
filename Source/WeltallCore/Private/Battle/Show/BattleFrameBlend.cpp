@@ -3,6 +3,7 @@
 #include "Battle/Show/BattleObjectsFrame.h"
 #include "Field/FieldBackdrop.h"
 #include "Graphics/SpriteDrawing.h"
+#include "Graphics/Texture.h"
 
 #include <algorithm>
 #include <cmath>
@@ -276,7 +277,7 @@ namespace Weltall
 		}
 		for (std::size_t Channel = 0; Channel < 3; ++Channel)
 		{
-			Blend.ClearColor[Channel] = Latest.ClearColor[Channel];
+			Blend.ClearColor[Channel] = FilledChannel(Latest.ClearColor[Channel]);
 			Blend.FadeColor[Channel] = Latest.Fade.Color[Channel];
 		}
 		if (Previous == nullptr || !AreContinuous(Latest, *Previous))
@@ -312,7 +313,7 @@ namespace Weltall
 		const bool bFadeBlends = Latest.bFade && Previous->bFade && Latest.Fade.Mode == Previous->Fade.Mode;
 		for (std::size_t Channel = 0; Channel < 3; ++Channel)
 		{
-			Blend.ClearColor[Channel] = Lerp(Previous->ClearColor[Channel], Blend.ClearColor[Channel], Alpha);
+			Blend.ClearColor[Channel] = Lerp(FilledChannel(Previous->ClearColor[Channel]), Blend.ClearColor[Channel], Alpha);
 			if (bFadeBlends)
 			{
 				Blend.FadeColor[Channel] = Lerp(Previous->Fade.Color[Channel], Blend.FadeColor[Channel], Alpha);

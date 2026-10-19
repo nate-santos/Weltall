@@ -17,6 +17,10 @@ namespace Weltall
 		constexpr uint32 EnemyCommandsSection = 4;
 		constexpr uint32 FirstCharacterSection = 5;
 		constexpr uint32 FirstGearSection = 17;
+		/** The weapons' table (16 bytes a weapon, the attack at +0Ch), whose records from the first ammunition the battle copies. */
+		constexpr uint32 WeaponsSection = 37;
+		constexpr std::size_t WeaponRecordSize = 0x10;
+		constexpr std::size_t WeaponAttack = 0x0C;
 
 		/** Reads Count records of a section, each made by FromRecord; an error if the section is shorter. */
 		template <typename TRecord, std::size_t Count>
@@ -65,6 +69,19 @@ namespace Weltall
 			{
 				return std::move(*Error);
 			}
+		}
+		const TResult<std::vector<uint8>> Weapons = UnpackContainerSection(BattleDataFile, WeaponsSection);
+		if (!Weapons)
+		{
+			return Weapons.Error();
+		}
+		if (Weapons->size() < (FirstAmmunition + AmmunitionCount) * WeaponRecordSize)
+		{
+			return MakeError("the battle's weapons table ends before the weapons it copies");
+		}
+		for (std::size_t Index = 0; Index < Tables.Ammunition.size(); ++Index)
+		{
+			Tables.Ammunition[Index] = (*Weapons)[(FirstAmmunition + Index) * WeaponRecordSize + WeaponAttack];
 		}
 		return Tables;
 	}

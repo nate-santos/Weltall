@@ -32,12 +32,7 @@ namespace Weltall
 			{
 				return MakeError("the disc lacks file " + std::to_string(Number) + " of directory " + std::to_string(Directory));
 			}
-			TResult<std::vector<uint8>> Sectors = ReadFileSectors(Image, *Record);
-			if (Sectors && !bSectors)
-			{
-				Sectors->resize(static_cast<std::size_t>(Record->Size));
-			}
-			return Sectors;
+			return bSectors ? ReadFileSectors(Image, *Record) : ReadFileBytes(Image, *Record);
 		}
 	}
 

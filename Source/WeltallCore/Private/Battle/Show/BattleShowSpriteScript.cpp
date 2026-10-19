@@ -433,7 +433,7 @@ namespace Weltall
 				const uint32 Data = Relative() + 1;
 				const uint8 Mode = File.Byte(Data + 4);
 				const int32 BlendMode = Mode != 0 ? Mode - 1 : Fade->Fade.ModeOrAdd();
-				Fade->Start(File.Byte(Data + 3) >> 1, BlendMode, File.Byte(Data), File.Byte(Data + 1), File.Byte(Data + 2));
+				Fade->Start(File.Byte(Data + 3) >> 1, BlendMode, File.Byte(Data), File.Byte(Data + 1), File.Byte(Data + 2), true);
 				break;
 			}
 			case 0xCB:

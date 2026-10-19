@@ -39,7 +39,7 @@ public:
 	void Build(const Weltall::FBattleDefaultTransition& Transition, int32 Frame, float Alpha, FBattleTransitionDraw& Draw);
 
 	/** A setup transition's mesh as its frame drew it into Buffer, blended over black. */
-	void Build(const Weltall::FBattleSetupMesh& Mesh, int32 Buffer, int32 Frame, float Alpha, FBattleTransitionDraw& Draw);
+	void Build(const Weltall::FBattleScreenMesh& Mesh, int32 Buffer, int32 Frame, float Alpha, FBattleTransitionDraw& Draw);
 
 private:
 	/** A triangle as a frame drew it. */
@@ -55,7 +55,7 @@ private:
 	/** Whether Frame is a new one: then Previous holds the last and Latest waits to be filled. */
 	bool BeginFrame(int32 Frame);
 	void Take(const Weltall::FBattleDefaultTransition& Transition);
-	void Take(const Weltall::FBattleSetupMesh& Mesh, int32 Buffer);
+	void Take(const Weltall::FBattleScreenMesh& Mesh, int32 Buffer);
 	/** The drawing order of Latest, then the drawing Alpha of the way from Previous. */
 	void Finish(float Alpha, FBattleTransitionDraw& Draw);
 
@@ -75,4 +75,8 @@ private:
  * screen filling the area's height at the centre of its width.
  */
 WELTALL_API void AddBattleTransitionPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Picture, const FBattleTransitionDraw& Draw, FRDGTextureRef Output,
+	const FIntRect& Area);
+
+/** Adds the pass that draws only the triangles of a transition's drawing into Area of Output, over what it holds there (as above). */
+WELTALL_API void AddBattleTransitionTriangles(FRDGBuilder& GraphBuilder, FRDGTextureRef Picture, const FBattleTransitionDraw& Draw, FRDGTextureRef Output,
 	const FIntRect& Area);

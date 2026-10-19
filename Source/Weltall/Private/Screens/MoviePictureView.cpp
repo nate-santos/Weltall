@@ -21,6 +21,11 @@ public:
 		AddMoviePasses(GraphBuilder, *Picture, Output, FIntRect(Origin, Origin + FIntPoint(Placed.Width, Placed.Height)), Screen, Window);
 	}
 
+	virtual Weltall::FScreenSize ScreenSize() const override
+	{
+		return Screen;
+	}
+
 	TSharedPtr<FMoviePictureTexture> Picture;
 	Weltall::FScreenSize Screen;
 	Weltall::FScreenRect Window;
@@ -32,7 +37,17 @@ void FMoviePictureView::Follow(const Weltall::FMoviePlayer& Player, Weltall::EMo
 	if (Shown && (Player.PictureNumber() != PictureNumber || Picture->Filter() != Filter))
 	{
 		PictureNumber = Player.PictureNumber();
-		Picture = ShareRenderResource(new FMoviePictureTexture(*Shown, Filter));
+		const std::shared_ptr<const Weltall::FMovieSubtitlePicture> Line = Player.Subtitle();
+		if (Line != SubtitleLine)
+		{
+			SubtitleLine = Line;
+			Subtitle.Reset();
+			if (Line)
+			{
+				Subtitle = ShareRenderResource(new FMovieSubtitleTexture(*Line, FIntPoint(Shown->Width, Shown->Height)));
+			}
+		}
+		Picture = ShareRenderResource(new FMoviePictureTexture(*Shown, Filter, Subtitle));
 	}
 }
 
@@ -40,6 +55,8 @@ void FMoviePictureView::Reset()
 {
 	Picture.Reset();
 	PictureNumber = 0;
+	SubtitleLine.reset();
+	Subtitle.Reset();
 }
 
 TSharedRef<const IScreenFrame> FMoviePictureView::Capture(Weltall::FScreenSize Screen, Weltall::FScreenRect Window) const

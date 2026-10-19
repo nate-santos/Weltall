@@ -86,7 +86,13 @@ namespace Weltall
 				continue;
 			}
 			FBattleCombatant& Combatant = Context.Combatants[Slot];
-			const uint32 Step = ((Combatant.Buffs | Combatant.PermanentBuffs) & 0x8000) != 0 ? 2 : 1;
+			uint16 Speeds = Combatant.Buffs | Combatant.PermanentBuffs;
+			// Perfect Works' rebalance keeps a gear's booster in the gear's permanent buffs, which speed its pilot while boarded.
+			if (Context.bPerfectWorksRebalance && Combatant.IsInGear())
+			{
+				Speeds |= Combatant.GearPart.PermanentBuffs;
+			}
+			const uint32 Step = (Speeds & 0x8000) != 0 ? 2 : 1;
 			if ((Combatant.Status & 0x1000) != 0)
 			{
 				Context.SlowToggles[Slot] ^= 1;

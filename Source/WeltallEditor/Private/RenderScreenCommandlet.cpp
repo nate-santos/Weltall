@@ -10,14 +10,18 @@
 #include "GlobalShader.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
+#include "Media/DiscAssets.h"
+#include "Media/GameFileIndex.h"
 #include "Media/GameLibrary.h"
 #include "Shell/GameDiscsSubsystem.h"
 #include "Media/MoviePlayer.h"
+#include "Media/PsxExecutable.h"
 #include "Misc/FileHelper.h"
 #include "FrameProfile.h"
 #include "Rendering/TextureModLibrary.h"
 #include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
+#include "Mods/GameMods.h"
 #include "OffscreenRender.h"
 #include "MenuIconSheet.h"
 #include "RenderRoute.h"
@@ -27,6 +31,7 @@
 #include "Screens/GameLoopScreen.h"
 #include "Screens/MovieScreen.h"
 #include "Screens/WorldMapScreen.h"
+#include "Shell/TextModFiles.h"
 #include "ShaderCompiler.h"
 #include "Sound/GameSoundSession.h"
 #include "Sound/UnheardGameSound.h"
@@ -246,8 +251,9 @@ namespace
 	}
 
 	/**
-	 * The settings a played game starts with: the defaults, the presentation's options, the
-	 * player's framing of the field -ViewZoom=factor -ViewTilt=degrees -ViewTurn=degrees, and the
+	 * The settings a played game starts with: the defaults, the presentation's options, the picture's
+	 * shape -Aspect=Window|16:9|4:3 and CRT filter -Crt=Off|Monitor|TV|Custom (its parts by -Setting=crt.*),
+	 * the player's framing of the field -ViewZoom=factor -ViewTilt=degrees -ViewTurn=degrees, and the
 	 * speed battles start at -BattleSpeed=Normal|2x|4x (the pad script's R1 and L1 step it in one), the
 	 * text speed -TextSpeed=Normal|2x|4x|Instant (a new player's 2x unless given), and -Setting=key=value;key=value
 	 * lines of the settings file read over all of that (-Setting=fix.scene_pictures=false: one fix as the original).
@@ -262,6 +268,8 @@ namespace
 		Camera.Tilt = FMath::Clamp(Camera.Tilt, Weltall::FFieldCameraOffsets::MinTilt, Weltall::FFieldCameraOffsets::MaxTilt);
 		if (!ParseChoice(Params, TEXT("BattleSpeed="), {TEXT("Normal"), TEXT("2x"), TEXT("4x")}, Settings.BattleSpeed)
 			|| !ParseChoice(Params, TEXT("TextSpeed="), {TEXT("Normal"), TEXT("2x"), TEXT("4x"), TEXT("Instant")}, Settings.TextSpeed)
+			|| !ParseChoice(Params, TEXT("Aspect="), {TEXT("Window"), TEXT("16:9"), TEXT("4:3")}, Settings.Display.Aspect)
+			|| !ParseChoice(Params, TEXT("Crt="), {TEXT("Off"), TEXT("Monitor"), TEXT("TV"), TEXT("Custom")}, Settings.Display.Crt)
 			|| !ParseFieldOptions(Params, Settings.Field))
 		{
 			return false;
@@ -526,7 +534,7 @@ namespace
 		FParse::Value(*Params, TEXT("ViewTilt="), Start.View.Tilt);
 		FParse::Value(*Params, TEXT("ViewTurn="), Start.View.Turn);
 		Start.View = Weltall::MoveWorldMapCameraOffsets(Start.View, Weltall::FFieldViewInput{});
-		const TArray<int32> Party = ParseNumbers(Params, TEXT("Party="));
+		const TArray<int32> Party = ParseNumbers(Params, TEXT("-Party="));
 		const TArray<int32> Vehicle = ParseNumbers(Params, TEXT("Vehicle="));
 		if ((!Party.IsEmpty() && Party.Num() != 3) || (!Vehicle.IsEmpty() && Vehicle.Num() != 4))
 		{
@@ -691,9 +699,9 @@ namespace
 	}
 
 	/** Renders the screen's frame as it stands and writes it as a PNG. */
-	bool SaveFrame(IGameScreen& Screen, FIntPoint Size, Weltall::EDisplayAspect Aspect, const FString& Out)
+	bool SaveFrame(IGameScreen& Screen, FIntPoint Size, const Weltall::FDisplayOptions& Display, const FString& Out)
 	{
-		TArray<FColor> Pixels = RenderScreenFrameOffscreen(*Screen.CaptureFrame(), Size, Aspect);
+		TArray<FColor> Pixels = RenderScreenFrameOffscreen(*Screen.CaptureFrame(), Size, Display);
 		FlushRenderingCommands();
 		if (Pixels.Num() != Size.X * Size.Y)
 		{
@@ -740,15 +748,18 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 			TEXT("-Eye=x,y,z -Pitch=D -Projection=H -Zoom=Z -Background=r,g,b -CullMargins=x,y] -Sort=Painter|Depth|Scenery -Filter=Nearest|Crisp|Bilinear|Upscaled -SpriteFilter=Nearest|Crisp|Bilinear|Upscaled -MovieFilter=Smooth|Upscaled ")
 			TEXT("-AA=None|MSAA|SSAA -Cull=Original|InRange -ViewZoom=Z -ViewTilt=D -ViewTurn=D] [-Story=N -Location=N -Entrance=N -Yaw=N -Scene=N -Party=a,b,c -Gears ")
 			TEXT("-Vehicle=x,y,z,h -VehicleFlags=N -Cull=Original|InRange|Extended] [-State=Full|Weak|Strong|Rising] [-Menu=Mode,Parameter -MenuAt=S] [-Battle=Formation,Kind -BattleAt=S -BattleEvery=S -Party=a,b,c -Ride=a,b,c -GearOf=c:g] [-Arena=From,Kind,Gear1,Gear2,Wins,Level -ArenaAt=S] ")
-			TEXT("[-FieldStory=N -FieldEntrance=K -FieldParty=a,b,c -FieldGears=g,h,... -FieldCards=Folder -StoryFolder=Folder -StoryMode=Original|Expanded] [-Disc=1|2] [-Card=Chapter[,Subtitle] -CardAt=S] [-MenuArea=Screen|Wide] [-Icons=Set] [-Saves=Folder] [-Keys=a,b] [-Setting=key=value;...] ")
-			TEXT("[-Pad=a,b+c,... -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] -Seconds=S [-Every=S] [-Profile=Hz] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] -Out=path.png"));
+			TEXT("[-FieldStory=N -FieldEntrance=K -FieldParty=a,b,c -FieldGears=g,h,... -FieldCards=Folder -StoryFolder=Folder -StoryMode=Original|Expanded] [-Disc=1|2 [-Undub]] [-Card=Chapter[,Subtitle] -CardAt=S] [-MenuArea=Screen|Wide] [-Icons=Set] [-Saves=Folder] [-Keys=a,b] [-MenuAssets] [-Setting=key=value;...] ")
+			TEXT("[-Pad=a,b+c,... -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] [-Mods=Folder] [-Assets=Folder] -Seconds=S [-Every=S] [-Profile=Hz] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] [-Crt=Off|Monitor|TV|Custom] -Out=path.png"));
 		return 1;
 	}
 	const FIntPoint Size(FCString::Atoi(*WidthText), FCString::Atoi(*HeightText));
-	FString AspectText;
-	FParse::Value(*Params, TEXT("Aspect="), AspectText);
-	const Weltall::EDisplayAspect Aspect = AspectText == TEXT("16:9") ? Weltall::EDisplayAspect::Wide
-		: AspectText == TEXT("4:3") ? Weltall::EDisplayAspect::Standard : Weltall::EDisplayAspect::Window;
+	// The picture is drawn as the settings show it, and as the options screen changes them in a game played.
+	Weltall::FPlayerSettings Presentation;
+	if (!ParseSettings(Params, Presentation))
+	{
+		return 1;
+	}
+	Weltall::FDisplayOptions Display = Presentation.Display;
 	// A commandlet starts without the global shaders the screens draw with.
 	CompileGlobalShaderMap(false);
 	if (GShaderCompilingManager != nullptr)
@@ -765,11 +776,58 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	const Weltall::FGameLibrary Library = Weltall::FGameLibrary::Scan(std::filesystem::path(*UGameDiscsSubsystem::GamesFolder()));
 	int32 DiscNumber = 1;
 	FParse::Value(*Params, TEXT("Disc="), DiscNumber);
-	const Weltall::FIso9660* Disc = Library.Find(DiscNumber == 2 ? Weltall::EDiscRelease::UsaDisc2 : Weltall::EDiscRelease::UsaDisc1);
+	// -Undub plays the supported undub's disc in place of the USA's: its movies with its sound and subtitles.
+	const bool bUndub = FParse::Param(*Params, TEXT("Undub"));
+	const Weltall::FIso9660* Disc = Library.Find(DiscNumber == 2 ? (bUndub ? Weltall::EDiscRelease::UndubDisc2 : Weltall::EDiscRelease::UsaDisc2)
+																   : (bUndub ? Weltall::EDiscRelease::UndubDisc1 : Weltall::EDiscRelease::UsaDisc1));
 	if (Disc == nullptr)
 	{
-		UE_LOG(LogRenderScreen, Error, TEXT("Disc %d is not in the Games folder"), DiscNumber == 2 ? 2 : 1);
+		UE_LOG(LogRenderScreen, Error, TEXT("Disc %d%s is not in the Games folder"), DiscNumber == 2 ? 2 : 1, bUndub ? TEXT(" (undub)") : TEXT(""));
 		return 1;
+	}
+	// -Mods=Folder: the mods in a folder laid out as the game's Mods, their files given to the discs as the settings choose.
+	Weltall::FMenuMods Mods;
+	FString ModsFolder;
+	if (FParse::Value(*Params, TEXT("Mods="), ModsFolder))
+	{
+		const Weltall::FFoundMods Found = Weltall::FindMods(std::filesystem::path(*FPaths::ConvertRelativePathToFull(ModsFolder)));
+		if (!Found.PerfectWorks)
+		{
+			UE_LOG(LogRenderScreen, Warning, TEXT("No mod is in %s"), *ModsFolder);
+		}
+		if (const std::optional<Weltall::FError> Error = Weltall::ApplyMods(Library, Found, Presentation.PerfectWorks))
+		{
+			UE_LOG(LogRenderScreen, Error, TEXT("The mods' files cannot be used: %hs"), Error->Message.c_str());
+			return 1;
+		}
+		Mods = {Found.PerfectWorks.has_value(), Found.PerfectWorks ? Found.PerfectWorks->Version() : std::string(), Presentation.PerfectWorks};
+	}
+	// -Assets=Folder: the player's messages and font sheet in a folder laid out as the game's Assets (its text and font),
+	// given to every disc as External assets gives them.
+	FString AssetsFolder;
+	if (FParse::Value(*Params, TEXT("Assets="), AssetsFolder))
+	{
+		AssetsFolder = FPaths::ConvertRelativePathToFull(AssetsFolder);
+		const std::shared_ptr<const Weltall::FMesFontSheet> Sheet = FindFontSheet(FPaths::Combine(AssetsFolder, TEXT("font")));
+		const std::shared_ptr<const Weltall::FMessageOverrides> Messages = FindMessageOverrides(std::filesystem::path(*FPaths::Combine(AssetsFolder, TEXT("text"))),
+			Sheet.get());
+		for (const Weltall::EDiscRelease Release : Library.Releases())
+		{
+			const Weltall::FIso9660& Each = *Library.Find(Release);
+			const auto Executable = Weltall::ReadBootExecutable(Each);
+			const auto Index = Executable ? Weltall::FGameFileIndex::Read(*Executable) : Weltall::TResult<Weltall::FGameFileIndex>(Executable.Error());
+			auto Store = Index ? Weltall::FDiscAssetStore::Open(std::filesystem::path(*AssetsFolder), std::string(Weltall::DiscReleaseId(Release)), Each.Image(), *Index)
+							   : Weltall::TResult<std::shared_ptr<Weltall::FDiscAssetStore>>(Index.Error());
+			if (!Store)
+			{
+				UE_LOG(LogRenderScreen, Error, TEXT("The assets of %hs cannot be used: %hs"), std::string(Weltall::DiscReleaseId(Release)).c_str(), Store.Error().Message.c_str());
+				return 1;
+			}
+			(*Store)->SetMessages(Messages);
+			(*Store)->SetFontSheet(Sheet);
+			(*Store)->SetEnabled(true);
+			Each.Image().SetAssetStore(*Store);
+		}
 	}
 	FRenderSound Sound;
 	Sound.Disc = Disc;
@@ -809,11 +867,16 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		Game->SetQuit([]() { UE_LOG(LogRenderScreen, Display, TEXT("The title's Exit closes the game.")); });
 		// The disc the game asks for is found where the player keeps the discs, as in play.
 		Game->SetDiscSought([&Library](Weltall::EDiscRelease Wanted) { return Library.Find(Wanted); });
+		Game->SetMenuMods(Mods);
 	}
 	if (Game.IsValid())
 	{
 		// The render's glyphs follow the bindings the Controls page changes.
-		Game->SetSettingsFollowed([&Staging](const Weltall::FPlayerSettings& Changed) { Staging.Glyphs.Follow(Changed.Controls); });
+		Game->SetSettingsFollowed([&Staging, &Display](const Weltall::FPlayerSettings& Changed)
+		{
+			Staging.Glyphs.Follow(Changed.Controls);
+			Display = Changed.Display;
+		});
 	}
 	if (!Staging.IsEmpty() && !Game.IsValid())
 	{
@@ -832,7 +895,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	// Every simulated display frame must draw and retire its uploads, even between PNG captures.
 	// The profiling path already supplies those frame boundaries and waits for the GPU. Skipping
 	// them queues field/VRAM work indefinitely and can exhaust memory during a long reference.
-	FFrameProfile Frames(Size, Aspect, ProfileFrom);
+	FFrameProfile Frames(Size, Display, ProfileFrom);
 	const double DisplaySeconds = ProfileRate > 0.0 ? 1.0 / ProfileRate : TickSeconds;
 	for (double Elapsed = 0.0; Elapsed + DisplaySeconds / 2 < Seconds; Elapsed += DisplaySeconds)
 	{
@@ -869,7 +932,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		if (Every > 0.0 && Elapsed + DisplaySeconds >= NextShot)
 		{
 			const FString Shot = FString::Printf(TEXT("%s-%06.2f.png"), *FPaths::GetBaseFilename(Out, false), NextShot);
-			if (!SaveFrame(*Screen, Size, Aspect, Shot))
+			if (!SaveFrame(*Screen, Size, Display, Shot))
 			{
 				return 1;
 			}
@@ -880,7 +943,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	{
 		Frames.Log(ProfileRate);
 	}
-	if (!SaveFrame(*Screen, Size, Aspect, Out))
+	if (!SaveFrame(*Screen, Size, Display, Out))
 	{
 		return 1;
 	}

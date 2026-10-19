@@ -4,10 +4,16 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
-FString GameVersion()
+FString ProjectVersion()
 {
 	FString Version;
 	GConfig->GetString(TEXT("/Script/EngineSettings.GeneralProjectSettings"), TEXT("ProjectVersion"), Version, GGameIni);
+	return Version;
+}
+
+FString GameVersion()
+{
+	FString Version = ProjectVersion();
 	FString Revision;
 	if (FFileHelper::LoadFileToString(Revision, *FPaths::Combine(FPaths::RootDir(), TEXT("Revision.txt"))))
 	{

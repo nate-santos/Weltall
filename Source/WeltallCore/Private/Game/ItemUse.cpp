@@ -35,6 +35,13 @@ namespace Weltall
 		constexpr uint16 HighestHp = 999;
 		constexpr uint16 HighestEp = 99;
 		constexpr uint8 HighestWeightGain = 200;
+		/** Perfect Works' rebalance's further steps: agility up to 16, the learning rate up to 12. */
+		constexpr uint16 AgilityStep = 0x0200;
+		constexpr uint16 LearningRateStep = 0x0100;
+		constexpr std::size_t AgilityField = 0x5A;
+		constexpr std::size_t LearningRateField = 0x55;
+		constexpr uint32 HighestAgility = 16;
+		constexpr uint32 HighestLearningRate = 12;
 		/** Weight: the parameter's bit 15 gains its low byte, else loses it. */
 		constexpr uint16 WeightGains = 0x8000;
 
@@ -66,6 +73,44 @@ namespace Weltall
 		{
 			Block[Offset] = static_cast<uint8>(Value);
 			Block[Offset + 1] = static_cast<uint8>(Value >> 8);
+		}
+
+		/**
+		 * Perfect Works' rebalance's stat items: each step on its whole sum, capped (200, max HP 999, max EP 99), and its
+		 * agility and learning rate steps.
+		 */
+		void ApplyPerfectWorksStatSteps(std::span<uint8> Block, std::size_t Record, uint16 Parameter, uint8 Power)
+		{
+			const uint32 Step = Power;
+			for (const FStatStep& Stat : StatSteps)
+			{
+				if ((Parameter & Stat.Bit) != 0)
+				{
+					Block[Record + Stat.Field] = static_cast<uint8>(std::min<uint32>(Block[Record + Stat.Field] + Step, HighestStat));
+				}
+			}
+			const auto Points = [&](std::size_t Field) { return static_cast<uint32>(Block[Record + Field] | Block[Record + Field + 1] << 8); };
+			if ((Parameter & MaxHpStep) != 0)
+			{
+				WriteU16(Block, Record + Character::MaxHp, static_cast<uint16>(std::min<uint32>(Points(Character::MaxHp) + Step, HighestHp)));
+			}
+			if ((Parameter & MaxEpStep) != 0)
+			{
+				const uint32 MaxEp = Points(Character::MaxEp) + Step;
+				WriteU16(Block, Record + Character::MaxEp, static_cast<uint16>(MaxEp > HighestStat ? HighestEp : MaxEp));
+			}
+			if ((Parameter & AgilityStep) != 0)
+			{
+				Block[Record + AgilityField] = static_cast<uint8>(std::min<uint32>(Block[Record + AgilityField] + Step, HighestAgility));
+			}
+			if ((Parameter & LearningRateStep) != 0)
+			{
+				Block[Record + LearningRateField] = static_cast<uint8>(std::min<uint32>(Block[Record + LearningRateField] + Step, HighestLearningRate));
+			}
+			if (Points(Character::MaxEp) > HighestEp)
+			{
+				WriteU16(Block, Record + Character::MaxEp, HighestEp);
+			}
 		}
 
 		/** "Debug Item": ten of every weapon, accessory, item, gear weapon and gear part up to its id, each in the slot of its number. */
@@ -108,7 +153,7 @@ namespace Weltall
 		}
 	}
 
-	bool ApplyItemInMenu(FGameState& State, int32 Character, std::span<const uint8> Item)
+	bool ApplyItemInMenu(FGameState& State, int32 Character, std::span<const uint8> Item, bool bPerfectWorksRules)
 	{
 		if (Item.size() < ItemRecord::Size)
 		{
@@ -146,7 +191,11 @@ namespace Weltall
 		{
 			WriteU16(Block, Record + Character::Ep, Points(Character::MaxEp));
 		}
-		if ((Effects & Effect::Stats) != 0)
+		if ((Effects & Effect::Stats) != 0 && bPerfectWorksRules)
+		{
+			ApplyPerfectWorksStatSteps(Block, Record, Parameter, Power);
+		}
+		else if ((Effects & Effect::Stats) != 0)
 		{
 			// The step is signed for the stats and unsigned for the maxima; a stat wraps within its byte before its cap.
 			for (const FStatStep& Step : StatSteps)

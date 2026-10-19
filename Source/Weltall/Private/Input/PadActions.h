@@ -32,7 +32,10 @@ public:
 	/** Maps the actions to the bindings' keys in place of the ones they had. */
 	void Map(const Weltall::FControlBindings& Bindings);
 
-	/** The buttons held as the player's input last evaluated its actions. */
+	/**
+	 * The buttons held as the player's input last evaluated its actions, with the directions only a stick holds and
+	 * that stick's tilt (PadStick).
+	 */
 	Weltall::FPadState ReadHeld(const UEnhancedPlayerInput& Input) const;
 
 	/**
@@ -55,6 +58,10 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UInputMappingContext> Keys;
+
+	/** The bindings last mapped, and the stick their directions are on (PadStick::StickOf). */
+	Weltall::FControlBindings Bound;
+	int32 Stick = 0;
 
 	bool bResetHeld = false;
 	/** The bindings' sensitivities as the view's scales: degrees for a count of the mouse, and the stick's rates' factor. */

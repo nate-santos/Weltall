@@ -1,5 +1,6 @@
 #include "BattleObjectSequence.h"
 
+#include "Battle/BattleContext.h"
 #include "Battle/Show/BattleShowCamera.h"
 #include "Battle/Show/BattleStageFiles.h"
 
@@ -88,6 +89,10 @@ namespace Weltall::BattleObjectMachine
 		void ShowNumbers(FBattleObjects& Objects, FSequenceRun&, FBattleObject&)
 		{
 			Objects.Services->ShowNumbers();
+			if (Objects.Context != nullptr)
+			{
+				Objects.Context->KeepCamera = 0;
+			}
 		}
 
 		/** 65, 66: the look-at or the eye moved toward an object (its height scaled by the word), the target point or a stage preset. */
@@ -227,8 +232,14 @@ namespace Weltall::BattleObjectMachine
 				static_cast<int16>(Second >> 8));
 		}
 
+		/** 68: the model camera takes the camera from where it stands; passed over once while the AI keeps it (KeepCamera). */
 		void TakeCamera(FBattleObjects& Objects, FSequenceRun&, FBattleObject&)
 		{
+			if (Objects.Context != nullptr && Objects.Context->KeepCamera != 0)
+			{
+				Objects.Context->KeepCamera = 0;
+				return;
+			}
 			FBattleCamera& View = *Objects.Camera;
 			const int32 Dx = View.Target[0] - View.Eye[0];
 			const int32 Dz = View.Target[2] - View.Eye[2];

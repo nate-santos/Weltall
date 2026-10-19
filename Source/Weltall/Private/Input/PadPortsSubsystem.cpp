@@ -38,6 +38,15 @@ public:
 		return false;
 	}
 
+	virtual bool HandleAnalogInputEvent(FSlateApplication& Application, const FAnalogInputEvent& Event) override
+	{
+		if (Ports != nullptr)
+		{
+			Ports->AxisChanged(Event.GetKey(), Event.GetInputDeviceId(), Event.GetAnalogValue());
+		}
+		return false;
+	}
+
 	virtual const TCHAR* GetDebugName() const override { return TEXT("WeltallPadPorts"); }
 
 private:

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Presentation/GameScreen.h"
+#include "Presentation/DisplayOptions.h"
 #include "Screens/GameScreen.h"
 #include "Rendering/DrawListRendering.h"
 
@@ -20,8 +21,8 @@ WELTALLRENDERINGTESTS_API TArray<FColor> RenderMovieOffscreen(const FMoviePictur
 /** Draws a frame of a field map over black, filling a target of the given size, and reads the pixels back. */
 WELTALLRENDERINGTESTS_API TArray<FColor> RenderFieldSceneOffscreen(const FFieldSceneMesh& Mesh, const FVramTexture& Vram, const FFieldSceneDraw& Draw, FIntPoint Size);
 
-/** Draws a screen's captured frame over black, in the part of a target of the given size the picture's shape takes, and reads the pixels back. */
-WELTALLRENDERINGTESTS_API TArray<FColor> RenderScreenFrameOffscreen(const IScreenFrame& Frame, FIntPoint Size, Weltall::EDisplayAspect Aspect = Weltall::EDisplayAspect::Window);
+/** Draws a screen's captured frame over black as the display draws it (its picture's shape, its CRT filter) in a target of the given size, and reads the pixels back. */
+WELTALLRENDERINGTESTS_API TArray<FColor> RenderScreenFrameOffscreen(const IScreenFrame& Frame, FIntPoint Size, const Weltall::FDisplayOptions& Options = {});
 
 /** Runs AddPasses into a black target of the given size on the rendering thread and reads the pixels back. */
 WELTALLRENDERINGTESTS_API TArray<FColor> RenderPassesOffscreen(FIntPoint Size, TFunctionRef<void(FRDGBuilder&, FRDGTextureRef)> AddPasses);

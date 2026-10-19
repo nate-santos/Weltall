@@ -78,6 +78,7 @@ namespace Weltall
 		FBattleBackdropFrame Backdrop;
 		/** Each of the dome's packets' corners on the screen, in the latest frame's order. */
 		std::vector<std::array<std::array<float, 2>, 4>> DomeCorners;
+		/** The clear colour as the GPU fills the screen with it (FilledChannel), between the two frames'. */
 		std::array<float, 3> ClearColor{};
 		std::array<float, 3> FadeColor{};
 	};

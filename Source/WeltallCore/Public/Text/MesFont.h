@@ -4,7 +4,9 @@
 #include "Foundation/Types.h"
 
 #include <array>
+#include <optional>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 namespace Weltall
@@ -30,7 +32,11 @@ namespace Weltall
 		static constexpr int32 CellWidth = 12;
 		static constexpr int32 CellHeight = 13;
 		static constexpr std::size_t GlyphBytes = 22;
+		static constexpr int32 GlyphColumns = 12;
+		static constexpr int32 GlyphRows = 11;
 		using FCell = std::array<uint8, CellWidth * CellHeight>;
+		/** A glyph's pixels: a row each, its leftmost pixel in bit 15 (bits 3 to 0 are never drawn). */
+		using FGlyphRows = std::array<uint16, GlyphRows>;
 
 		/** The font as its file unpacks (directory 1, file 6), and the executable's box glyph. */
 		WELTALLCORE_API static TResult<FMesFont> Parse(std::span<const uint8> Font, std::span<const uint8> BoxGlyph);
@@ -41,10 +47,22 @@ namespace Weltall
 		/** How far the text advances after a glyph, in units of 4 pixels: 2 for the narrow ones, 3 for the rest. */
 		WELTALLCORE_API int32 WidthUnits(FMesCode Code) const;
 
+		/** Code's glyph advances Units from now on, whatever the game's rule gives it (a font sheet's width). */
+		WELTALLCORE_API void SetWidthUnits(FMesCode Code, int32 Units);
+
 		/** The glyph's cell; empty for a code the font does not hold. */
 		WELTALLCORE_API FCell Cell(FMesCode Code) const;
 
+		/** The glyph's pixels; none for a code the font does not hold. */
+		WELTALLCORE_API std::optional<FGlyphRows> Rows(FMesCode Code) const;
+
+		/** Draws Rows for Code's glyph from now on; false (changing nothing) for a code the font does not hold. */
+		WELTALLCORE_API bool SetRows(FMesCode Code, const FGlyphRows& Rows);
+
 	private:
+		/** Where Code's glyph is in Glyphs, or the box; none for a code the font does not hold. */
+		std::optional<std::span<const uint8>> GlyphOf(FMesCode Code) const;
+
 		std::vector<uint8> Glyphs;
 		std::array<uint8, GlyphBytes> Box{};
 		uint8 SecondPageLead = 0;
@@ -52,5 +70,7 @@ namespace Weltall
 		uint32 NarrowCount = 0;
 		uint32 SecondPageNarrowCount = 0;
 		uint32 FirstCode = 0;
+		/** The glyphs a font sheet gives widths of their own, by their code's lead << 8 | code. */
+		std::unordered_map<uint16, int32> OwnWidths;
 	};
 }

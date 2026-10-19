@@ -5,6 +5,7 @@
 #include "Foundation/Result.h"
 #include "Input/PadState.h"
 #include "Presentation/DisplayOptions.h"
+#include "Presentation/GameScreen.h"
 #include "RenderGraphFwd.h"
 
 #include <array>
@@ -23,13 +24,16 @@ public:
 	 * Weltall::FScreenLayout places it. Area is already black.
 	 */
 	virtual void AddPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Area) const = 0;
+
+	/** The game screen whose rows the frame shows, fitted as Weltall::FScreenLayout places it: a CRT's lines follow them. */
+	virtual Weltall::FScreenSize ScreenSize() const { return {320, 224}; }
 };
 
 /**
  * Adds the passes that draw a display frame into Display of Output: black, then the frame (when there is
- * one) in the part of it the picture's shape takes.
+ * one) in the part of it the picture's shape takes, through the CRT filter when one is chosen.
  */
-WELTALL_API void AddDisplayFramePasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Display, Weltall::EDisplayAspect Aspect,
+WELTALL_API void AddDisplayFramePasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Display, const Weltall::FDisplayOptions& Options,
 	const IScreenFrame* Frame);
 
 /** The game's two controller ports as the players' devices fill them, at a display frame. */

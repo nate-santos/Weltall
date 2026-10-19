@@ -3,12 +3,23 @@
 #include "CoreMinimal.h"
 #include "Graphics/Texture.h"
 
+namespace Weltall
+{
+	class FVram;
+	struct FTextureRegion;
+}
+
 /** A replacement picture in RGBA byte order, ready for upload on the rendering thread. */
 struct FTextureModImage
 {
 	int32 Width = 0;
 	int32 Height = 0;
 	TArray<uint8> Rgba;
+	/**
+	 * Its alpha is each pixel's kind (Weltall::TexelKindAlpha), as a Beetle PSX HW pack's is. Otherwise a pixel takes the
+	 * kind of the original texel under it, its alpha below one half leaving a hole.
+	 */
+	bool bKindsFromAlpha = false;
 };
 
 /** What the library has of a key's picture. */
@@ -24,8 +35,9 @@ struct FTextureModLookup
 /**
  * Local texture replacements and captures in a textures folder, named by the key of the picture they stand for
  * (Weltall::TextureRegionKey). Replacements are PNGs anywhere below the folder except its originals folder, their
- * names ending in the key; originals, exported or captured, are below "original". Pictures are decoded on worker
- * threads, many at once, and arrive at a later Find. Game thread only.
+ * names ending in the key; originals, exported or captured, are below "original". The pictures of Beetle PSX HW texture
+ * packs below it stand for the uploads they name (FindPacked). Pictures are decoded on worker threads, many at once,
+ * and arrive at a later Find. Game thread only.
  */
 class WELTALL_API FTextureModLibrary
 {
@@ -46,6 +58,14 @@ public:
 	 * until it arrives; none when there is none, it fails to load, or it would take more than MaxPixels.
 	 */
 	static FTextureModLookup Find(uint64 Key, int32 Width, int32 Height, int64 MaxPixels);
+	/**
+	 * The picture Beetle PSX HW texture packs give a region whose own key is RegionKey: the packs' pictures of the uploads
+	 * under it, through its view's palette, each laid where its upload's part lies, the rest the region's own texels. As
+	 * Find: made on a worker thread, pending until it arrives; none when no pack has a picture for any part of it.
+	 */
+	static FTextureModLookup FindPacked(const Weltall::FVram& Vram, const Weltall::FTextureRegion& Region, uint64 RegionKey, int64 MaxPixels);
+	/** Adds to Regions a region for each part of Region that a Beetle pack has a picture of (FBeetleTexturePacks::AddPartRegions). */
+	static void AddPackedPartRegions(const Weltall::FVram& Vram, const Weltall::FTextureRegion& Region, TArray<Weltall::FTextureRegion>& Regions);
 	/** How many readings have been started: a change means a later Find may have something new. */
 	static uint64 DecodesStarted();
 	/**

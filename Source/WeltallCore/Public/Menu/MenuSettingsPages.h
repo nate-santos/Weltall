@@ -11,7 +11,11 @@
 
 namespace Weltall
 {
-	/** The options screen's pages: the four L1 and R1 turn through, then the fixes' own list, opened from Fixes. */
+	/**
+	 * The options screen's pages: the four L1 and R1 turn through first, then the fixes' own list, opened from Fixes,
+	 * the CRT's parts, opened from Display's CRT filter, Modding, the last L1 and R1 turn to (its rows here are the
+	 * balance's; the screen adds the Assets page's and the mods'), and a mod's own page.
+	 */
 	enum class ESettingsPage : uint8
 	{
 		Display,
@@ -19,6 +23,10 @@ namespace Weltall
 		Camera,
 		Fixes,
 		Custom,
+		Crt,
+		Modding,
+		/** Perfect Works Build's parts, opened from Modding's row of the mod where the game found it. */
+		PerfectWorks,
 	};
 
 	/** How many pages L1 and R1 turn through, from Display. */
@@ -39,6 +47,8 @@ namespace Weltall
 		None,
 		/** The fixes' own list opens. */
 		OpenCustom,
+		/** The CRT's parts open. */
+		OpenCrt,
 		/** The row put its settings back to their defaults. */
 		Reset,
 	};
@@ -77,13 +87,15 @@ namespace Weltall
 		 * Left (-1) or Right (+1) on a row: its setting moved to the previous or next choice, wrapping, a
 		 * number stepped within its range. False where nothing changed. On the preset row, Custom keeps the
 		 * fixes as they are and sets bCustomPicked; the other two set every fix and clear it. The window's
-		 * size goes to the next smaller or larger of Modes', from the window's own until one is chosen.
+		 * size goes to the next smaller or larger of Modes', from the window's own until one is chosen. A
+		 * CRT part changes the look shown (ShownCrtLook) into the player's own, and the filter to Custom.
 		 */
 		WELTALLCORE_API static bool Step(ESettingsPage Page, int32 Row, int32 Direction, FPlayerSettings& Settings, bool& bCustomPicked,
 			const FDisplayModes& Modes = {});
 
 		/** Confirm on a row. */
-		WELTALLCORE_API static ESettingsAction Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked);
+		WELTALLCORE_API static ESettingsAction Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked,
+			const FDisplayModes& Modes = {});
 
 		/** The preset the fixes match, Custom when they match neither. */
 		WELTALLCORE_API static EFixesPreset Preset(const FGameFixes& Fixes);

@@ -31,6 +31,12 @@ namespace Weltall
 		/** A landed hit may inflict the command's own status, for 5 turns. */
 		inline constexpr uint16 StatusOnHit = 0x4000;
 		inline constexpr uint16 NeverMisses = 0x8000;
+		/** Perfect Works' rebalance: the target's defense is left out and the power is 20 (its Pierce). */
+		inline constexpr uint16 PerfectWorksPierce = 0x0008;
+		/** Perfect Works' rebalance: a landed hit gives the actor itself the command's status. */
+		inline constexpr uint16 PerfectWorksSelfStatus = 0x0080;
+		/** Perfect Works' rebalance: a physical attack of formula 2 takes the actor's ether for its weapons (the bit of Uncounterable). */
+		inline constexpr uint16 PerfectWorksEtherPowered = 0x2000;
 	}
 
 	/** A command of a character's, a gear's or the enemies' table: one action, as the battle's rules read it. */
@@ -54,6 +60,11 @@ namespace Weltall
 		uint8 WeaponSlots = 0;
 		/** The damage's scale, a heal's factor, a status's turns. */
 		uint8 Power = 0;
+		/**
+		 * Perfect Works' rebalance: the turns of the command's own status on a Deathblow or on the actor itself (the
+		 * record's 12h). Only its rules read it, so it lies outside the layout of the original's.
+		 */
+		uint8 OwnStatusTurns = 0;
 		uint8 EpCost = 0;
 		/** Added to Elly's ether for her chance not to fail. */
 		uint8 EtherBonus = 0;

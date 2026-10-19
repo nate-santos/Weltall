@@ -75,7 +75,7 @@ namespace Weltall
 				Scratch.Units[Unit++] = Vram.At(Rect.X + Column, Rect.Y + Row);
 			}
 		}
-		Vram.Upload(Scratch);
+		Vram.UploadCopy(Scratch, Rect);
 	}
 
 	void CopyGearColumns(FVram& Vram, std::span<const FGearTexturePlace> Places, bool bToEffects, FVramImage& Scratch)

@@ -56,6 +56,9 @@ namespace Weltall
 	class FMesNameTables
 	{
 	public:
+		/** The table that maps glyph indices to codes, which holds no text. */
+		static constexpr int32 GlyphMapTable = 27;
+
 		/** The unpacked file; the tables are kept. */
 		WELTALLCORE_API static TResult<FMesNameTables> Parse(std::vector<uint8> File);
 
@@ -63,6 +66,9 @@ namespace Weltall
 
 		/** String Index of table Table, as the game's inserts read it; empty when there is none. */
 		WELTALLCORE_API std::span<const uint8> String(int32 Table, int32 Index) const;
+
+		/** Table Table's bytes, to the file's end; empty when there is none. */
+		WELTALLCORE_API std::span<const uint8> Table(int32 Table) const;
 
 		/** The two bytes (lead, code) the glyph map gives a glyph index; the map is table 27. */
 		WELTALLCORE_API std::span<const uint8> GlyphMapEntry(int32 Index) const;

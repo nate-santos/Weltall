@@ -5,7 +5,9 @@
 #include "Formats/Lzss.h"
 #include "Foundation/LittleEndian.h"
 #include "Foundation/ProcessorDivide.h"
+#include "Media/CdImage.h"
 #include "Media/GameFileIndex.h"
+#include "Text/MessageTableIds.h"
 
 #include <algorithm>
 
@@ -312,9 +314,13 @@ namespace Weltall
 			FBattleEventWork& Event = Context.Event;
 			const std::span<const uint8> Script = Event.Script;
 			const FMessageTable Messages = Event.Messages;
+			const FReplacedMessages* const Replaced = Event.Replaced;
+			const EBattleMessageLayout Layout = Event.Layout;
 			Event = FBattleEventWork{};
 			Event.Script = Script;
 			Event.Messages = Messages;
+			Event.Replaced = Replaced;
+			Event.Layout = Layout;
 			Context.EventVariables.fill(0);
 			Context.bEventWork = true;
 			if (Script.size() < BattleEventScript::EntriesOffset)
@@ -701,15 +707,37 @@ namespace Weltall
 		{
 			return Sectors.Error();
 		}
-		return Parse(*Sectors);
+		TResult<FBattleEventArchive> Archive = Parse(*Sectors);
+		if (!Archive)
+		{
+			return Archive;
+		}
+		if (Image.ModChanges().bPerfectWorksBattleMessages)
+		{
+			Archive->MessageLayout = EBattleMessageLayout::PerfectWorks;
+		}
+		Archive->ReplacedMessages.resize(Archive->MessageTables.size());
+		for (std::size_t Event = 0; Event < Archive->MessageTables.size(); ++Event)
+		{
+			const std::string Table = MessageTables::BattleEvent(static_cast<int32>(Event));
+			if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, Table, Archive->MessageTables[Event], EMessageWindows::Script))
+			{
+				Archive->MessageTables[Event] = std::move(Applied->Table);
+				Archive->ReplacedMessages[Event] = std::move(Applied->Replaced);
+			}
+		}
+		return Archive;
 	}
 
-	void BeginBattleEvent(FBattleContext& Context, std::span<const uint8> Script, std::span<const uint8> Messages)
+	void BeginBattleEvent(FBattleContext& Context, std::span<const uint8> Script, std::span<const uint8> Messages, EBattleMessageLayout Layout,
+		const FReplacedMessages* Replaced)
 	{
 		FBattleEventWork& Event = Context.Event;
 		Event = FBattleEventWork{};
 		Event.Run.Routine = EBattleEventRoutine::Load;
 		Event.Script = Script;
+		Event.Replaced = Replaced;
+		Event.Layout = Layout;
 		if (TResult<FMessageTable> Table = FMessageTable::Parse(Messages))
 		{
 			Event.Messages = *Table;

@@ -11,6 +11,7 @@ namespace Weltall
 		switch (Row)
 		{
 		case AssetRow::Textures: return EAssetExportKind::Textures;
+		case AssetRow::Text: return EAssetExportKind::Text;
 		case AssetRow::Dump: return EAssetExportKind::Dump;
 		case AssetRow::Music: return EAssetExportKind::Music;
 		default: return std::nullopt;
@@ -32,6 +33,7 @@ namespace Weltall
 			{std::string(Text::External.Label), std::string(Settings.bExternalAssets ? OptionsText::On : OptionsText::Off), OptionsText::Fill(Text::External.Help)},
 			{std::string(Text::Capture.Label), std::string(Settings.bCaptureTextures ? OptionsText::On : OptionsText::Off), OptionsText::Fill(Text::Capture.Help)},
 			Action(EAssetExportKind::Textures, Text::Textures),
+			Action(EAssetExportKind::Text, Text::Text),
 			Action(EAssetExportKind::Dump, Text::Export),
 			Action(EAssetExportKind::Music, Text::Music),
 			{std::string(Text::Progress.Label), std::string(Text::States[static_cast<std::size_t>(Progress.State)]), OptionsText::Fill(Text::Progress.Help)},

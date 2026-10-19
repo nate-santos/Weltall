@@ -34,3 +34,17 @@ TEST_CASE("Member Change swaps members between the party and the reserve, as the
 		"7a93bb9a*7 3a9e0332 e3b01acc*5 2427be04 89cef580*4 9de544f7*9 e8e9975e 47dd95f7*5 62c3facc 4cb72356*5 7d95ddd5 144902b9*5 0338141e "
 		"2167564f*7 1158fa51 2167564f*7 d1112b30 79e4290f*7 fde8feed 5b117162*2 24ddaa35*3");
 }
+
+TEST_CASE("Member Change labels the EP as every other screen does with the fix, MP as the original does", "[Content][Menu]")
+{
+	FMenuScenario Scenario{"member_ep", EMenuMode::MemberChange, 0, {{0, 30}, {Circle, 2}, {0, 40}}, 100};
+	Scenario.Pokes = {{0x1d30, {0xff, 0x7, 0xff, 0x7}}};
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const FMenuRun Original = RunMenuScenario(*Disc, Scenario);
+	Scenario.Options.bMemberChangeSaysEp = true;
+	const FMenuRun Fixed = RunMenuScenario(*Disc, Scenario);
+	REQUIRE(Original.Frames.size() == Fixed.Frames.size());
+	CHECK(Original.Frames.front() == Fixed.Frames.front());
+	CHECK(Original.Frames != Fixed.Frames);
+	CHECK(Original.Leaves == Fixed.Leaves);
+}

@@ -36,11 +36,16 @@ namespace
 		Settings.Field.MovieFilter = EMovieFilter::Upscaled;
 		Settings.Field.bDetailedPilots = false;
 		Settings.Field.GearModels = EFieldGearModels::Everywhere;
+		Settings.Field.BattleFlashes = EBattleFlashes::Softer;
 		Settings.SoundOutput = ESoundOutput::WideStereo;
 		Settings.VoiceLanguage = EVoiceLanguage::Japanese;
+		Settings.MovieSubtitles = EMovieSubtitles::On;
 		Settings.bExternalAssets = true;
 		Settings.bCaptureTextures = true;
 		Settings.Display = {{2560, 1440}, EDisplayAspect::Wide};
+		Settings.Display.Crt = ECrtFilter::Custom;
+		Settings.Display.CustomCrt = FCrtLook::Television();
+		Settings.Display.CustomCrt.Glow = 10;
 		Settings.Camera = {1.5f, -7.25f, 135.0f};
 		Settings.WorldMapCamera = {0.75f, 12.5f, -90.0f};
 		Settings.Controls.Bind(EControlAction::Cross, 0, "SpaceBar");
@@ -51,6 +56,8 @@ namespace
 		Settings.Controls.bOriginalButtonIcons = true;
 		Settings.TextSpeed = EMesTextSpeed::Quadruple;
 		Settings.BattleSpeed = EBattleSpeed::Quadruple;
+		Settings.Balance = {ERewardRate::OneAndAHalf, ERewardRate::Quadruple, EEncounterRate::Quarter};
+		Settings.PerfectWorks = {true, false, EPerfectWorksPortraits::Resized, true, false, false, true, false, true, true};
 		return Settings;
 	}
 
@@ -64,10 +71,13 @@ namespace
 		CHECK(A.Display == B.Display);
 		CHECK(A.SoundOutput == B.SoundOutput);
 		CHECK(A.VoiceLanguage == B.VoiceLanguage);
+		CHECK(A.MovieSubtitles == B.MovieSubtitles);
 		CHECK(A.bExternalAssets == B.bExternalAssets);
 		CHECK(A.bCaptureTextures == B.bCaptureTextures);
 		CHECK(A.TextSpeed == B.TextSpeed);
 		CHECK(A.BattleSpeed == B.BattleSpeed);
+		CHECK(A.Balance == B.Balance);
+		CHECK(A.PerfectWorks == B.PerfectWorks);
 	}
 }
 
@@ -111,6 +121,10 @@ TEST_CASE("The settings' defaults are the fixes on and the sharp presentation", 
 	CHECK(Settings.Fixes.BattleRules.bWholeAmounts);
 	CHECK(Settings.Fixes.BattleRules.bCounterKeepsGroupAttack);
 	CHECK(Settings.Fixes.BattleRules.bDeusSecondFormHp);
+	CHECK(Settings.Fixes.BattleRules.bDeusKeepsCamera);
+	CHECK(Settings.Fixes.BattleRules.bEtherAmmunitionElement);
+	CHECK(Settings.Fixes.Menu.bMemberChangeSaysEp);
+	CHECK(Settings.Fixes.Menu.bShopPointerBesideWords);
 	CHECK(Settings.Fixes.Field.bShipSoundsAtTheirVolume);
 	CHECK(Settings.Fixes.Field.bMemoryAmbienceFades);
 	CHECK(Settings.Fixes.BattleEvents.bWaitedStartNamesActor);
@@ -123,6 +137,7 @@ TEST_CASE("The settings' defaults are the fixes on and the sharp presentation", 
 	CHECK(Settings.Field.Culling == EFieldCulling::InRange);
 	CHECK(Settings.SoundOutput == ESoundOutput::Stereo);
 	CHECK(Settings.VoiceLanguage == EVoiceLanguage::Automatic);
+	CHECK(Settings.MovieSubtitles == EMovieSubtitles::Automatic);
 	CHECK_FALSE(Settings.bExternalAssets);
 	CHECK_FALSE(Settings.bCaptureTextures);
 	CHECK(Settings.Camera == FFieldCameraOffsets::Defaults());
@@ -147,9 +162,20 @@ TEST_CASE("The settings' text lists every setting and reads back the same", "[Se
 	CHECK(ValueOf(Defaults, "field.movie_filter") == "smooth");
 	CHECK(ValueOf(Defaults, "field.detailed_pilots") == "true");
 	CHECK(ValueOf(Defaults, "field.gear_models") == "outside_cutscenes");
+	CHECK(ValueOf(Defaults, "field.battle_flashes") == "original");
 	CHECK(ValueOf(Defaults, "sound.output") == "stereo");
 	CHECK(ValueOf(Defaults, "display.window_size").empty());
 	CHECK(ValueOf(Defaults, "display.aspect") == "window");
+	CHECK(ValueOf(Defaults, "display.crt_filter") == "off");
+	CHECK(ReadPlayerSettings("display.crt_filter = tv\n").Display.Crt == ECrtFilter::Television);
+	CHECK(ReadPlayerSettings("display.crt_filter = scanlines\n").Display.Crt == ECrtFilter::Off);
+	CHECK(ValueOf(Defaults, "crt.scanlines") == "9");
+	CHECK(ValueOf(Defaults, "crt.mask") == "aperture_grille");
+	const FDisplayOptions Crt = ReadPlayerSettings("display.crt_filter = custom\ncrt.scanlines = 12\ncrt.mask = slot_mask\ncrt.vignette = -1\n").Display;
+	CHECK(Crt.Crt == ECrtFilter::Custom);
+	CHECK(Crt.CustomCrt.Scanlines == FCrtLook::Steps);
+	CHECK(Crt.CustomCrt.Mask == ECrtMask::SlotMask);
+	CHECK(Crt.CustomCrt.Vignette == 0);
 	CHECK(ValueOf(Defaults, "display.pause_in_background") == "true");
 	CHECK(ValueOf(Defaults, "sound.in_background") == "false");
 	CHECK(ReadPlayerSettings("sound.in_background = true\ndisplay.pause_in_background = false\n").Display
@@ -177,6 +203,19 @@ TEST_CASE("The settings' text lists every setting and reads back the same", "[Se
 	CHECK(ValueOf(Defaults, "game.battle_speed") == "normal");
 	CHECK(ReadPlayerSettings("game.battle_speed = 2x\n").BattleSpeed == EBattleSpeed::Double);
 	CHECK(ReadPlayerSettings("game.battle_speed = 3x\n").BattleSpeed == EBattleSpeed::Normal);
+	CHECK(ValueOf(Defaults, "balance.experience") == "original");
+	CHECK(ValueOf(Defaults, "balance.gold") == "original");
+	CHECK(ValueOf(Defaults, "balance.encounters") == "original");
+	CHECK(ReadPlayerSettings("balance.experience = 3x\n").Balance.Experience == ERewardRate::Triple);
+	CHECK(ReadPlayerSettings("balance.encounters = none\n").Balance.Encounters == EEncounterRate::None);
+	CHECK(ReadPlayerSettings("balance.gold = 5x\n").Balance.Gold == ERewardRate::Original);
+	CHECK(ValueOf(Defaults, "mods.perfect_works") == "false");
+	CHECK(ValueOf(Defaults, "mods.perfect_works.script") == "true");
+	CHECK(ValueOf(Defaults, "mods.perfect_works.portraits") == "fixed");
+	CHECK(ValueOf(Defaults, "mods.perfect_works.arena") == "original");
+	CHECK(ReadPlayerSettings("mods.perfect_works.arena = expert\n").PerfectWorks.Arena == EPerfectWorksArena::Expert);
+	CHECK(ReadPlayerSettings("mods.perfect_works = true\nmods.perfect_works.portraits = resized\n").PerfectWorks
+		== FPerfectWorksOptions{true, true, EPerfectWorksPortraits::Resized});
 	CHECK(ReadPlayerSettings("field.sorting = per_pixel\n").Field.Sorting == EFieldSorting::DepthBuffer);
 	// The value the earlier default wrote reads as the default it has become.
 	CHECK(ReadPlayerSettings("field.sorting = depth_buffer\n").Field.Sorting == EFieldSorting::DepthBufferWithScenery);
@@ -196,13 +235,24 @@ TEST_CASE("The settings' text lists every setting and reads back the same", "[Se
 	CHECK(ValueOf(Text, "field.sprite_filter") == "upscaled");
 	CHECK(ValueOf(Text, "field.detailed_pilots") == "false");
 	CHECK(ValueOf(Text, "field.gear_models") == "true");
+	CHECK(ValueOf(Text, "field.battle_flashes") == "softer");
+	CHECK(ReadPlayerSettings("field.battle_flashes = off\n").Field.BattleFlashes == EBattleFlashes::Off);
 	CHECK(ValueOf(Text, "sound.output") == "wide_stereo");
 	CHECK(ValueOf(Text, "display.window_size") == "2560x1440");
 	CHECK(ValueOf(Text, "display.aspect") == "16:9");
+	CHECK(ValueOf(Text, "display.crt_filter") == "custom");
+	CHECK(ValueOf(Text, "crt.mask_size") == "medium");
+	CHECK(ValueOf(Text, "crt.glow") == "10");
 	CHECK(ValueOf(Text, "camera.tilt") == "-7.25");
 	CHECK(ValueOf(Text, "controls.cross") == "SpaceBar Enter Gamepad_FaceButton_Bottom");
 	CHECK(ValueOf(Text, "controls.view_reset") == "Gamepad_RightThumbstick");
 	CHECK(ValueOf(Text, "game.battle_speed") == "4x");
+	CHECK(ValueOf(Text, "balance.experience") == "1.5x");
+	CHECK(ValueOf(Text, "balance.gold") == "4x");
+	CHECK(ValueOf(Text, "balance.encounters") == "quarter");
+	CHECK(ValueOf(Text, "mods.perfect_works") == "true");
+	CHECK(ValueOf(Text, "mods.perfect_works.portraits") == "resized");
+	CHECK(ValueOf(Text, "mods.perfect_works.title_screen") == "false");
 	CHECK(ValueOf(Text, "controls.mouse_sensitivity") == "8");
 	CheckSame(ReadPlayerSettings(Text), Settings);
 }

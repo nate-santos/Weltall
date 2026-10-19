@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Game/ScreenLineDrawing.h"
 #include "Graphics/Vram.h"
 #include "Presentation/DrawList.h"
 #include "Presentation/GameScreen.h"
@@ -36,14 +37,9 @@ namespace Weltall
 		 */
 		WELTALLCORE_API void Build(std::string_view Line, int32 Level, const FMesFont& Font, FDrawList& Out);
 
-		const FVram& Pictures() const { return PictureVram; }
+		const FVram& Pictures() const { return Words.Pictures(); }
 
 	private:
-		/** Line's letters and their outlines into the pictures; its width in pixels. */
-		int32 DrawText(const std::string& Line, const FMesFont& Font);
-
-		FVram PictureVram;
-		std::string Drawn;
-		int32 TextWidth = 0;
+		FScreenLineDrawing Words;
 	};
 }

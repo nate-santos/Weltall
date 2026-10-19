@@ -82,5 +82,7 @@ namespace Weltall
 
 		std::array<FMenuArcCommand, 3> MainCommands{};
 		std::array<std::array<FMenuArcCommand, 4>, 3> SubRows{};
+		/** The arc's places' heights as this shop draws them: the module's, its own three raised by the fix. */
+		std::array<int32, 7> PlacesY{};
 	};
 }

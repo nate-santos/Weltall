@@ -28,6 +28,9 @@ namespace Weltall
 		static constexpr int32 EnemyCommandCount = 98;
 		/** The items numbered below this are the ones a battle lists. */
 		static constexpr int32 ItemCount = 48;
+		/** The weapons the battle copies, from Billy's first ammunition on. */
+		static constexpr int32 FirstAmmunition = 50;
+		static constexpr int32 AmmunitionCount = 48;
 
 		using FCharacterCommands = std::array<FBattleCommand, CharacterCommandCount>;
 		using FGearCommands = std::array<FBattleCommand, GearCommandCount>;
@@ -42,11 +45,14 @@ namespace Weltall
 		const FGearCommands& GearCommands(int32 Gear) const { return Gears[static_cast<std::size_t>(Gear)]; }
 		const std::array<FBattleCommand, EnemyCommandCount>& EnemyCommands() const { return Enemies; }
 		const std::array<FBattleItem, ItemCount>& Items() const { return BattleItems; }
+		/** Each copied weapon's attack: for Billy's ether ammunition, its element. */
+		const std::array<uint8, AmmunitionCount>& AmmunitionAttacks() const { return Ammunition; }
 
 	private:
 		std::vector<FCharacterCommands> Characters;
 		std::vector<FGearCommands> Gears;
 		std::array<FBattleCommand, EnemyCommandCount> Enemies{};
 		std::array<FBattleItem, ItemCount> BattleItems{};
+		std::array<uint8, AmmunitionCount> Ammunition{};
 	};
 }

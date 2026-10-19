@@ -48,6 +48,7 @@ public:
 	static TSharedRef<FFieldStillFrame> Make(TSharedRef<const IScreenFrame> Frame);
 
 	virtual void AddPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Area) const override;
+	virtual Weltall::FScreenSize ScreenSize() const override { return Frame->ScreenSize(); }
 
 private:
 	explicit FFieldStillFrame(TSharedRef<const IScreenFrame> InFrame) : Frame(MoveTemp(InFrame)) {}

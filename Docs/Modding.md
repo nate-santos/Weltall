@@ -1,8 +1,8 @@
 # Modding
 
-Open Options from the title screen or the in-game menu, then press L1 or R1 to reach the Assets page. One
-export runs at a time. The page shows its progress, and you can cancel it. Everything you export stays on your
-computer. Neither the game nor this repository includes any extracted game content.
+Open Options from the title screen or the in-game menu, press L1 or R1 to reach the Modding page, then choose
+Assets. One export runs at a time. The page shows its progress, and you can cancel it. Everything you export stays
+on your computer. Neither the game nor this repository includes any extracted game content.
 
 ## Voices
 
@@ -11,6 +11,10 @@ you also have the USA discs there, choose English, Japanese or Auto under **Opti
 uses the voices of the version you're playing, which is the USA release when both are present. If the voices
 you chose aren't available, you'll hear the ones from the version you're playing. A change applies from the
 next battle or movie.
+
+The undub's subtitles come from its discs. **Options → Sound → Subtitles** has three choices: Auto shows
+them whenever a movie plays the Japanese voices, On also shows them with the English voices, and Off hides
+them. On needs the undub disc for the disc you're playing in `Games`.
 
 The game recognizes the undub by the SHA-1 hashes of its boot files, not by file names:
 
@@ -98,6 +102,8 @@ It covers:
 | `battle/party/NN` | Character NN's battle sprite and attack animations, with all the cells on one sheet per palette |
 | `battle/gears/GG-V` | Gear GG's battle textures, with variant V's parts or colors (0 for none) |
 | `battle/special/N` | The textures of special battle model N |
+| `battle/hud` | The battle screen's pictures: the command ring, the party's panels with their HP digits and gauges, the damage numbers, the windows, and every character's portrait |
+| `battle/result` | The same with the results screen's own pictures |
 | `battle/effects/NNN` | Battle effect NNN's sprites, with all the cells on one sheet per palette. `common` holds the effects every battle uses |
 | `gears/NN` | The textures of Gear model NN, which field maps and the Gear shop show in 3D |
 | `captured` | Textures saved by **Capture textures** while you play |
@@ -150,6 +156,134 @@ applies the difference. When a 3D model (a battle stage, an enemy or a Gear) ani
 fire behind Lahan in the first Gear battle, the replacement stays on but doesn't animate. Textures the game shifts
 every frame, such as scrolling water, and pictures copied from the screen keep their original look.
 
+### Texture packs made for Beetle PSX HW
+
+Weltall can use texture packs made for Beetle PSX HW, a PlayStation core for RetroArch, without any changes to them.
+Perfect ART Works and the Xenogears HD Portraits Project are two such packs. Put the pack's folder, the one whose name
+ends in `-texture-replacements`, anywhere under `Assets/textures` and turn on External assets. You don't need to
+rename it.
+
+These packs name each picture after the data the game loads into the PlayStation's video memory and the colors it's
+drawn with, not after the texture on screen. Weltall keeps track of that data the way Beetle PSX HW does, so each of
+the pack's pictures shows up wherever the game draws from it. Your own replacements come first: where a texture has
+a PNG named by its key, the game uses that instead of the pack's picture.
+
+Like Beetle PSX HW, Weltall only uses the pictures directly inside the pack's folder. Packs often keep alternative
+versions in folders inside it, such as the `alternate portraits` folder of Perfect ART Works. To use one, copy it
+over the file with the same name in the pack's folder, as the pack's instructions say. If two packs have a picture
+with the same name, the game uses the first one by folder name. Perfect ART Works and the HD Portraits Project both
+replace the portraits, so keep only one of them in `Assets/textures`. If you use Perfect Works Build from `Mods`,
+leave its Portraits and Roni's portrait rows on Original, because the packs' portraits are named after the original
+ones. Perfect ART Works also covers Perfect Works Build's version of the battle screen.
+
+A pack picture's transparency works as it does in Beetle PSX HW. Fully transparent pixels aren't drawn, fully
+opaque ones are solid, and anything in between blends with what's behind it where the game draws semi-transparent
+textures. Pictures can be PNG, JPEG, BMP or TGA files. DDS and WebP files aren't read, so convert them to PNG.
+Packs that replace whole texture pages, in a folder whose name ends in `-texture-replacements-pages`, aren't
+supported.
+
+## Text
+
+**Export text** saves every message in the game as text files in `Assets/text/original`, and the font in
+`Assets/font/original` (see the next section). It takes a few seconds. Running it again keeps the files already there.
+
+| File inside `original` | Contents |
+|---|---|
+| `field/NNN.txt` | Field map NNN's dialogue, signs and prompts |
+| `names.txt` | The names of items, weapons, armor, abilities, Deathblows and Gear parts, and the battle screen's labels |
+| `menu.txt` | The menu's prompts and labels: saving and loading, the shops, the party |
+| `menu-help.txt` | The menu's descriptions of items, abilities and equipment, and the Gear parts' names |
+| `battle.txt` | What a battle says as actions happen: statuses, counterattacks, fuel |
+| `battle-help.txt` | The help lines in battle for items, Ethers and Gear Specials |
+| `enemies.txt` | Each battle's enemy names, followed by what the enemies say |
+| `battle-events.txt` | The dialogue of scripted battles |
+| `worldmap.txt` | The world map's place names and messages |
+| `battling.txt` | The Battling arena's menus, tutorial and taunts |
+| `chapters.txt` | The chapter titles, shown when a chapter begins and in the save slots |
+
+Each message is a block like this:
+
+```
+message field/19/0  ; 30 x 3
+{
+Fei
+"Mmmm!{wait 1E}
+That was good!"
+}
+```
+
+The first line gives the message's id: the table it's in and its number there. Everything between the braces is the
+message's text, line breaks included. Marks in braces control the window and fill in things during play. The numbers in
+them are hexadecimal.
+
+| Mark | What it does |
+|---|---|
+| `{page}` | Waits for the button, then clears the window and goes on |
+| `{more}` | Waits for the button, then goes on in the same window |
+| `{wait 1E}` | Pauses for that many 60ths of a second (1E is 30, half a second) |
+| `{close 3C}` | Closes the window by itself after that pause, without the button |
+| `{auto 3C}` | The same, unless the player presses the button first (timed choices) |
+| `{speed FF}` | Shows that many letters at a time; FF shows the whole page at once |
+| `{delay 01}` | Types slowly, one letter every few frames, until the message ends |
+| `{name 00}` | A character's or Gear's name (`{name 80}` and up: the party's members in order) |
+| `{item}`, `{weapon 03}` | The name of the item the scene is about, or of a weapon |
+| `{digits 00}`, `{signed 00}`, `{number 00}` | A number the scene fills in |
+| `{Circle}`, `{Cross}`, `{Triangle}`, `{Square}` | A button, drawn as the player has it bound |
+| `{box}` | The box the game draws for a missing character |
+| `{8F}`, `{FE12}` | Any other character, by its code in the font |
+
+To change a message, copy its block into a `.txt` file of your own anywhere under `Assets/text` (not in `original`)
+and edit the text. One file can hold messages from any table, since each block's id says which message it replaces.
+Turn on External assets to use your messages. A message applies the next time the game reads its table: a field
+map's when you enter the map, the menu's when you open the menu, an enemy's when a battle starts and the world map's
+when you go out onto it. The names, the battles' messages, help and dialogue, the arena's text and the chapter titles
+apply when the game starts. After editing, turn External assets off and on again, then enter the map again or restart
+the game. If you use Perfect Works Build's script, the ids refer to the mod's messages, which may not match the
+original's. The export always saves the original game's text.
+
+Write text with the letters, digits and marks of the game's font, and the Japanese symbols and kana it also has
+(`…`, `～`, `※`, `→` and so on), as UTF-8. To use a letter the font doesn't have, such as an accented one, add it to
+the font first (see the next section). The game's log (`Weltall.log`) names any message that has a character
+the font lacks or a mark it doesn't know, and the game keeps the original text for that message.
+
+The numbers after a field message's id (`30 x 3`) are the size of its window: 30 wide and 3 lines tall. In these
+units a letter is 2 wide, and a symbol or button is 3. When you change a field message, the game resizes its window to
+fit your text, keeping any extra room the original left for a name. The largest window the screen holds is 70 wide
+and 13 lines tall. A message bigger than that keeps the original text, and the log says so. A face beside the text
+takes up 17 of the width, so keep those lines to 53 at most. Some scenes set a window's size themselves, and those
+windows keep their size. If your message doesn't fit its window or runs off the screen, the log names it, so you can
+shorten it or break its lines differently.
+
+In the menus, in battle and on the world map, the text goes where the game puts it. The log mentions any message
+that's wider or taller than every original message in its table, since it may not fit.
+
+The log also names messages whose marks differ from the original's: a missing `{name}` or `{item}`, a different
+number of pages, or a message that no longer closes by itself. They're used anyway, but check them. A choice's
+options have to stay on the same lines, and a scene may wait for a window to close by itself.
+
+A chapter title is one line of up to 15 letters, digits, spaces and the marks `+ , - . / ! " # % & ' ( ) : ? [ ] =`,
+because a save keeps its title that way.
+
+## The font
+
+The text export also saves the game's font as `font.png`, with every character on a grid of 12 x 11 pixel cells, 16 to
+a row, white on transparent, and `font.tsv`, with a line for each cell: the character's code, the cell's number on the
+grid, its width (8 or 12 pixels), the character it stands for and how many of the game's messages use it.
+
+To change the font, copy both files from `original` to `Assets/font` and edit them there. Pixels with an alpha of 128
+or more are drawn. Draw only the letter, because the game adds the dark outline around it. A letter 8 pixels wide has
+to stay within the first 6 columns of its cell, or the next letter cuts off its outline (the log says if one doesn't).
+The picture can also be the same grid 2 to 16 times as large, and the game reduces each cell to its 12 x 11 pixels.
+
+To add a character, draw it in a cell the English text doesn't use and type the character in that cell's line of
+`font.tsv`. Your messages can then use it. The Japanese kana (the cells from 131 on) only appear in the game's debug
+rooms and a few placeholder names, so they're the ones to redraw. A kana cell is 12 pixels wide, wider than the
+English letters. To make an added letter as narrow as the others, change its width to 8. Font changes apply when the
+game starts.
+
+The Battling arena's large capital letters are a picture, not this font. To redraw them, replace the 256 x 39 texture
+in `files/48/0005` of the texture export.
+
 ## Scripts and models
 
 You can change field scripts, messages and story behavior with plain text files in `Content/Story`.
@@ -159,9 +293,52 @@ options as `key = value` lines, but it can't add new gameplay rules.
 Models are only exported in the game's own formats, with their skeletons, animations and textures in the dumped
 files. You can't replace a Gear with an Unreal skeletal mesh or import glTF or FBX models.
 
+## Perfect Works Build
+
+Weltall can use parts of [Perfect Works Build](https://github.com/PWBuild-Team/Perfect_Works_Build), a fan mod
+with a new translation of the script, rebalanced gameplay and fixes of its own. Weltall doesn't include any of it. To
+use it:
+
+1. Download `Xenogears_Perfect_Works_Edition_<version>.7z` from the mod's releases page.
+2. Unpack it into a folder named `PerfectWorks` inside the `Mods` folder next to `Games`, so that
+   `Mods/PerfectWorks/gamefiles` exists.
+3. Start Weltall. The Modding page in Options now has a Perfect Works row. Turn it on, then press Confirm to choose
+   which parts of the mod to use.
+
+Your choices apply the next time you start the game. You can use:
+
+- **Script**: the mod's new translation of the names and the story script, including the dialogue during battles.
+- **Story mode**: easy battles and no random battles on the field.
+- **Music**: the mod's new music for some scenes.
+- **Party and items**: the mod's stats and abilities for the party, its items and its battle rules.
+- **Enemies**: the mod's stats and AI for some enemies and bosses.
+- **Battling**: the mod's rebalance of the Battling arena. Basic gives each Gear its own HP, speed and heat, with the
+  mod's rules for hits, knockdowns and the computer's play. Expert adds the mod's tweaks for two players.
+- **Portraits**: Fixed uses the mod's portrait fixes, and Resized also narrows them for 4:3. **Roni's portrait** uses
+  the mod's portrait of Roni.
+- **Emeralda**: the mod's fix for Emeralda's sprites when she sits down at the cafe.
+- **Title screen**: the mod's title screen.
+
+As in the mod's own installer, story mode can't be used together with the rebalances or the arena modes: turning one
+on turns the other off. Turn the rebalances on or off when you start a new game, because a save keeps the stats and
+items it was made with.
+
+In the mod, some of these parts change the game's program code: the battle dialogue's window sizes, the rebalanced
+party and items, and the arena modes. Weltall makes the same changes in its own code, with the Perfect Works Build
+team's permission. They were checked against version 0.11.4 of the mod. With a different version, the battle dialogue,
+the rebalances and the arena modes stay as in the original game, and the log says so. The other parts use the mod's
+files as they are.
+
+The experience, gold and encounter options, faster text, battle flashes, Japanese voices and controls are Weltall's
+own settings, so they work with or without the mod.
+
+The fixes the mod makes in the program code are rows of Weltall's Fixes page, on by default with or without the mod:
+Billy's ether guns, Deus's first fight, the shop pointer, EP in Member Change, names ending in s, Def UP on foot and
+the Gear shop parts. The first four come from the Perfect Works Build team's work.
+
 ## Sharing mods
 
 Only share material you have permission to share. Exported textures, music, models, scripts and movies, and edited
 versions of them, can still contain copyrighted game content. Weltall doesn't download mod packs or upload your
-exports. This repository ignores the `Games` and `Assets` folders, and the release downloads don't include their
-contents. If you build packages yourself, rebuilding keeps your existing `Assets` folder.
+exports. This repository ignores the `Games`, `Assets` and `Mods` folders, and the release downloads don't include
+their contents. If you build packages yourself, rebuilding keeps your existing `Assets` and `Mods` folders.

@@ -159,6 +159,9 @@ namespace Weltall
 		std::array<int32, 4> Axes{};
 		int32 Acceleration = 0;
 		int32 Deceleration = 0;
+		/** Perfect Works Build's arena's: the gear's speed scale for its running, and a dash tick's heat (the gear table's). */
+		int16 RunScale = 0;
+		int32 DashHeat = 0;
 		int32 GroundHeight = 0;
 		int16 Hp = 0;
 		int16 Heat = 0;
@@ -181,6 +184,8 @@ namespace Weltall
 		uint32 Flags = 0;
 		uint32 Flags2 = 0;
 		int32 Stun = 0;
+		/** Perfect Works Build's Basic arena's: the last hit taken was a swing's, which knocks down at the fifth in a row, not the fourth. */
+		uint8 SwingHit = 0;
 		int16 HitsInRow = 0;
 		int16 RoundsWon = 0;
 		int32 Steer = 0;

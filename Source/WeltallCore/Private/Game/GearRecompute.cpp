@@ -83,6 +83,11 @@ namespace Weltall
 			constexpr std::size_t EtherDefense = 0x0E;
 			constexpr std::size_t Special = 0x15;
 			constexpr std::size_t SpecialValue = 0x16;
+			/** Perfect Works' rebalance: which of the Deathblow tiers a Deathblow part gives, bits 1, 2 and 4. */
+			constexpr std::size_t DeathblowTiers = 0x17;
+			/** Perfect Works' rebalance's defenses, as words. */
+			constexpr std::size_t DefenseWord = 0x0C;
+			constexpr std::size_t EtherDefenseWord = 0x0E;
 			constexpr std::size_t DamageReduction = 0x1A;
 			/** Bytes summed over the three parts: guard, hit, ether amplifier, agility on each terrain. */
 			constexpr std::array<FByteField, 7> SummedBytes{{{0x18, 0x4C}, {0x14, 0x4D}, {0x1B, 0x54}, {0x10, 0x50}, {0x11, 0x51}, {0x12, 0x52}, {0x13, 0x53}}};
@@ -145,11 +150,28 @@ namespace Weltall
 			return static_cast<int16>(Penalty) < 0 ? 0 : static_cast<uint8>(Penalty);
 		}
 
-		void ApplySpecial(std::span<uint8> Record, std::span<const uint8> Part, std::span<uint8> Block, std::size_t DeathblowsAt)
+		void ApplySpecial(std::span<uint8> Record, std::span<const uint8> Part, std::span<uint8> Block, std::size_t DeathblowsAt, bool bPerfectWorksRules)
 		{
 			const uint16 Value = ReadU16(Part, PartField::SpecialValue);
 			const uint8 ValueByte = Part[PartField::SpecialValue];
-			switch (static_cast<EPartSpecial>(Part[PartField::Special]))
+			const uint8 Special = Part[PartField::Special];
+			if (bPerfectWorksRules && Special >= static_cast<uint8>(EPartSpecial::DeathblowTier1) && Special <= static_cast<uint8>(EPartSpecial::DeathblowTier3))
+			{
+				// Perfect Works' rebalance: one case for the three, each tier given by a flag of the part, then on into the
+				// flags' and the multiplier's cases.
+				for (std::size_t Tier = 0; Tier < DeathblowGrants.size(); ++Tier)
+				{
+					const FDeathblowGrant Grant = DeathblowGrants[Tier];
+					if ((Part[PartField::DeathblowTiers] & (1u << Tier)) != 0 && (ReadU16(Block, DeathblowsAt) & Grant.Known) == Grant.Known)
+					{
+						OrU16(Block, DeathblowsAt, Grant.Granted);
+					}
+				}
+				OrU16(Record, GearField::PartsFlags, Value);
+				Record[GearField::AttackMultiplierBonus] += ValueByte;
+				return;
+			}
+			switch (static_cast<EPartSpecial>(Special))
 			{
 				case EPartSpecial::StatusImmunity:
 					OrU16(Record, GearField::StatusImmunity, Value);
@@ -321,10 +343,11 @@ namespace Weltall
 		const uint16 Cleared = Copy == EGearPartsCopy::Menu ? GrantedDeathblows : ShopClearedDeathblows;
 		WriteU16(Block, DeathblowsAt, static_cast<uint16>(ReadU16(Block, DeathblowsAt) & ~Cleared));
 
+		const bool bPerfectWorksRules = Tables.UsesPerfectWorksRules();
 		for (const std::span<const uint8> Part : Parts)
 		{
-			AddU16(Record, GearField::PartsDefense, Part[PartField::Defense]);
-			AddU16(Record, GearField::PartsEtherDefense, Part[PartField::EtherDefense]);
+			AddU16(Record, GearField::PartsDefense, bPerfectWorksRules ? ReadU16(Part, PartField::DefenseWord) : Part[PartField::Defense]);
+			AddU16(Record, GearField::PartsEtherDefense, bPerfectWorksRules ? ReadU16(Part, PartField::EtherDefenseWord) : Part[PartField::EtherDefense]);
 			AddU16(Record, GearField::PartsWeight, ReadU16(Part, PartField::Weight));
 			for (const FByteField Field : PartField::SummedBytes)
 			{
@@ -333,7 +356,7 @@ namespace Weltall
 					Record[Field.To] += Part[Field.From];
 				}
 			}
-			ApplySpecial(Record, Part, Block, DeathblowsAt);
+			ApplySpecial(Record, Part, Block, DeathblowsAt, bPerfectWorksRules);
 		}
 
 		Record[GearField::OverweightPenalty] = OverweightPenalty(Record);

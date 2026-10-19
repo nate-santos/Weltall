@@ -125,6 +125,10 @@ namespace Weltall
 				{
 				case 0x01:
 					SetQueueByte(Context, Entry + Word.A, Word.B);
+					if (Context.RuleOptions.bDeusKeepsCamera || Context.bPerfectWorksRebalance)
+					{
+						Context.KeepCamera = Word.C;
+					}
 					return Word.A == 0 ? static_cast<uint8>(Next + 1) : Next;
 				case 0x02:
 					SetQueueByte(Context, Entry + Word.A, B(Context, Enemy, Word.B));

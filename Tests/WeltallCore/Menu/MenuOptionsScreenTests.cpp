@@ -28,12 +28,14 @@ namespace
 		void Keep() override { Kept.push_back(Current); }
 		FDisplayModes DisplayModes() const override { return Display; }
 		IMenuAssets* Assets() const override { return AssetExport; }
+		FMenuMods Mods() const override { return Found; }
 
 		FPlayerSettings Current;
 		FDisplayModes Display;
 		int32 Changes = 0;
 		std::vector<FPlayerSettings> Kept;
 		IMenuAssets* AssetExport = nullptr;
+		FMenuMods Found;
 	};
 
 	FPadState Holding(EPadButton Button)
@@ -99,9 +101,16 @@ TEST_CASE("The Assets page changes replacements and starts, refreshes and cancel
 	Wait(Menu, 30);
 	Press(Menu, EPadButton::Down);
 	Press(Menu, EPadButton::Cross, 40);
+	// L1 from Display turns to the last page, Modding; past its balance rows and the mods' heading to Assets, opened.
 	Press(Menu, EPadButton::L1);
+	for (int32 Row = 0; Row < 3; ++Row)
+	{
+		Press(Menu, EPadButton::Down);
+	}
+	Press(Menu, EPadButton::Cross);
 	Press(Menu, EPadButton::Right);
 	CHECK(Settings.Current.bExternalAssets);
+	CHECK(Settings.Current.Balance == FGameBalance{});
 	Press(Menu, EPadButton::Down);
 	Press(Menu, EPadButton::Right);
 	CHECK(Settings.Current.bCaptureTextures);
@@ -114,9 +123,89 @@ TEST_CASE("The Assets page changes replacements and starts, refreshes and cancel
 	Wait(Menu, 4);
 	Press(Menu, EPadButton::Cross);
 	CHECK(Exporter.Cancels == 1);
+	// Circle back to Modding's Assets row, where Right changes nothing, and again to close.
+	Press(Menu, EPadButton::Circle);
+	CHECK(Settings.Kept.empty());
+	const int32 Changes = Settings.Changes;
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Changes == Changes);
 	Press(Menu, EPadButton::Circle, 40);
 	REQUIRE(Settings.Kept.size() == 1);
 	CHECK(Settings.Kept.front().bExternalAssets);
+}
+
+TEST_CASE("The Modding page sets the balance, and without the Assets page has no rows after it", "[Menu][Content][Balance]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	FRecordedSettings Settings;
+	auto Play = FMenuPlay::NewGame(Disc->Image(), *Executable, 1, {EMenuMode::LoadGame, 0, false}, nullptr, &Settings);
+	REQUIRE(Play);
+	FMenuPlay& Menu = **Play;
+	Wait(Menu, 30);
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Cross, 40);
+	// L1 from Display: Modding, the cursor on Experience under the Balance heading; Right twice makes it 2x.
+	Press(Menu, EPadButton::L1);
+	Press(Menu, EPadButton::Right);
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Current.Balance.Experience == ERewardRate::Double);
+	// Down to Gold, Left: 4x; Down to Encounters, Left: half as many.
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Left);
+	CHECK(Settings.Current.Balance.Gold == ERewardRate::Quadruple);
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Left);
+	CHECK(Settings.Current.Balance.Encounters == EEncounterRate::Half);
+	// Nothing below it without the Assets page: Down stays, and Left steps Encounters again.
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Left);
+	CHECK(Settings.Current.Balance.Encounters == EEncounterRate::Quarter);
+	// Confirm does nothing on a balance row; R1 turns on round to Display.
+	Press(Menu, EPadButton::Cross);
+	Press(Menu, EPadButton::R1);
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Current.Balance == FGameBalance{ERewardRate::Double, ERewardRate::Quadruple, EEncounterRate::Quarter});
+	Press(Menu, EPadButton::Circle, 40);
+	REQUIRE(Settings.Kept.size() == 1);
+	CHECK(Settings.Kept.front().Balance.Gold == ERewardRate::Quadruple);
+}
+
+TEST_CASE("A mod found has a row on the Modding page that switches it and opens its page", "[Menu][Content][Mods]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	FRecordedSettings Settings;
+	Settings.Found = {true, "0.11.4", {}};
+	auto Play = FMenuPlay::NewGame(Disc->Image(), *Executable, 1, {EMenuMode::LoadGame, 0, false}, nullptr, &Settings);
+	REQUIRE(Play);
+	FMenuPlay& Menu = **Play;
+	Wait(Menu, 30);
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Cross, 40);
+	// L1 to Modding; past the balance rows and the mods' heading to Perfect Works, which Right switches on.
+	Press(Menu, EPadButton::L1);
+	for (int32 Row = 0; Row < 3; ++Row)
+	{
+		Press(Menu, EPadButton::Down);
+	}
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Current.PerfectWorks.bEnabled);
+	CHECK(Settings.Current.Balance == FGameBalance{});
+	// Cross opens its page on its switch; Down past the Story heading to Script, which Left sets to the original's.
+	Press(Menu, EPadButton::Cross);
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Left);
+	CHECK_FALSE(Settings.Current.PerfectWorks.bScript);
+	// Circle back to the mod's row, where Right switches it off; again to close.
+	Press(Menu, EPadButton::Circle);
+	Press(Menu, EPadButton::Right);
+	CHECK_FALSE(Settings.Current.PerfectWorks.bEnabled);
+	Press(Menu, EPadButton::Circle, 40);
+	REQUIRE(Settings.Kept.size() == 1);
+	CHECK_FALSE(Settings.Kept.front().PerfectWorks.bScript);
 }
 
 TEST_CASE("The title's first orb opens the options screen, whose changes are made at once and kept as it closes", "[Menu][Content]")
@@ -137,7 +226,8 @@ TEST_CASE("The title's first orb opens the options screen, whose changes are mad
 	Press(Menu, EPadButton::Right);
 	CHECK(Settings.Current.SoundOutput == ESoundOutput::WideStereo);
 	CHECK(Settings.Changes == 1);
-	// L1 turns back to Display and on round to Fixes; Right picks Original.
+	// L1 turns back to Display, round to Modding and on to Fixes; Right picks Original.
+	Press(Menu, EPadButton::L1);
 	Press(Menu, EPadButton::L1);
 	Press(Menu, EPadButton::L1);
 	Press(Menu, EPadButton::Right);
@@ -167,6 +257,48 @@ TEST_CASE("The title's first orb opens the options screen, whose changes are mad
 		bEnded = !Drawn(Menu.Frame({}));
 	}
 	CHECK(bEnded);
+}
+
+TEST_CASE("The CRT filter's row opens its parts, each change handed on at once, and Cancel goes back to the row", "[Menu][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	FRecordedSettings Settings;
+	auto Play = FMenuPlay::NewGame(Disc->Image(), *Executable, 1, {EMenuMode::LoadGame, 0, false}, nullptr, &Settings);
+	REQUIRE(Play);
+	FMenuPlay& Menu = **Play;
+	Wait(Menu, 30);
+	Press(Menu, EPadButton::Down);
+	Press(Menu, EPadButton::Cross, 40);
+	// Display without the window's rows: down five to the CRT filter, and Right: the monitor's look.
+	for (int32 Row = 0; Row < 5; ++Row)
+	{
+		Press(Menu, EPadButton::Down);
+	}
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Current.Display.Crt == ECrtFilter::Monitor);
+	// Cross opens its parts; down seven to Curvature, and Right: the monitor's look a step bulging, the player's own,
+	// handed on as it is made.
+	Press(Menu, EPadButton::Cross);
+	for (int32 Row = 0; Row < 7; ++Row)
+	{
+		Press(Menu, EPadButton::Down);
+	}
+	const int32 Before = Settings.Changes;
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Changes == Before + 1);
+	CHECK(Settings.Current.Display.Crt == ECrtFilter::Custom);
+	FCrtLook Bulging = FCrtLook::Monitor();
+	Bulging.Curvature = 1;
+	CHECK(Settings.Current.Display.CustomCrt == Bulging);
+	// Circle goes back to the CRT filter's row: Right steps it on from Custom, round to off.
+	Press(Menu, EPadButton::Circle);
+	Press(Menu, EPadButton::Right);
+	CHECK(Settings.Current.Display.Crt == ECrtFilter::Off);
+	Press(Menu, EPadButton::Circle, 40);
+	REQUIRE(Settings.Kept.size() == 1);
+	CHECK(Settings.Kept.front().Display.CustomCrt == Bulging);
 }
 
 TEST_CASE("The Normal Menu's eighth orb, over Status, opens the options screen and is not remembered", "[Menu][Content]")
@@ -236,7 +368,9 @@ TEST_CASE("The options screen's Controls page binds the key the player presses, 
 	Wait(Menu, 30);
 	Press(Menu, EPadButton::Down);
 	Press(Menu, EPadButton::Cross, 40);
-	// L1 from Display turns to the last page, Controls: the device, a heading and five buttons' two keys each, the cursor on Up; on to Cross.
+	// L1 from Display turns past the last page, Modding, to Controls: the device, a heading and five buttons' two keys each, the cursor on
+	// Up; on to Cross.
+	Press(Menu, EPadButton::L1);
 	Press(Menu, EPadButton::L1);
 	const auto ShownKeys = [&Menu]() { return Menu.Menu().Snapshot().Keys; };
 	REQUIRE(ShownKeys().size() == 10);

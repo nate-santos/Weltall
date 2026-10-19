@@ -27,7 +27,6 @@ namespace Weltall
 		constexpr int32 IconFrame = 0x52;
 		constexpr int32 IconShadowFrame = 0x53;
 		constexpr int32 IconBackFrame = 0x8F;
-		constexpr int32 PortraitFrame = 0x61;
 		/** The frame whose texture and CLUT the gauges take. */
 		constexpr int32 GaugeFrame = 0x5C;
 		constexpr int32 ApLabelFrame = 0x90;
@@ -181,7 +180,7 @@ namespace Weltall
 			{
 				SetDimSub(Panel.RestingIcon[static_cast<std::size_t>(Part)][Buffer]);
 			}
-			DrawSheet(PortraitFrame + Slot, std::span<FBattleHudPair>(&Panel.Portrait, 1), 0, X + 0x1C, 0x14, FullScale);
+			DrawSheet(FBattleHudResources::PortraitFrame + Slot, std::span<FBattleHudPair>(&Panel.Portrait, 1), 0, X + 0x1C, 0x14, FullScale);
 			Panel.ApLabelCount = DrawSheet(ApLabelFrame, Panel.ApLabel, 0, X + 0x38, 0x27, FullScale);
 			Panel.FuelLabelCount = DrawSheet(FuelLabelFrame, Panel.FuelLabel, 0, X + 0x3C, 0x27, FullScale);
 			Panel.LabelBuffer = Buffer;
@@ -400,7 +399,13 @@ namespace Weltall
 				const uint8 URight = static_cast<uint8>((Length + (GaugeTexture.VramX & 0x3F)) * 2);
 				SetTexels(Gauge, U, V, URight, V, U, V + 4, URight, V + 4);
 				const FBattleCombatant& Member = Battle->Combatants[static_cast<std::size_t>(Slot)];
-				if (((Member.Buffs | Member.PermanentBuffs) & 0x8000) != 0)
+				uint16 Speeds = Member.Buffs | Member.PermanentBuffs;
+				// Perfect Works' rebalance: a boarded gear's booster too, which its permanent buffs keep.
+				if (Battle->bPerfectWorksRebalance && Member.IsInGear())
+				{
+					Speeds |= Member.GearPart.PermanentBuffs;
+				}
+				if ((Speeds & 0x8000) != 0)
 				{
 					Gauge.Clut = FastClut;
 				}

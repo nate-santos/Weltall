@@ -5,6 +5,7 @@
 #include "Input/PadState.h"
 #include "Media/GameMovies.h"
 #include "Media/MovieStream.h"
+#include "Media/MovieSubtitles.h"
 
 #include <deque>
 #include <memory>
@@ -47,8 +48,12 @@ namespace Weltall
 		/** The vertical blanks a skip's fade lasts before the movie stops. */
 		static constexpr int32 SkipVblanks = 5;
 
-		/** The movie at Location on the image, played into the game's sound; both must outlive the player. */
-		WELTALLCORE_API FMoviePlayer(const FCdImage& Image, FMovieLocation Location, const FMoviePlayback& InPlayback, FGameSoundSystem& InSound);
+		/**
+		 * The movie at Location on the image, played into the game's sound, with the undub's subtitles drawn over
+		 * it when given; the image and the sound must outlive the player.
+		 */
+		WELTALLCORE_API FMoviePlayer(const FCdImage& Image, FMovieLocation Location, const FMoviePlayback& InPlayback, FGameSoundSystem& InSound,
+			std::optional<FMovieSubtitles> InSubtitles = std::nullopt);
 		WELTALLCORE_API ~FMoviePlayer();
 		FMoviePlayer(const FMoviePlayer&) = delete;
 		FMoviePlayer& operator=(const FMoviePlayer&) = delete;
@@ -73,6 +78,9 @@ namespace Weltall
 
 		/** The picture on screen now: null before the first; shared, so a frame being drawn keeps it. */
 		std::shared_ptr<const FMdecPicture> Picture() const { return Shown; }
+
+		/** The subtitle drawn over the picture on screen, or null. */
+		std::shared_ptr<const FMovieSubtitlePicture> Subtitle() const { return ShownSubtitle; }
 
 		/** How many pictures have been shown; 0 before the first. */
 		uint32 PictureNumber() const { return PicturesShown; }
@@ -100,16 +108,19 @@ namespace Weltall
 		FMovieLocation Location;
 		FMoviePlayback Playback;
 		FGameSoundSystem& Sound;
+		std::optional<FMovieSubtitles> Subtitles;
 		std::optional<FMovieStream> Stream;
 		std::vector<int16> SoundScratch;
 		struct FDecodedPicture
 		{
 			std::shared_ptr<const FMdecPicture> Picture;
 			uint32 FrameNumber = 0;
+			std::shared_ptr<const FMovieSubtitlePicture> Subtitle;
 		};
 
 		std::deque<FDecodedPicture> Decoded;
 		std::shared_ptr<const FMdecPicture> Shown;
+		std::shared_ptr<const FMovieSubtitlePicture> ShownSubtitle;
 		uint32 ShownFrame = 0;
 		uint32 PicturesShown = 0;
 		/** The vertical blanks since the movie's first picture. */

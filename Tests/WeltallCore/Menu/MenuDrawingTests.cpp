@@ -126,6 +126,40 @@ TEST_CASE("A textured quad shows the texels the GPU's half-texel stepping shows,
 	CHECK(List.Primitives[1].Texels == FDrawTexels{0xA0, 0, 0xB7, 23});
 }
 
+TEST_CASE("A quad on the menu's layer is stepped from half a texel as the GPU steps its projected corners", "[Menu]")
+{
+	// A window's top-left corner as the menu builds it: the sheet's corner picture (texels 132-147 down) drawn upside down,
+	// its rows written one lower as for a mirrored part (131 at the quad's bottom, 147 at its top), on the layer at rest.
+	FMenuFrame Now;
+	Now.Layer = MenuFlatTransform;
+	FMenuPrimitive Corner;
+	Corner.Code = MenuGpu::TexturedQuad;
+	Corner.Space = EMenuSpace::Layer;
+	// Its corners from the screen's centre (160, 112): left 32, right 48, its first row's corners at y 58, the others at 42.
+	Corner.Points = {FGteVector{-128, -54, 0}, FGteVector{-112, -54, 0}, FGteVector{-128, -70, 0}, FGteVector{-112, -70, 0}};
+	for (std::size_t At = 0; At < 4; ++At)
+	{
+		Corner.Corners[At].U = static_cast<uint8>(32 + (At & 1) * 16);
+		Corner.Corners[At].V = static_cast<uint8>(131 + (At >> 1) * 16);
+	}
+	Now.Primitives.push_back(Corner);
+	FMenuDrawBuilder Builder;
+	FDrawList List;
+	Builder.Build(Now, nullptr, 1.0f, List);
+	REQUIRE(List.Primitives.size() == 1);
+	const FDrawPrimitive& Drawn = List.Primitives[0];
+	const auto TexelAt = [&](float Y) {
+		const float Top = Drawn.Corners[2].Y;
+		const float Bottom = Drawn.Corners[0].Y;
+		return static_cast<int32>(std::floor(Drawn.Corners[2].V + (Drawn.Corners[0].V - Drawn.Corners[2].V) * (Y - Top) / (Bottom - Top)));
+	};
+	// Its top pixel row shows the picture's last row and its bottom one the first, as on the console: the same rows as the
+	// window's edges beside it, which are drawn the right way up.
+	CHECK(TexelAt(42.5f) == 147);
+	CHECK(TexelAt(57.5f) == 132);
+	CHECK(Drawn.Texels == FDrawTexels{32, 132, 47, 147});
+}
+
 TEST_CASE("A picture drawn at another size keeps to its own texels, though its stepping starts outside them", "[Menu]")
 {
 	// The menus' pointer over a save's cell: 32 texels over 16 pixels, from C0h. The GPU steps them from half a texel

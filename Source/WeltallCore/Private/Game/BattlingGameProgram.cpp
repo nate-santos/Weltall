@@ -8,6 +8,7 @@
 #include "Game/KernelState.h"
 #include "Graphics/MdlLights.h"
 #include "Graphics/MdlModel.h"
+#include "Media/DiscModFiles.h"
 #include "Sound/FieldMusic.h"
 #include "Sound/GameSoundSession.h"
 
@@ -59,12 +60,13 @@ namespace Weltall
 		constexpr int16 SceneLightStrength = 0x800;
 
 		constexpr int8 PadDigital = 1;
+		constexpr int8 PadDualShock = 4;
 		constexpr int8 PadNone = 0;
 
 		/** The practice style that hands player 2 to the second controller. */
 		constexpr uint8 PracticeStyleSecondPad = 2;
 
-		/** Every vertical blank queued since the last pass, kept in Blanks: both ports' controllers, digital ones, each with its motor or none. */
+		/** Every vertical blank queued since the last pass, kept in Blanks: both ports' controllers, a gamepad as a DualShock in analog mode, each with its motor or none. */
 		FBattlingTickInput ReadPads(FGameSession& Session, std::vector<std::array<FBattlingPad, 2>>& Blanks)
 		{
 			FKernelPad& Pad = Session.Pad();
@@ -75,10 +77,13 @@ namespace Weltall
 				{
 					const FKernelPadWords& Read = (*Words)[static_cast<std::size_t>(Port)];
 					FBattlingPad& Made = Blank[static_cast<std::size_t>(Port)];
-					Made.Type = Pad.IsConnected(Port) ? PadDigital : PadNone;
+					Made.Type = !Pad.IsConnected(Port) ? PadNone : Read.bAnalog ? PadDualShock : PadDigital;
 					Made.Held = Read.Held;
 					Made.Pressed = Read.Pressed;
 					Made.Repeated = Read.Repeated;
+					Made.LeftX = Read.StickX;
+					Made.LeftY = Read.StickY;
+					Made.StickHeld = Read.StickHeld;
 					Made.bMotor = Pad.IsConnected(Port) && Pad.HasMotor(Port);
 				}
 				Blanks.push_back(Blank);
@@ -87,6 +92,20 @@ namespace Weltall
 			Input.Blanks = Blanks;
 			Input.bOverflowed = Pad.Overflowed();
 			return Input;
+		}
+
+		/** The rules the arena's fight plays by: the game's, or those of the mod's arena whose files the discs give. */
+		EBattlingRules BattlingRulesOf(EPerfectWorksArena Arena)
+		{
+			switch (Arena)
+			{
+			case EPerfectWorksArena::Basic:
+				return EBattlingRules::PerfectWorksBasic;
+			case EPerfectWorksArena::Expert:
+				return EBattlingRules::PerfectWorksExpert;
+			default:
+				return EBattlingRules::Original;
+			}
 		}
 
 		std::string BattlingParameterList(const std::array<uint8, 6>& Parameters)
@@ -174,6 +193,7 @@ namespace Weltall
 		Fight.Settings.bRangedMovesByOwnState = Options.bRangedMovesByOwnState;
 		Fight.Settings.bPracticeComputerAtStyleLevel = Options.bPracticeComputerAtStyleLevel;
 		Fight.Settings.bPracticeFrameRateAsLabelled = Options.bPracticeFrameRateAsLabelled;
+		Fight.Settings.Rules = BattlingRulesOf(Session.Image().ModChanges().PerfectWorksArena);
 		// Only a start from the menus or the scripted bout loads the saved settings; the other bouts' vibration is whatever the
 		// memory held, which the port takes as the switches the player last saved. The menus take their set's wins and the
 		// computer's level from them too.

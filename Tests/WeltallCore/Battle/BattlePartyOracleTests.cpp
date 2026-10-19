@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 using namespace Weltall;
@@ -33,6 +34,8 @@ namespace
 	constexpr uint32 Seed = 0xBA77E004;
 	constexpr int32 Cases = 1000;
 	constexpr const char* OriginalDigest = "fe19ad5cd2903031a0402e74e81c640050bc17f4";
+	/** The same cases on Perfect Works Build's rebalanced party's Battle (`battle_party_digests --perfect-works-rebalance`). */
+	constexpr const char* RebalanceDigest = "9efa09b557d2cca4fe7996ffc9950b117131d53b";
 
 	struct FPartyCase
 	{
@@ -81,13 +84,19 @@ namespace
 	}
 
 	void RunCase(FXorShift32& G, FBattleContext& Context, const FBattleProgramTables& Program, const FGteArctangents& Arctangents,
-		FOracleDigest& One)
+		FOracleDigest& One, bool bRebalance)
 	{
 		FPartyCase Case;
 		Case.Random = std::make_unique<FPsxRandom>(Testing::DrawBattleState(G, Context, Case.State));
 		Context.Random = Case.Random.get();
 		Testing::DrawBattleAiState(G, Context, Case.State, Case.Scene);
 		const Testing::FBattlePartyCase Turn = Testing::DrawBattlePartyState(G, Context, Case.State);
+		Context.bPerfectWorksRebalance = bRebalance;
+		if (bRebalance)
+		{
+			Testing::DrawPerfectWorksData(G, Context, false);
+			Context.RuleOptions.bEtherAmmunitionElement = true;
+		}
 		Context.Show = &Case.Show;
 		Context.Program = &Program;
 		Context.Arctangents = &Arctangents;
@@ -128,25 +137,40 @@ namespace
 	}
 }
 
+namespace
+{
+	/** Every case run and digested, by the original's rules or Perfect Works Build's rebalance's. */
+	std::string PartyDigest(const FIso9660& Disc, bool bRebalance)
+	{
+		const auto Executable = ReadBootExecutable(Disc);
+		REQUIRE(Executable);
+		const auto Index = FGameFileIndex::Read(*Executable);
+		REQUIRE(Index);
+		const auto Program = FBattleProgramTables::Load(Disc.Image(), *Index);
+		REQUIRE(Program);
+		const auto Arctangents = FGteArctangents::Read(*Executable);
+		REQUIRE(Arctangents);
+		FXorShift32 G(Seed);
+		FOracleDigest Whole;
+		auto Context = std::make_unique<FBattleContext>();
+		for (int32 Case = 0; Case < Cases; ++Case)
+		{
+			FOracleDigest One;
+			RunCase(G, *Context, *Program, *Arctangents, One, bRebalance);
+			Whole.Raw(One.Finish());
+		}
+		return Whole.Hex();
+	}
+}
+
 TEST_CASE("The party's turns run their menus, attacks, lists and automatic actions as the original's", "[Battle][Content]")
 {
 	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
-	const auto Executable = ReadBootExecutable(*Disc);
-	REQUIRE(Executable);
-	const auto Index = FGameFileIndex::Read(*Executable);
-	REQUIRE(Index);
-	const auto Program = FBattleProgramTables::Load(Disc->Image(), *Index);
-	REQUIRE(Program);
-	const auto Arctangents = FGteArctangents::Read(*Executable);
-	REQUIRE(Arctangents);
-	FXorShift32 G(Seed);
-	FOracleDigest Whole;
-	auto Context = std::make_unique<FBattleContext>();
-	for (int32 Case = 0; Case < Cases; ++Case)
-	{
-		FOracleDigest One;
-		RunCase(G, *Context, *Program, *Arctangents, One);
-		Whole.Raw(One.Finish());
-	}
-	CHECK(Whole.Hex() == OriginalDigest);
+	CHECK(PartyDigest(*Disc, false) == OriginalDigest);
+}
+
+TEST_CASE("The party's turns run as on Perfect Works Build's rebalanced party's Battle", "[Battle][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	CHECK(PartyDigest(*Disc, true) == RebalanceDigest);
 }

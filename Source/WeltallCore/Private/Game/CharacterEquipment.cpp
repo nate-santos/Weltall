@@ -260,7 +260,7 @@ namespace Weltall
 		}
 	}
 
-	FCharacterStats ComputeCharacterStats(const FGameState& State, int32 Character, bool bOriginalAgilityCap)
+	FCharacterStats ComputeCharacterStats(const FGameState& State, int32 Character, bool bOriginalAgilityCap, bool bPerfectWorksRules)
 	{
 		const std::span<const uint8> Record =
 			State.Block().subspan(GameStateLayout::CharacterOffset(static_cast<std::size_t>(Character)), GameStateLayout::CharacterSize);
@@ -298,7 +298,8 @@ namespace Weltall
 		uint16& Agility = Values[FCharacterStats::Agility];
 		if (bOriginalAgilityCap)
 		{
-			Agility = Agility > OriginalAgilityLimit ? AgilityCap : Agility;
+			// Perfect Works' rebalance's menu shows at most 20 where the original's turns a value over 20 into 16.
+			Agility = bPerfectWorksRules ? std::min(Agility, OriginalAgilityLimit) : Agility > OriginalAgilityLimit ? AgilityCap : Agility;
 		}
 		else
 		{

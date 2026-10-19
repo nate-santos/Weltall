@@ -132,17 +132,21 @@ void FTextureReplacementBindings::Bind(FBinding& Binding, const Weltall::FVram& 
 {
 	Binding.LearnedSeen = LearnedRevision;
 	const uint64 Indices = Weltall::AssetKeyOfDigest(Binding.Texels.Digest);
+	// A whole page holds pictures the game draws through different CLUTs, so its indices say nothing of what another CLUT
+	// shows: it neither teaches nor learns, and a pack's pictures in it are regions of their own (FollowTextureModSources).
+	const bool bWholePage = Region == Weltall::WholeTextureView(Region.View);
 	FTextureModLookup Lookup = FTextureModLibrary::Find(Binding.Key, Region.PictureTexelsWide(), Region.PictureTexelsHigh(), MaxPixels);
+	if (!Lookup.Image && !Lookup.bPending && !bWholePage) Lookup = FTextureModLibrary::FindPacked(Vram, Region, Binding.Key, MaxPixels);
 	Binding.bPending = Lookup.bPending;
 	if (Lookup.Image)
 	{
 		Binding.Image = MoveTemp(Lookup.Image);
 		Binding.Palette = ReadPalette(Vram, Region.View);
 		// The same indices drawn through another CLUT (a fog level, a colour variant) take this picture, following their colours from these.
-		if (Binding.Palette) Teach(Indices, Binding.Image, Binding.Palette);
+		if (Binding.Palette && !bWholePage) Teach(Indices, Binding.Image, Binding.Palette);
 		return;
 	}
-	if (!Weltall::ReadTextureViewClut(Vram, Region.View, Colors).empty())
+	if (!bWholePage && !Weltall::ReadTextureViewClut(Vram, Region.View, Colors).empty())
 	{
 		if (const FLearned* Taught = Learned.Find(Indices))
 		{

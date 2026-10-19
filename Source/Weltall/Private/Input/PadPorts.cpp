@@ -2,6 +2,7 @@
 
 #include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 #include "GenericPlatform/IInputInterface.h"
+#include "Input/PadStick.h"
 
 namespace
 {
@@ -76,7 +77,19 @@ Weltall::FPadState FPadPorts::SecondHeld(const Weltall::FControlBindings& Bindin
 			}
 		}
 	}
+	Held.StickButtons = PadStick::OnlyStickHolds(Bindings, Held, [this](const FKey& Key) { return SecondDown.Contains(Key.GetFName()); });
+	const TPair<FKey, FKey> Axes = PadStick::Axes(PadStick::BoundStick(Bindings));
+	PadStick::Report(SecondAxes.FindRef(Axes.Key.GetFName()), SecondAxes.FindRef(Axes.Value.GetFName()), Held);
+	Held.bAnalog = true;
 	return Held;
+}
+
+void FPadPorts::AxisChanged(const FKey& Key, FInputDeviceId Device, float Value)
+{
+	if (Device == Second && Device.IsValid())
+	{
+		SecondAxes.Add(Key.GetFName(), Value);
+	}
 }
 
 bool FPadPorts::KeyChanged(const FKey& Key, FInputDeviceId Device, bool bDown)
@@ -109,6 +122,7 @@ bool FPadPorts::KeyChanged(const FKey& Key, FInputDeviceId Device, bool bDown)
 	}
 	Second = Device;
 	SecondDown.Reset();
+	SecondAxes.Reset();
 	SecondDown.Add(Key.GetFName());
 	return true;
 }
@@ -134,6 +148,7 @@ void FPadPorts::ReleaseSecond(bool bStillConnected)
 	}
 	Second = FInputDeviceId();
 	SecondDown.Reset();
+	SecondAxes.Reset();
 }
 
 void FPadPorts::SetMotors(bool bFirst, bool bSecond)

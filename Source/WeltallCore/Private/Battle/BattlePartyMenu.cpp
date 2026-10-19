@@ -197,7 +197,21 @@ namespace Weltall::BattleParty
 		void ToggleBooster(FBattleContext& Context, uint8 Slot)
 		{
 			FBattleCombatant& Member = Context.Combatants[Slot];
-			if ((Member.GearPart.Buffs & BoosterBit) == 0)
+			if (Context.bPerfectWorksRebalance)
+			{
+				// Perfect Works' rebalance keeps it in the gear's permanent buffs alone.
+				if ((Member.GearPart.PermanentBuffs & BoosterBit) == 0)
+				{
+					Member.GearPart.Status &= 0xFFDF;
+					Member.Status &= 0xEFFF;
+					Member.GearPart.PermanentBuffs |= BoosterBit;
+				}
+				else
+				{
+					Member.GearPart.PermanentBuffs &= static_cast<uint16>(~BoosterBit);
+				}
+			}
+			else if ((Member.GearPart.Buffs & BoosterBit) == 0)
 			{
 				Member.GearPart.Status &= 0xFFDF;
 				Member.Status &= 0xEFFF;
@@ -232,6 +246,8 @@ namespace Weltall::BattleParty
 			case S::GearOuterItem:
 				return Call(Context, EBattlePartyRoutine::ItemMenu);
 			case S::Guard:
+				// Perfect Works' rebalance stores the turn's unused AP as an attack would.
+				Party.bStoresAp = Party.bStoresAp || Context.bPerfectWorksRebalance;
 				DefendInBattle(Context, Slot);
 				Party.bActed = false;
 				Party.bTurnOver = true;

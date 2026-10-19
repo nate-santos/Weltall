@@ -22,7 +22,7 @@ namespace Weltall
 		};
 
 		// The fixes by where they show, each group's heading the first entry's Group.
-		const std::array<FFixEntry, 62> FixTable = {{
+		const std::array<FFixEntry, 67> FixTable = {{
 			{FixGroup::Field, FixText::HpRecovery, [](FGameFixes& F) -> bool& { return F.Field.bRecoverPartyHpGivesHp; }},
 			{FixGroup::Field, FixText::InstantFades, [](FGameFixes& F) -> bool& { return F.Field.bZeroFrameFadeSnaps; }},
 			{FixGroup::Field, FixText::SlowFades, [](FGameFixes& F) -> bool& { return F.Field.bFadesRiseFromBlack; }},
@@ -42,6 +42,7 @@ namespace Weltall
 			{FixGroup::Field, FixText::WidescreenStaging, [](FGameFixes& F) -> bool& { return F.Field.bWideViewStaging; }},
 			{FixGroup::Field, FixText::SwimStroke, [](FGameFixes& F) -> bool& { return F.Field.bSwimStrokeAfterWading; }},
 			{FixGroup::Field, FixText::MoonGlow, [](FGameFixes& F) -> bool& { return F.Field.bMoonGlowFades; }},
+			{FixGroup::Field, FixText::SpriteFrames, [](FGameFixes& F) -> bool& { return F.Field.bSpriteFramesAligned; }},
 			{FixGroup::Sound, FixText::SilentSongs, [](FGameFixes& F) -> bool& { return F.Music.bStartOnlyForItsSong; }},
 			{FixGroup::Sound, FixText::SoundPanning, [](FGameFixes& F) -> bool& { return F.SoundDriver.bPanSlidesEndOnTarget; }},
 			{FixGroup::Sound, FixText::HighNotes, [](FGameFixes& F) -> bool& { return F.SoundDriver.bHighNotesStayHigh; }},
@@ -53,6 +54,8 @@ namespace Weltall
 			{FixGroup::Menus, FixText::EtherHealing, [](FGameFixes& F) -> bool& { return F.Menu.bEtherHealsAsBattle; }},
 			{FixGroup::Menus, FixText::FixFrameHp, [](FGameFixes& F) -> bool& { return F.Menu.bGearRepairOwnGear; }},
 			{FixGroup::Menus, FixText::NamesEndingInS, [](FGameFixes& F) -> bool& { return F.Menu.bNamesKeepTrailingS; }},
+			{FixGroup::Menus, FixText::MemberChangeEp, [](FGameFixes& F) -> bool& { return F.Menu.bMemberChangeSaysEp; }},
+			{FixGroup::Menus, FixText::ShopPointer, [](FGameFixes& F) -> bool& { return F.Menu.bShopPointerBesideWords; }},
 			{FixGroup::Menus, FixText::GearShopParts, [](FGameFixes& F) -> bool& { return F.Menu.bGearShopPartsAsMenu; }},
 			{FixGroup::Menus, FixText::GearShopPace, [](FGameFixes& F) -> bool& { return F.Menu.bGearModelFieldPace; }},
 			{FixGroup::Menus, FixText::SellingEquipped, [](FGameFixes& F) -> bool& { return F.Menu.bSaleRecomputesEquipment; }},
@@ -72,6 +75,8 @@ namespace Weltall
 			{FixGroup::Battle, FixText::LargeGearNumbers, [](FGameFixes& F) -> bool& { return F.BattleRules.bWholeAmounts; }},
 			{FixGroup::Battle, FixText::Counters, [](FGameFixes& F) -> bool& { return F.BattleRules.bCounterKeepsGroupAttack; }},
 			{FixGroup::Battle, FixText::LastBossHp, [](FGameFixes& F) -> bool& { return F.BattleRules.bDeusSecondFormHp; }},
+			{FixGroup::Battle, FixText::DeusFirstFight, [](FGameFixes& F) -> bool& { return F.BattleRules.bDeusKeepsCamera; }},
+			{FixGroup::Battle, FixText::EtherGuns, [](FGameFixes& F) -> bool& { return F.BattleRules.bEtherAmmunitionElement; }},
 			{FixGroup::Battle, FixText::HiddenEnemies, [](FGameFixes& F) -> bool& { return F.BattleRules.bRevealKeepsGroup; }},
 			{FixGroup::Battle, FixText::WeaponTrails, [](FGameFixes& F) -> bool& { return F.BattleShow.bTrailsBlend; }},
 			{FixGroup::Battle, FixText::SpellLighting, [](FGameFixes& F) -> bool& { return F.BattleShow.bUnlitModelsTakeStageLight; }},
@@ -139,13 +144,41 @@ namespace Weltall
 
 		namespace Sound
 		{
-			enum : int32 { Output, InBackground, Voices, Count };
+			enum : int32 { Output, InBackground, Voices, Subtitles, Count };
+		}
+
+		namespace Modding
+		{
+			enum : int32 { Balance, Experience, Gold, Encounters, Count };
+			constexpr int32 RewardRates = 5;
+			constexpr int32 EncounterRates = 5;
+		}
+
+		namespace PerfectWorks
+		{
+			enum : int32 { Notice, Enabled, Story, Script, StoryMode, Music, Gameplay, Party, Enemies, Arena, Graphics, Portraits, Roni, Emeralda, TitleScreen, Count };
+			constexpr int32 PortraitChoices = 3;
+			constexpr int32 ArenaChoices = 3;
+
+			/** A part's value: the mod's (Values' first) or the game's own. */
+			std::string Taken(bool bMods, const std::array<std::string_view, 2>& Values)
+			{
+				return std::string(Values[bMods ? 0 : 1]);
+			}
+		}
+
+		FSettingsRow Heading(std::string_view Label)
+		{
+			FSettingsRow Row;
+			Row.Label = std::string(Label);
+			Row.bHeading = true;
+			return Row;
 		}
 
 		namespace Display
 		{
-			enum : int32 { FullScreen, WindowSize, Aspect, Sorting, SceneryFilter, SpriteFilter, MovieFilter, AntiAliasing, Culling, Pilots, Gears, ChapterCards, TextSpeed, BattleSpeed,
-				BackgroundPause, Count };
+			enum : int32 { FullScreen, WindowSize, Aspect, Sorting, SceneryFilter, SpriteFilter, MovieFilter, Crt, AntiAliasing, Culling, Pilots, Gears, ChapterCards, TextSpeed, BattleSpeed,
+				BattleFlashes, BackgroundPause, Count };
 
 			/** The window's rows (full screen, its size) are not there where the game has no window of its own: the rows after them move up. */
 			int32 Hidden(const FDisplayModes& Modes)
@@ -157,6 +190,45 @@ namespace Weltall
 			FDisplaySize ShownSize(const FPlayerSettings& Settings, const FDisplayModes& Modes)
 			{
 				return Settings.Display.WindowSize.IsSet() ? Settings.Display.WindowSize : Modes.Window;
+			}
+		}
+
+		namespace Crt
+		{
+			enum : int32 { Scanlines, Mask, MaskStrength, MaskSize, Sharpness, ColorBleed, Glow, Curvature, Corners, Vignette, Count };
+
+			const OptionsText::FRow& Words(int32 Row)
+			{
+				namespace Text = OptionsText::Crt;
+				static constexpr std::array<const OptionsText::FRow*, Count> Rows{&Text::Scanlines, &Text::Mask, &Text::MaskStrength, &Text::MaskSize,
+					&Text::Sharpness, &Text::ColorBleed, &Text::Glow, &Text::Curvature, &Text::Corners, &Text::Vignette};
+				return *Rows[static_cast<std::size_t>(Row)];
+			}
+
+			/** The look's step on Row, for the parts that are steps (none for a choice's row). */
+			int32* StepOf(FCrtLook& Look, int32 Row)
+			{
+				switch (Row)
+				{
+				case Scanlines:
+					return &Look.Scanlines;
+				case MaskStrength:
+					return &Look.MaskStrength;
+				case Sharpness:
+					return &Look.Sharpness;
+				case ColorBleed:
+					return &Look.ColorBleed;
+				case Glow:
+					return &Look.Glow;
+				case Curvature:
+					return &Look.Curvature;
+				case Corners:
+					return &Look.Corners;
+				case Vignette:
+					return &Look.Vignette;
+				default:
+					return nullptr;
+				}
 			}
 		}
 
@@ -187,6 +259,12 @@ namespace Weltall
 			return OptionsText::Titles::Fixes;
 		case ESettingsPage::Custom:
 			return OptionsText::Titles::CustomFixes;
+		case ESettingsPage::Crt:
+			return OptionsText::Titles::Crt;
+		case ESettingsPage::Modding:
+			return OptionsText::Titles::Modding;
+		case ESettingsPage::PerfectWorks:
+			return OptionsText::Titles::PerfectWorks;
 		}
 		return {};
 	}
@@ -205,6 +283,12 @@ namespace Weltall
 			return 1;
 		case ESettingsPage::Custom:
 			return static_cast<int32>(CustomRows().size());
+		case ESettingsPage::Crt:
+			return Crt::Count;
+		case ESettingsPage::Modding:
+			return Modding::Count;
+		case ESettingsPage::PerfectWorks:
+			return PerfectWorks::Count;
 		}
 		return 0;
 	}
@@ -234,6 +318,8 @@ namespace Weltall
 				return Shown(Text::Display::SpriteFilter, ChoiceName(Settings.Field.SpriteFilter, Text::Display::FilterValues));
 			case Display::MovieFilter:
 				return Shown(Text::Display::MovieFilter, ChoiceName(Settings.Field.MovieFilter, Text::Display::MovieFilterValues));
+			case Display::Crt:
+				return Shown(Text::Display::Crt, ChoiceName(Settings.Display.Crt, Text::Display::CrtValues));
 			case Display::AntiAliasing:
 				return Shown(Text::Display::AntiAliasing, ChoiceName(Settings.Field.AntiAliasing, Text::Display::AntiAliasingValues));
 			case Display::Culling:
@@ -248,13 +334,74 @@ namespace Weltall
 				return Shown(Text::Display::TextSpeed, ChoiceName(Settings.TextSpeed, Text::Display::TextSpeedValues));
 			case Display::BattleSpeed:
 				return Shown(Text::Display::BattleSpeed, ChoiceName(Settings.BattleSpeed, Text::Display::BattleSpeedValues));
+			case Display::BattleFlashes:
+				return Shown(Text::Display::BattleFlashes, ChoiceName(Settings.Field.BattleFlashes, Text::Display::BattleFlashesValues));
 			default:
 				return Shown(Text::Display::PauseInBackground, OnOff(Settings.Display.bPauseInBackground));
 			}
+		case ESettingsPage::Modding:
+			switch (Row)
+			{
+			case Modding::Experience:
+				return Shown(Text::Modding::Experience, ChoiceName(Settings.Balance.Experience, Text::Modding::RewardValues));
+			case Modding::Gold:
+				return Shown(Text::Modding::Gold, ChoiceName(Settings.Balance.Gold, Text::Modding::RewardValues));
+			case Modding::Encounters:
+				return Shown(Text::Modding::Encounters, ChoiceName(Settings.Balance.Encounters, Text::Modding::EncounterValues));
+			default:
+				return Heading(Text::Modding::Balance);
+			}
+		case ESettingsPage::PerfectWorks:
+		{
+			namespace Words = Text::PerfectWorks;
+			const FPerfectWorksOptions& Mod = Settings.PerfectWorks;
+			switch (Row)
+			{
+			case PerfectWorks::Notice:
+			{
+				FSettingsRow Notice;
+				Notice.Label = std::string(Words::Notice);
+				Notice.bReadOnly = true;
+				return Notice;
+			}
+			case PerfectWorks::Enabled:
+				return Shown(Words::Enabled, OnOff(Mod.bEnabled));
+			case PerfectWorks::Story:
+				return Heading(Words::Story);
+			case PerfectWorks::Script:
+				return Shown(Words::Script, PerfectWorks::Taken(Mod.bScript, Words::ModValues));
+			case PerfectWorks::StoryMode:
+				return Shown(Words::StoryMode, OnOff(Mod.bStoryMode));
+			case PerfectWorks::Music:
+				return Shown(Words::Music, PerfectWorks::Taken(Mod.bMusic, Words::ModValues));
+			case PerfectWorks::Gameplay:
+				return Heading(Words::Gameplay);
+			case PerfectWorks::Party:
+				return Shown(Words::Party, PerfectWorks::Taken(Mod.bRebalancedParty, Words::ModValues));
+			case PerfectWorks::Enemies:
+				return Shown(Words::Enemies, PerfectWorks::Taken(Mod.bRebalancedEnemies, Words::ModValues));
+			case PerfectWorks::Arena:
+				return Shown(Words::Arena, ChoiceName(Mod.Arena, Words::ArenaValues));
+			case PerfectWorks::Graphics:
+				return Heading(Words::Graphics);
+			case PerfectWorks::Portraits:
+				return Shown(Words::Portraits, ChoiceName(Mod.Portraits, Words::PortraitValues));
+			case PerfectWorks::Roni:
+				return Shown(Words::Roni, PerfectWorks::Taken(Mod.bRoniPortrait, Words::ModValues));
+			case PerfectWorks::Emeralda:
+				return Shown(Words::Emeralda, PerfectWorks::Taken(Mod.bEmeraldaCafe, Words::FixValues));
+			default:
+				return Shown(Words::TitleScreen, PerfectWorks::Taken(Mod.bTitleScreen, Words::ModValues));
+			}
+		}
 		case ESettingsPage::Sound:
 			if (Row == Sound::Voices)
 			{
 				return Shown(Text::Sound::Voices, ChoiceName(Settings.VoiceLanguage, Text::Sound::VoiceValues));
+			}
+			if (Row == Sound::Subtitles)
+			{
+				return Shown(Text::Sound::Subtitles, ChoiceName(Settings.MovieSubtitles, Text::Sound::SubtitleValues));
 			}
 			if (Row == Sound::InBackground)
 			{
@@ -278,6 +425,19 @@ namespace Weltall
 			default:
 				return Shown(Text::Camera::Reset, "");
 			}
+		case ESettingsPage::Crt:
+		{
+			FCrtLook Look = ShownCrtLook(Settings.Display);
+			switch (Row)
+			{
+			case Crt::Mask:
+				return Shown(Text::Crt::Mask, ChoiceName(Look.Mask, Text::Crt::MaskValues));
+			case Crt::MaskSize:
+				return Shown(Text::Crt::MaskSize, ChoiceName(Look.MaskSize, Text::Crt::MaskSizeValues));
+			default:
+				return Shown(Crt::Words(Row), std::to_string(*Crt::StepOf(Look, Row)));
+			}
+		}
 		case ESettingsPage::Fixes:
 		{
 			const EFixesPreset Preset = bCustomPicked ? EFixesPreset::Custom : FSettingsPages::Preset(Settings.Fixes);
@@ -289,10 +449,7 @@ namespace Weltall
 			const int32 Entry = CustomRows()[static_cast<std::size_t>(Row)];
 			if (Entry < 0)
 			{
-				FSettingsRow Heading;
-				Heading.Label = std::string(FixTable[static_cast<std::size_t>(-1 - Entry)].Group);
-				Heading.bHeading = true;
-				return Heading;
+				return Heading(FixTable[static_cast<std::size_t>(-1 - Entry)].Group);
 			}
 			const FFixEntry& Fix = FixTable[static_cast<std::size_t>(Entry)];
 			return Shown(Fix.Text, std::string(IsOn(Fix, Settings.Fixes) ? Text::Fixes::FixOn : Text::Fixes::FixOff));
@@ -344,6 +501,8 @@ namespace Weltall
 				return StepChoice(Settings.Field.SpriteFilter, Direction, 4);
 			case Display::MovieFilter:
 				return StepChoice(Settings.Field.MovieFilter, Direction, 2);
+			case Display::Crt:
+				return StepChoice(Settings.Display.Crt, Direction, 4);
 			case Display::AntiAliasing:
 				return StepChoice(Settings.Field.AntiAliasing, Direction, 3);
 			case Display::Culling:
@@ -360,14 +519,79 @@ namespace Weltall
 				return StepChoice(Settings.TextSpeed, Direction, 4);
 			case Display::BattleSpeed:
 				return StepChoice(Settings.BattleSpeed, Direction, BattleSpeedCount);
+			case Display::BattleFlashes:
+				return StepChoice(Settings.Field.BattleFlashes, Direction, 3);
 			default:
 				Settings.Display.bPauseInBackground = !Settings.Display.bPauseInBackground;
 				return true;
 			}
+		case ESettingsPage::Modding:
+			switch (Row)
+			{
+			case Modding::Experience:
+				return StepChoice(Settings.Balance.Experience, Direction, Modding::RewardRates);
+			case Modding::Gold:
+				return StepChoice(Settings.Balance.Gold, Direction, Modding::RewardRates);
+			case Modding::Encounters:
+				return StepChoice(Settings.Balance.Encounters, Direction, Modding::EncounterRates);
+			default:
+				return false;
+			}
+		case ESettingsPage::PerfectWorks:
+		{
+			FPerfectWorksOptions& Mod = Settings.PerfectWorks;
+			const auto Toggle = [](bool& bOn)
+			{
+				bOn = !bOn;
+				return true;
+			};
+			switch (Row)
+			{
+			case PerfectWorks::Enabled:
+				return Toggle(Mod.bEnabled);
+			case PerfectWorks::Script:
+				return Toggle(Mod.bScript);
+			// Story mode and the rebalances (the arena's too) exclude each other, as in the mod's patcher: choosing one ends the other.
+			case PerfectWorks::StoryMode:
+				Toggle(Mod.bStoryMode);
+				Mod.bRebalancedParty = Mod.bRebalancedParty && !Mod.bStoryMode;
+				Mod.bRebalancedEnemies = Mod.bRebalancedEnemies && !Mod.bStoryMode;
+				Mod.Arena = Mod.bStoryMode ? EPerfectWorksArena::Original : Mod.Arena;
+				return true;
+			case PerfectWorks::Music:
+				return Toggle(Mod.bMusic);
+			case PerfectWorks::Party:
+				Toggle(Mod.bRebalancedParty);
+				Mod.bStoryMode = Mod.bStoryMode && !Mod.bRebalancedParty;
+				return true;
+			case PerfectWorks::Enemies:
+				Toggle(Mod.bRebalancedEnemies);
+				Mod.bStoryMode = Mod.bStoryMode && !Mod.bRebalancedEnemies;
+				return true;
+			case PerfectWorks::Arena:
+				StepChoice(Mod.Arena, Direction, PerfectWorks::ArenaChoices);
+				Mod.bStoryMode = Mod.bStoryMode && Mod.Arena == EPerfectWorksArena::Original;
+				return true;
+			case PerfectWorks::Portraits:
+				return StepChoice(Mod.Portraits, Direction, PerfectWorks::PortraitChoices);
+			case PerfectWorks::Roni:
+				return Toggle(Mod.bRoniPortrait);
+			case PerfectWorks::Emeralda:
+				return Toggle(Mod.bEmeraldaCafe);
+			case PerfectWorks::TitleScreen:
+				return Toggle(Mod.bTitleScreen);
+			default:
+				return false;
+			}
+		}
 		case ESettingsPage::Sound:
 			if (Row == Sound::Voices)
 			{
 				return StepChoice(Settings.VoiceLanguage, Direction, 3);
+			}
+			if (Row == Sound::Subtitles)
+			{
+				return StepChoice(Settings.MovieSubtitles, Direction, 3);
 			}
 			if (Row == Sound::InBackground)
 			{
@@ -375,6 +599,32 @@ namespace Weltall
 				return true;
 			}
 			return StepChoice(Settings.SoundOutput, Direction, 3);
+		case ESettingsPage::Crt:
+		{
+			// The look shown becomes the player's own, the change made to it.
+			FCrtLook Look = ShownCrtLook(Settings.Display);
+			if (Row == Crt::Mask)
+			{
+				StepChoice(Look.Mask, Direction, 3);
+			}
+			else if (Row == Crt::MaskSize)
+			{
+				StepChoice(Look.MaskSize, Direction, 3);
+			}
+			else
+			{
+				int32& Step = *Crt::StepOf(Look, Row);
+				const int32 Next = std::clamp(Step + Direction, 0, FCrtLook::Steps);
+				if (Next == Step)
+				{
+					return false;
+				}
+				Step = Next;
+			}
+			Settings.Display.CustomCrt = Look;
+			Settings.Display.Crt = ECrtFilter::Custom;
+			return true;
+		}
 		case ESettingsPage::Camera:
 		{
 			FFieldCameraOffsets& Camera = Settings.Camera;
@@ -439,8 +689,12 @@ namespace Weltall
 		return false;
 	}
 
-	ESettingsAction FSettingsPages::Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked)
+	ESettingsAction FSettingsPages::Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked, const FDisplayModes& Modes)
 	{
+		if (Page == ESettingsPage::Display && Row + Display::Hidden(Modes) == Display::Crt)
+		{
+			return ESettingsAction::OpenCrt;
+		}
 		if (Page == ESettingsPage::Camera && Row == Camera::Reset)
 		{
 			Settings.Camera = FFieldCameraOffsets::Defaults();

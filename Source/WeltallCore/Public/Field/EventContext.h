@@ -17,6 +17,7 @@
 #include "Formats/Tim.h"
 #include "Foundation/Types.h"
 #include "Foundation/UnreachedCases.h"
+#include "Game/GameBalance.h"
 #include "Graphics/MdlModel.h"
 #include "Timing/PlayClock.h"
 
@@ -223,10 +224,11 @@ namespace Weltall
 		bool bBattleDrawn = false;
 
 		/**
-		 * Draws the period's encounter ticks, all different, with the game's rand(). False when they
-		 * cannot all be told apart, where the original never finishes drawing.
+		 * Draws the period's encounter ticks, all different, with the game's rand(), over the period as Rate makes it
+		 * (never too short to hold them, nor past the ticks the schedule can count). False when they cannot all be told
+		 * apart, where the original never finishes drawing.
 		 */
-		WELTALLCORE_API bool Schedule(FPsxRandom& Random);
+		WELTALLCORE_API bool Schedule(FPsxRandom& Random, EEncounterRate Rate);
 	};
 
 	/** Why the scripts could not go on: an instruction the port does not run, or one that reads outside the map's data. */
@@ -405,6 +407,12 @@ namespace Weltall
 		 * the map's textures are uploaded).
 		 */
 		bool bMoonGlowFades = true;
+		/**
+		 * Billy's own sprite file (the party's file 4) draws a lock of his hair two texels off his head in the mirrored frames of
+		 * his head shake (6 and 8): their unmirrored twins (4 and 2) overlap it with the head, as these do once it is moved
+		 * back. The original's file as the disc has it otherwise.
+		 */
+		bool bSpriteFramesAligned = true;
 
 		/** Every fix off: the original's behavior throughout. */
 		static constexpr FEventOptions Original()
@@ -429,6 +437,7 @@ namespace Weltall
 			Options.bWideViewStaging = false;
 			Options.bSwimStrokeAfterWading = false;
 			Options.bMoonGlowFades = false;
+			Options.bSpriteFramesAligned = false;
 			return Options;
 		}
 	};
@@ -498,6 +507,8 @@ namespace Weltall
 		/** The game's state: gold, items, characters. */
 		FGameState* GameState = nullptr;
 		FEventOptions Options;
+		/** How often the player asked random battles to come: none stops the leader's steps counting toward them. */
+		EEncounterRate EncounterRate = EEncounterRate::Original;
 		/** Where the cases no script reaches are noted and carried past; none: the scripts stop at them. */
 		FUnreachedCases* Unreached = nullptr;
 		/** The disc the game plays from (1 or 2). */

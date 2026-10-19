@@ -10,19 +10,19 @@ namespace Weltall
 {
 	namespace AssetRow
 	{
-		inline constexpr int32 External = 0, Capture = 1, Textures = 2, Dump = 3, Music = 4, Status = 5;
+		inline constexpr int32 External = 0, Capture = 1, Textures = 2, Text = 3, Dump = 4, Music = 5, Status = 6;
 	}
 
 	enum class EAssetExportState : uint8 { Idle, Running, Complete, Cancelled, Failed, Unavailable };
 
-	/** What an export makes: PNGs of every texture, a native dump of the discs, or WAVs of the songs. */
-	enum class EAssetExportKind : uint8 { Textures, Dump, Music };
+	/** What an export makes: PNGs of every texture, a native dump of the discs, WAVs of the songs, or the text and its font. */
+	enum class EAssetExportKind : uint8 { Textures, Dump, Music, Text };
 
 	struct FMenuAssetProgress
 	{
 		EAssetExportState State = EAssetExportState::Idle;
 		EAssetExportKind Kind = EAssetExportKind::Dump;
-		/** Bytes for a dump, songs for music, the texture catalogue's items for textures. */
+		/** Bytes for a dump, songs for music, the texture catalogue's items for textures, files for the text. */
 		uint64 Completed = 0;
 		uint64 Total = 0;
 		/** Changes when the status shown by the menu changes. */

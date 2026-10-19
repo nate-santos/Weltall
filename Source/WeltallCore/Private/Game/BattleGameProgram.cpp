@@ -105,6 +105,8 @@ namespace Weltall
 		Request.bPlayersOrder = true;
 		Request.EventOptions = Session.Settings().Fixes.BattleEvents;
 		Request.RuleOptions = Session.Settings().Fixes.BattleRules;
+		Request.bPerfectWorksRebalance = Session.Image().ModChanges().bPerfectWorksRebalance;
+		Request.Balance = Session.Settings().Balance;
 
 		std::unique_ptr<FBattleGameProgram> Program(new FBattleGameProgram(Session));
 		FGameSoundSession& Sound = Session.Sound();
@@ -214,6 +216,11 @@ namespace Weltall
 	const FMenuSpriteSheet& FBattleGameProgram::HudSheet() const
 	{
 		return Session.BattleFiles().HudResources.Sheet;
+	}
+
+	std::span<const FTextureRegion> FBattleGameProgram::HudTextureRegions() const
+	{
+		return Hud ? Hud->TextureRegions() : std::span<const FTextureRegion>();
 	}
 
 	FError FBattleGameProgram::StopError() const

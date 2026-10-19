@@ -58,3 +58,31 @@ TEST_CASE("Several ticks in one frame see a short press only once", "[Input]")
 	CHECK(Latch.TakeForTick() == Holding({EPadButton::Left}));
 	CHECK(Latch.TakeForTick() == Holding({EPadButton::Left}));
 }
+
+TEST_CASE("The stick reaches the tick where the latest frame found it, its directions its own while nothing else holds them", "[Input]")
+{
+	FPadLatch Latch;
+	FPadState Tilted = Holding({EPadButton::Right});
+	Tilted.StickButtons = FPadState::Bit(EPadButton::Right);
+	Tilted.StickX = 0xE0;
+	Tilted.StickY = 0x70;
+	Tilted.bAnalog = true;
+	Latch.Sample(Tilted);
+	FPadState Back = Holding({});
+	Back.bAnalog = true;
+	Back.StickX = 0x90;
+	Latch.Sample(Back);
+	const FPadState Taken = Latch.TakeForTick();
+	CHECK(Taken.Buttons == FPadState::Bit(EPadButton::Right));
+	CHECK(Taken.StickButtons == FPadState::Bit(EPadButton::Right));
+	CHECK(Taken.StickX == 0x90);
+	CHECK(Taken.StickY == FPadState::StickCentre);
+	CHECK(Taken.bAnalog);
+
+	// The d-pad holds Right too: the direction is no longer the stick's alone.
+	FPadState Both = Tilted;
+	Latch.Sample(Both);
+	Both.StickButtons = 0;
+	Latch.Sample(Both);
+	CHECK(Latch.TakeForTick().StickButtons == 0);
+}

@@ -42,6 +42,10 @@ namespace Weltall
 			Words.Repeated = Words.Pressed;
 		}
 		Port.Previous = Words.Held;
+		Words.StickHeld = LogicalButtons(ReportWord(FPadState{Held.StickButtons}));
+		Words.StickX = Held.StickX;
+		Words.StickY = Held.StickY;
+		Words.bAnalog = Held.bAnalog;
 		return Words;
 	}
 

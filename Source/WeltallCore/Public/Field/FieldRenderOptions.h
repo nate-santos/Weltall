@@ -75,6 +75,14 @@ namespace Weltall
 		Everywhere,
 	};
 
+	/** How the battle effects' flashes, their adding screen fades, are drawn: as made, at a quarter of their brightness, or not at all. */
+	enum class EBattleFlashes : uint8
+	{
+		Original,
+		Softer,
+		Off,
+	};
+
 	/**
 	 * The ways the field can be presented, each the player's choice. The defaults sort everything by depth (the
 	 * scenery's decals in the original's order), keep the texels sharp, smooth only polygon edges, draw
@@ -99,6 +107,7 @@ namespace Weltall
 		 * party's gears on the world map with them (FWorldMapPresenter::SetGearStandIns).
 		 */
 		EFieldGearModels GearModels = EFieldGearModels::OutsideCutscenes;
+		EBattleFlashes BattleFlashes = EBattleFlashes::Original;
 
 		bool operator==(const FFieldRenderOptions&) const = default;
 	};

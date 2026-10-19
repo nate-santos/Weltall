@@ -4,6 +4,7 @@
 #include "Battle/Show/BattleShowHudMenus.h"
 #include "Foundation/Result.h"
 #include "Foundation/Types.h"
+#include "Graphics/TextureRegion.h"
 #include "Graphics/Vram.h"
 #include "Menu/MenuPrimitive.h"
 #include "Menu/MenuSpriteSheet.h"
@@ -11,6 +12,7 @@
 #include "Text/MesWindow.h"
 
 #include <array>
+#include <functional>
 #include <optional>
 #include <span>
 #include <vector>
@@ -107,8 +109,14 @@ namespace Weltall
 		/** The battle data file (directory 12 file 3): its sections 1 (the sheet), 2 (the images), 10h (the items' help), 24h (the portraits) and 26h (the messages). */
 		static constexpr int32 DataDirectory = 12;
 		static constexpr int32 DataFile = 3;
+		/** The sheet's frames the three members' portraits are uploaded over, and the result sheet's. */
+		static constexpr int32 PortraitFrame = 0x61;
+		static constexpr int32 ResultPortraitFrame = 0xFC;
 
 		FMenuSpriteSheet Sheet;
+		/** The pictures Sheet's frames draw (MenuSheetTextureRegions), and those of the result screen's sheet. */
+		std::vector<FTextureRegion> SheetRegions;
+		std::vector<FTextureRegion> ResultSheetRegions;
 		/** The HUD's images and CLUTs as the set-up uploads them. */
 		std::vector<FVramImage> Images;
 		/** A 24 x 24 8-bit TIM of 460h bytes per character, the last for the special party's members. */
@@ -139,6 +147,18 @@ namespace Weltall
 		WELTALLCORE_API std::optional<FError> ParseResult(std::span<const uint8> File);
 		WELTALLCORE_API static TResult<FBattleHudResources> Load(const FCdImage& Image, const FGameFileIndex& Index, const FPsxExecutable& Executable);
 	};
+
+	/** A picture of the battle HUD's: a region of a VRAM loaded as the battle loads it. */
+	using FBattleHudPictureVisit = std::function<void(const FVram&, const FTextureRegion&)>;
+
+	/**
+	 * Every picture the battle's HUD sheet draws, or with bResult the result screen's (its images over the HUD's), each region
+	 * (MenuSheetTextureRegions) over the images as the battle uploads them, so that their keys are play's: for the texture
+	 * export. The members' portraits are visited once a character, in the first member's place (each place gives the same
+	 * key); the other places' views are left out.
+	 */
+	WELTALLCORE_API std::optional<FError> ForEachBattleHudPicture(const FCdImage& Image, const FGameFileIndex& Index, bool bResult,
+		const FBattleHudPictureVisit& Visit);
 
 	/** What the kernel keeps for the battle's windows: their fill colour and blend (a new game's settings). */
 	struct FBattleHudSettings
@@ -336,6 +356,9 @@ namespace Weltall
 
 		/** The HUD hidden (the sprites' system command 6Ah) or shown. */
 		void SetHidden(bool bHide) { bHidden = bHide; }
+
+		/** The pictures the sheet it draws from holds (MenuSheetTextureRegions): the HUD's, then the result screen's. */
+		std::span<const FTextureRegion> TextureRegions() const { return Sheet == &Resources.ResultSheet ? Resources.ResultSheetRegions : Resources.SheetRegions; }
 
 		/** Window Index made (when not shown) and built at its size, or set growing from nothing. */
 		WELTALLCORE_API void OpenWindow(int32 Index, int16 X, int16 Y, uint16 Width, uint16 Height, bool bGrows);

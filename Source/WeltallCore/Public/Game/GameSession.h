@@ -15,6 +15,7 @@
 #include "Input/KernelPad.h"
 #include "Input/KernelVibration.h"
 #include "Media/DiscIdentification.h"
+#include "Media/MovieSubtitles.h"
 #include "Text/MesResident.h"
 #include "Timing/PlayClock.h"
 
@@ -76,9 +77,14 @@ namespace Weltall
 		FGameSession& operator=(const FGameSession&) = delete;
 		WELTALLCORE_API ~FGameSession();
 
-		/** The disc the console powered on with, which the programs read their files from (the first disc holds every one). */
-		const FCdImage& Image() const { return DiscImage; }
-		const FGameFileIndex& Index() const { return FileIndex; }
+		/**
+		 * The disc the programs read their files from: the first once the session has it, which holds every file, else the
+		 * second it powered on with, whose files outside its own part of the story are the mastering tool's stand-ins. A
+		 * second disc's programs agree with the first's but for their file tables, so its release reads either.
+		 */
+		const FCdImage& Image() const { return Discs[0].Image != nullptr ? *Discs[0].Image : DiscImage; }
+		const FGameFileIndex& Index() const { return Discs[0].Index != nullptr ? *Discs[0].Index : FileIndex; }
+		/** The release of the disc the console powered on with. */
 		EDiscRelease Release() const { return DiscRelease; }
 		/** The disc in the drive, 0 the first and 1 the second: the one powered on with, until the Menu takes the other. */
 		int32 DiscNumber() const { return KernelGlobals.Disc; }
@@ -90,6 +96,12 @@ namespace Weltall
 		WELTALLCORE_API void AddVoiceDisc(EVoiceLanguage Language, int32 Number, const FCdImage& Image, const FGameFileIndex& Index);
 		/** The selected voice track's disc for the movie in the drive, with the gameplay disc as fallback. */
 		WELTALLCORE_API TResult<FGameDisc> MovieDisc() const;
+		/**
+		 * The undub's subtitles for movie Number of the disc in the drive, as the player's setting shows them: none
+		 * when it has them off, when the undub disc of that number was not supplied or does not subtitle the movie,
+		 * or, on Auto, when the movie's sound is not the undub's.
+		 */
+		WELTALLCORE_API TResult<std::optional<FMovieSubtitles>> MovieSubtitles(int32 Number) const;
 		/** Whether the session has disc Number (0 or 1), the host's drive asked for it first when it has not. */
 		WELTALLCORE_API bool HasDisc(int32 Number);
 		void SetDiscDrive(IGameDiscDrive* InDrive) { DiscDrive = InDrive; }

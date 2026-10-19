@@ -52,6 +52,8 @@ BUILDS = REPO / "out" / "builds"
 RELEASES = REPO / "out" / "releases"
 CONFIGURATIONS = ["DebugGame", "Development", "Shipping"]
 CREATE_NO_WINDOW = 0x08000000
+# The player's own folders beside the game, carried into every new build of a package.
+PLAYER_FOLDERS = ["Assets", "Mods"]
 # How long a finished package's move into place waits for a file in it that another program (a virus scan of the fresh
 # files) still holds open: Windows refuses to move a folder meanwhile.
 MOVE_TRIES = 30
@@ -183,9 +185,10 @@ def build(configuration, platform, ue_root):
     package = BUILDS / configuration / platform.name
     package.parent.mkdir(parents=True, exist_ok=True)
     previous = package.with_name(package.name + ".old")
-    if (previous / "Assets").exists():
-        print(f"Local assets remain in {previous / 'Assets'}; move them to a safe folder before rebuilding")
-        return False
+    for kept in PLAYER_FOLDERS:
+        if (previous / kept).exists():
+            print(f"Local {kept.lower()} remain in {previous / kept}; move them to a safe folder before rebuilding")
+            return False
     shutil.rmtree(previous, ignore_errors=True)
     if package.exists():
         try:
@@ -195,7 +198,7 @@ def build(configuration, platform, ue_root):
                   f"the new package stays in {(staging / platform.name).relative_to(REPO)}; close the game and run this again")
             return False
     move_into_place(staging / platform.name, package)
-    if not retain_assets(previous, package):
+    if not retain_player_folders(previous, package):
         return False
     shutil.copytree(PROJECT / "Docs", package / "Docs", dirs_exist_ok=True)
     shutil.rmtree(previous, ignore_errors=True)
@@ -204,19 +207,20 @@ def build(configuration, platform, ue_root):
     return True
 
 
-def retain_assets(previous, package):
-    """Moves local mods out of the old build before that build is removed."""
-    source = previous / "Assets"
-    if not source.exists():
-        return True
-    target = package / "Assets"
-    try:
-        if target.exists():
-            raise FileExistsError("the new package already has an Assets folder")
-        source.rename(target)
-    except OSError as error:
-        print(f"Assets stay in {source}: {error}")
-        return False
+def retain_player_folders(previous, package):
+    """Moves the player's own replacements and mods out of the old build before that build is removed."""
+    for kept in PLAYER_FOLDERS:
+        source = previous / kept
+        if not source.exists():
+            continue
+        target = package / kept
+        try:
+            if target.exists():
+                raise FileExistsError(f"the new package already has a {kept} folder")
+            source.rename(target)
+        except OSError as error:
+            print(f"{kept} stay in {source}: {error}")
+            return False
     return True
 
 
@@ -330,12 +334,13 @@ def archive(configuration, platform):
         name += "-Expansion"
     RELEASES.mkdir(parents=True, exist_ok=True)
     # Local disc images and exports never enter a release archive.
-    files = sorted(path for path in package.rglob("*") if path.is_file() and path.relative_to(package).parts[0].casefold() not in ("games", "assets"))
+    kept = {"games"} | {folder.casefold() for folder in PLAYER_FOLDERS}
+    files = sorted(path for path in package.rglob("*") if path.is_file() and path.relative_to(package).parts[0].casefold() not in kept)
     release = RELEASES / f"{name}.zip"
     programs = None
     if platform.name == "Linux":
         programs = {package / platform.launcher} | {path for path in binaries.iterdir() if path.suffix == ""}
-    write_zip(release, package, files, ["Games", "Assets"], programs)
+    write_zip(release, package, files, ["Games"] + PLAYER_FOLDERS, programs)
     built = PROJECT / "Binaries" / Path(platform.binaries).name
     symbols = [path for path in built.glob(executable.stem + ".*") if path.suffix in platform.symbols]
     symbols_archive = RELEASES / f"{name}-symbols.zip"

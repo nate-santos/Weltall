@@ -2,6 +2,7 @@
 #include "Field/FieldGearDrawing.h"
 #include "Field/FieldScene.h"
 #include "Gears/GearPackets.h"
+#include "Graphics/Texture.h"
 #include "Graphics/Vram.h"
 #include "Misc/AutomationTest.h"
 #include "OffscreenRender.h"
@@ -15,6 +16,11 @@ namespace
 {
 	constexpr int32 ScreenWidth = 320;
 	constexpr int32 ScreenHeight = 224;
+	/** The scenes' background grey, the grey the GPU fills the screen with for it, and that grey under the floor shadow,
+	 * which subtracts its blob at colour 40h: white at a half. */
+	constexpr uint8 BackgroundGrey = 200;
+	constexpr int32 FilledGrey = Weltall::FilledChannel(BackgroundGrey);
+	constexpr int32 ShadowGrey = FilledGrey - 127;
 	/** A gear's texture: one row of 4-bit texels at VRAM (0, 0), its CLUT at (0, 256). */
 	constexpr uint16 PartClut = 256 << 6;
 	constexpr uint8 ModulatedQuad = 0x2C;
@@ -89,7 +95,7 @@ namespace
 			Weltall::FFieldFrame Frame;
 			Frame.Tick = Tick;
 			Frame.bSceneDrawn = true;
-			Frame.Background = {200, 200, 200};
+			Frame.Background = {BackgroundGrey, BackgroundGrey, BackgroundGrey};
 			Frame.View.View = Weltall::FGteMatrix::Identity();
 			Frame.View.ProjectionDistance = Projection;
 			Weltall::FFieldGearsFrame& Gears = Frame.Gears;
@@ -154,7 +160,7 @@ namespace
 			Weltall::FFieldFrame Frame;
 			Frame.Tick = 1;
 			Frame.bSceneDrawn = true;
-			Frame.Background = {200, 200, 200};
+			Frame.Background = {BackgroundGrey, BackgroundGrey, BackgroundGrey};
 			Frame.View.View = Weltall::FGteMatrix::Identity();
 			Frame.View.ProjectionDistance = Projection;
 			Weltall::FFieldGearsFrame& Gears = Frame.Gears;
@@ -223,7 +229,7 @@ namespace
 			Weltall::FFieldFrame Frame;
 			Frame.Tick = 1;
 			Frame.bSceneDrawn = true;
-			Frame.Background = {200, 200, 200};
+			Frame.Background = {BackgroundGrey, BackgroundGrey, BackgroundGrey};
 			Frame.View.View = Weltall::FGteMatrix::Identity();
 			Frame.View.ProjectionDistance = Projection;
 			Weltall::FFieldGearsFrame& Gears = Frame.Gears;
@@ -290,19 +296,19 @@ bool FFieldGearsRenderingTest::RunTest(const FString&)
 		const bool bNear = FMath::Abs(Pixel.R - R) <= 2 && FMath::Abs(Pixel.G - G) <= 2 && FMath::Abs(Pixel.B - B) <= 2;
 		TestTrue(FString::Printf(TEXT("%s: (%d, %d, %d) near (%d, %d, %d)"), What, Pixel.R, Pixel.G, Pixel.B, R, G, B), bNear);
 	};
-	NearIn(Pixels, TEXT("background"), 300, 200, 200, 200, 200);
+	NearIn(Pixels, TEXT("background"), 300, 200, FilledGrey, FilledGrey, FilledGrey);
 	// The quad's four texels are 10 pixels wide each, modulated by the part's colour at half.
-	NearIn(Pixels, TEXT("texel 0 is transparent"), 45, 60, 200, 200, 200);
+	NearIn(Pixels, TEXT("texel 0 is transparent"), 45, 60, FilledGrey, FilledGrey, FilledGrey);
 	NearIn(Pixels, TEXT("red at half"), 55, 60, 127, 0, 0);
 	NearIn(Pixels, TEXT("a semi-transparent texel of an opaque polygon"), 65, 60, 0, 127, 0);
 	NearIn(Pixels, TEXT("white at half"), 75, 60, 127, 127, 127);
 	NearIn(Pixels, TEXT("the flat triangle"), 105, 45, 0, 0, 255);
 	// The floor shadow subtracts its blob at colour 40h: white at a half.
-	NearIn(Pixels, TEXT("the shadow subtracts"), 160, 112, 73, 73, 73);
-	NearIn(Pixels, TEXT("outside the shadow"), 160, 140, 200, 200, 200);
-	NearIn(Moving, TEXT("between two ticks: texel 0 where the latest has red"), 55, 60, 200, 200, 200);
+	NearIn(Pixels, TEXT("the shadow subtracts"), 160, 112, ShadowGrey, ShadowGrey, ShadowGrey);
+	NearIn(Pixels, TEXT("outside the shadow"), 160, 140, FilledGrey, FilledGrey, FilledGrey);
+	NearIn(Moving, TEXT("between two ticks: texel 0 where the latest has red"), 55, 60, FilledGrey, FilledGrey, FilledGrey);
 	NearIn(Moving, TEXT("between two ticks: red"), 65, 60, 127, 0, 0);
-	NearIn(Moving, TEXT("between two ticks: the shadow stays"), 160, 112, 73, 73, 73);
+	NearIn(Moving, TEXT("between two ticks: the shadow stays"), 160, 112, ShadowGrey, ShadowGrey, ShadowGrey);
 	return true;
 }
 
@@ -348,7 +354,7 @@ bool FFieldGearShadowRenderingTest::RunTest(const FString&)
 	NearIn(Buffered, TEXT("depth buffer: the gear stands in front of its shadow"), 160, 155, 0, 0, 255);
 	// Row 166, 3 units above the floor: the gear's sole still lies in its shadow.
 	NearIn(Buffered, TEXT("depth buffer: the shadow still under the gear's sole"), 160, 166, 0, 0, 128);
-	NearIn(Buffered, TEXT("depth buffer: the shadow on the floor beside the gear"), 220, 165, 73, 73, 73);
+	NearIn(Buffered, TEXT("depth buffer: the shadow on the floor beside the gear"), 220, 165, ShadowGrey, ShadowGrey, ShadowGrey);
 	return true;
 }
 
@@ -395,7 +401,7 @@ bool FFieldGearPartsDepthRenderingTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s: (%d, %d, %d) near (%d, %d, %d)"), What, Pixel.R, Pixel.G, Pixel.B, R, G, B), bNear);
 	};
 	NearIn(ApartPainted, TEXT("painter's order: the far triangle linked last covers the near one"), 160, 112, 0, 0, 255);
-	NearIn(ApartBuffered, TEXT("depth buffer: beside the gear the background"), 300, 200, 200, 200, 200);
+	NearIn(ApartBuffered, TEXT("depth buffer: beside the gear the background"), 300, 200, FilledGrey, FilledGrey, FilledGrey);
 	NearIn(ApartBuffered, TEXT("depth buffer: the near triangle stands in front of the far one"), 160, 112, 255, 0, 0);
 	NearIn(CloseBuffered, TEXT("depth buffer: within the margin the order decides, as on a detail laid on a surface"), 160, 112, 0, 0, 255);
 	return true;
@@ -523,7 +529,7 @@ namespace
 			Weltall::FFieldFrame Frame;
 			Frame.Tick = Tick;
 			Frame.bSceneDrawn = true;
-			Frame.Background = {200, 200, 200};
+			Frame.Background = {BackgroundGrey, BackgroundGrey, BackgroundGrey};
 			Frame.View.View = Weltall::FGteMatrix::Identity();
 			Frame.View.ProjectionDistance = Projection;
 			Weltall::FFieldGearsFrame& Gears = Frame.Gears;
@@ -592,14 +598,14 @@ bool FFieldPlacedGearRenderingTest::RunTest(const FString&)
 	};
 	// Its own matrix would draw the quad over [40, 80) x [40, 80); the placement draws it at half the size about the
 	// centre, over [100, 120) x [76, 96), its four texels 5 pixels wide each.
-	NearIn(Pixels, TEXT("nothing where its own matrix has it"), 55, 60, 200, 200, 200);
-	NearIn(Pixels, TEXT("texel 0 is transparent"), 102, 86, 200, 200, 200);
+	NearIn(Pixels, TEXT("nothing where its own matrix has it"), 55, 60, FilledGrey, FilledGrey, FilledGrey);
+	NearIn(Pixels, TEXT("texel 0 is transparent"), 102, 86, FilledGrey, FilledGrey, FilledGrey);
 	NearIn(Pixels, TEXT("red from the port's rows, at half"), 107, 86, 127, 0, 0);
 	NearIn(Pixels, TEXT("green"), 112, 86, 0, 127, 0);
 	NearIn(Pixels, TEXT("white"), 117, 86, 127, 127, 127);
-	NearIn(Pixels, TEXT("past the quad"), 122, 86, 200, 200, 200);
-	NearIn(Pixels, TEXT("under the quad"), 107, 98, 200, 200, 200);
-	NearIn(Moving, TEXT("between two ticks: texel 0 where the latest has red"), 107, 86, 200, 200, 200);
+	NearIn(Pixels, TEXT("past the quad"), 122, 86, FilledGrey, FilledGrey, FilledGrey);
+	NearIn(Pixels, TEXT("under the quad"), 107, 98, FilledGrey, FilledGrey, FilledGrey);
+	NearIn(Moving, TEXT("between two ticks: texel 0 where the latest has red"), 107, 86, FilledGrey, FilledGrey, FilledGrey);
 	NearIn(Moving, TEXT("between two ticks: red ten pixels on"), 117, 86, 127, 0, 0);
 	return true;
 }

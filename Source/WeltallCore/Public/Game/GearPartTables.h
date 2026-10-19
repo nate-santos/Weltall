@@ -54,11 +54,19 @@ namespace Weltall
 		 */
 		WELTALLCORE_API bool SetPilot(int32 Gear, uint8 Pilot);
 
+		/**
+		 * The tables are Perfect Works Build's rebalance's, whose recompute reads a part's defenses as words and gives its
+		 * Deathblow parts' tiers by flags, in the Menu's copy and the gear shop's.
+		 */
+		bool UsesPerfectWorksRules() const { return bPerfectWorksRules; }
+		void SetPerfectWorksRules(bool bOn) { bPerfectWorksRules = bOn; }
+
 	private:
 		std::vector<uint8> Frames;
 		std::vector<uint8> Armors;
 		std::vector<uint8> Engines;
 		std::vector<uint8> Parts;
 		std::array<uint8, GearCount> Pilots{};
+		bool bPerfectWorksRules = false;
 	};
 }

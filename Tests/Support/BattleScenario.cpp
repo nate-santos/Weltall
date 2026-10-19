@@ -495,4 +495,23 @@ namespace Weltall::Testing
 		Digest.Raw(State.Block());
 		Digest.I32(Random.Seed());
 	}
+
+	void DrawPerfectWorksData(FXorShift32& G, FBattleContext& Context, bool bWeakFuel)
+	{
+		for (FBattleCombatant& Combatant : Context.Combatants)
+		{
+			for (uint8& Loaded : Combatant.EtherAmmunition)
+			{
+				Loaded = static_cast<uint8>(FBattleTables::FirstAmmunition + G.Next() % FBattleTables::AmmunitionCount);
+			}
+		}
+		for (uint8& Attack : Context.AmmunitionAttacks)
+		{
+			Attack = static_cast<uint8>(G.Next());
+		}
+		for (int32 Slot = 0; Slot < (bWeakFuel ? FBattleContext::PartySlotCount : 0); ++Slot)
+		{
+			Context.Commands[FBattleContext::GearCommandIndex(Slot, 0)].FuelCost = 10;
+		}
+	}
 }

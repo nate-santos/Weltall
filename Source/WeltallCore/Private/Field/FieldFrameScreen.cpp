@@ -82,6 +82,7 @@ namespace Weltall
 			return std::nullopt;
 		}
 		ReadVram(PictureArea, MapPictureArea);
+		FieldVram.NoteReadback(PictureArea);
 		if (auto Error = LoadImage(Picture.File, {PictureArea.X, PictureArea.Y, 0, PictureClutY, 0, 0}))
 		{
 			return Error;

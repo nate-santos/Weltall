@@ -60,7 +60,7 @@ namespace Weltall
 			const IKernelTask* Task = Entry.Task;
 			if (Task == &Fade)
 			{
-				Shown.Fade = {Fade.Fade.Mode, Fade.Fade.Shown};
+				Shown.Fade = {Fade.Fade.Mode, Fade.Fade.Shown, Fade.Fade.bFromEffect};
 				Links.push_back({EBattleShowLink::Fade, 0, FadeEntry});
 			}
 			else if (Task == &TintFade)

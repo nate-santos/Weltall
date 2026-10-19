@@ -3,6 +3,9 @@
 #include "Formats/Lzss.h"
 #include "Foundation/LittleEndian.h"
 #include "Media/GameFileIndex.h"
+#include "Text/MessageOverrides.h"
+#include "Text/MessageTableIds.h"
+#include "WorldMap/WorldMapTables.h"
 
 #include <algorithm>
 #include <string>
@@ -325,6 +328,26 @@ namespace Weltall
 		return Scene;
 	}
 
+	TResult<std::vector<uint8>> ReadWorldMapMessages(const FCdImage& Image, const FGameFileIndex& Index, int32 Group)
+	{
+		const TResult<std::vector<uint8>> Packed = ReadFile(Image, Index, WorldMapFiles::Archive(WorldMapFiles::GroupHeader(Group)));
+		if (!Packed)
+		{
+			return Packed.Error();
+		}
+		const TResult<std::vector<uint8>> Archive = UnpackLzss(*Packed);
+		if (!Archive)
+		{
+			return Archive.Error();
+		}
+		TResult<FWorldMapScene> Scene = ParseWorldMapArchive(*Archive);
+		if (!Scene)
+		{
+			return Scene.Error();
+		}
+		return std::move(Scene->MessageBytes);
+	}
+
 	TResult<FWorldMapScene> ReadWorldMapScene(const FCdImage& Image, const FGameFileIndex& Index, const FWorldMapSceneEntry& Entry)
 	{
 		const int32 GroupHeader = Entry.GroupHeader;
@@ -342,6 +365,11 @@ namespace Weltall
 		if (!Scene)
 		{
 			return Scene.Error();
+		}
+		const std::string Table = MessageTables::WorldMap(WorldMapFiles::Group(GroupHeader));
+		if (std::optional<FAppliedMessages> Applied = ApplyMessageOverrides(Image, Table, Scene->MessageBytes, EMessageWindows::Program))
+		{
+			Scene->MessageBytes = std::move(Applied->Table);
 		}
 		const TResult<std::vector<uint8>> Blocks = ReadFile(Image, Index, WorldMapFiles::Terrain(GroupHeader));
 		if (!Blocks)

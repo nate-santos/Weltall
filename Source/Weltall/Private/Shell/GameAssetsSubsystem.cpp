@@ -11,6 +11,7 @@
 #include "Shell/GameDiscsSubsystem.h"
 #include "Shell/PlayerSettingsSubsystem.h"
 #include "Shell/PlayerFolders.h"
+#include "Shell/TextModFiles.h"
 #include "WeltallLog.h"
 
 namespace
@@ -23,6 +24,16 @@ namespace
 	std::filesystem::path MusicFolder()
 	{
 		return std::filesystem::path(*FPaths::Combine(UGameAssetsSubsystem::AssetsFolder(), TEXT("music")));
+	}
+
+	std::filesystem::path TextFolder()
+	{
+		return std::filesystem::path(*FPaths::Combine(UGameAssetsSubsystem::AssetsFolder(), TEXT("text")));
+	}
+
+	FString FontFolder()
+	{
+		return FPaths::Combine(UGameAssetsSubsystem::AssetsFolder(), TEXT("font"));
 	}
 }
 
@@ -52,8 +63,7 @@ void UGameAssetsSubsystem::Deinitialize()
 	FTextureModLibrary::WaitForDecodes();
 	GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>()->OnSettingsChanged.Remove(SettingsChanged);
 	Jobs.clear();
-	MusicJob.reset();
-	TextureJob.Reset();
+	ResetBackgroundJobs();
 	Stores.clear();
 	Super::Deinitialize();
 }
@@ -84,20 +94,29 @@ void UGameAssetsSubsystem::FollowSettings()
 	const auto& Settings = GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>()->Settings();
 	const bool bEnabled = Settings.bExternalAssets;
 	FTextureModLibrary::Configure(TexturesFolder(), bEnabled, Settings.bCaptureTextures);
-	// The recordings are found again each time the replacements are switched on.
+	// The recordings and messages are found again each time the replacements are switched on.
 	if (bEnabled && !bMusicFound)
 	{
 		auto Found = Weltall::FMusicReplacements::Find(MusicFolder());
 		if (!Found) UE_LOG(LogWeltall, Warning, TEXT("Music replacements: %hs"), Found.Error().Message.c_str());
 		Music = Found ? *Found : nullptr;
 		if (Music) UE_LOG(LogWeltall, Log, TEXT("Music replacements found: %d"), static_cast<int32>(Music->Count()));
+		FindMessages();
 	}
 	bMusicFound = bEnabled;
 	for (const auto& [Release, Store] : Stores)
 	{
 		Store->SetMusic(Music);
+		Store->SetMessages(Messages);
+		Store->SetFontSheet(FontSheet);
 		Store->SetEnabled(bEnabled);
 	}
+}
+
+void UGameAssetsSubsystem::FindMessages()
+{
+	FontSheet = FindFontSheet(FontFolder());
+	Messages = FindMessageOverrides(TextFolder(), FontSheet.get());
 }
 
 bool UGameAssetsSubsystem::StartExport(Weltall::EAssetExportKind Kind)
@@ -107,14 +126,14 @@ bool UGameAssetsSubsystem::StartExport(Weltall::EAssetExportKind Kind)
 	Refresh();
 	if (bRegistrationFailed) { return false; }
 	Jobs.clear();
-	MusicJob.reset();
-	TextureJob.Reset();
+	ResetBackgroundJobs();
 	Active = 0;
 	switch (Kind)
 	{
 	case Weltall::EAssetExportKind::Textures: return StartTextures();
 	case Weltall::EAssetExportKind::Dump: return StartDump();
 	case Weltall::EAssetExportKind::Music: return StartMusic();
+	case Weltall::EAssetExportKind::Text: return StartText();
 	}
 	return false;
 }
@@ -187,14 +206,28 @@ bool UGameAssetsSubsystem::StartTextures()
 	return true;
 }
 
+bool UGameAssetsSubsystem::StartText()
+{
+	Current.Kind = Weltall::EAssetExportKind::Text;
+	const Weltall::FIso9660* Disc = nullptr;
+	Weltall::EDiscRelease Release{};
+	Weltall::FGameFileIndex Index;
+	if (!ReadFirstDisc(Disc, Release, Index)) { return false; }
+	auto Job = Weltall::FGameTextExport::Open(*Disc, Index, TextFolder(), std::filesystem::path(*FontFolder()));
+	if (!Job) { Fail(Job.Error()); return false; }
+	TextJob = std::move(*Job);
+	Current = {Weltall::EAssetExportState::Running, Weltall::EAssetExportKind::Text, 0, static_cast<uint64>(TextJob->TotalFiles()), Current.Revision + 1};
+	UE_LOG(LogWeltall, Log, TEXT("Exporting text to %s"), UTF8_TO_TCHAR(TextFolder().generic_u8string().c_str()));
+	return true;
+}
+
 void UGameAssetsSubsystem::CancelExport()
 {
 	if (Current.State != Weltall::EAssetExportState::Running) { return; }
 	for (auto& Job : Jobs) { Job->Cancel(); }
 	if (!BackgroundStep.IsValid())
 	{
-		MusicJob.reset();
-		TextureJob.Reset();
+		ResetBackgroundJobs();
 	}
 	Current.State = Weltall::EAssetExportState::Cancelled;
 	++Current.Revision;
@@ -232,19 +265,29 @@ void UGameAssetsSubsystem::Finish(const TCHAR* Done)
 	UE_LOG(LogWeltall, Log, TEXT("%s %s"), Done, *AssetsFolder());
 }
 
+void UGameAssetsSubsystem::ResetBackgroundJobs()
+{
+	MusicJob.reset();
+	TextureJob.Reset();
+	TextJob.reset();
+}
+
 void UGameAssetsSubsystem::TickBackground()
 {
 	if (!BackgroundStep.IsValid())
 	{
 		if (Current.State != Weltall::EAssetExportState::Running)
 		{
-			MusicJob.reset();
-			TextureJob.Reset();
+			ResetBackgroundJobs();
 			return;
 		}
 		if (MusicJob)
 		{
 			BackgroundStep = Async(EAsyncExecution::ThreadPool, [Job = MusicJob.get()]() { return Job->Step(32768); });
+		}
+		else if (TextJob)
+		{
+			BackgroundStep = Async(EAsyncExecution::ThreadPool, [Job = TextJob.get()]() { return Job->Step(); });
 		}
 		else
 		{
@@ -257,33 +300,31 @@ void UGameAssetsSubsystem::TickBackground()
 	BackgroundStep = {};
 	if (Current.State != Weltall::EAssetExportState::Running)
 	{
-		MusicJob.reset();
-		TextureJob.Reset();
+		ResetBackgroundJobs();
 		return;
 	}
 	if (!Stepped)
 	{
 		Fail(Stepped.Error());
-		MusicJob.reset();
-		TextureJob.Reset();
+		ResetBackgroundJobs();
 		return;
 	}
-	const uint64 Done = MusicJob ? MusicJob->Status().CompletedSongs : TextureJob->CompletedItems();
+	const uint64 Done = MusicJob ? MusicJob->Status().CompletedSongs : TextJob ? static_cast<uint64>(TextJob->CompletedFiles()) : TextureJob->CompletedItems();
 	if (Current.Completed != Done)
 	{
 		Current.Completed = Done;
 		++Current.Revision;
 	}
 	if (!*Stepped) { return; }
-	const bool bMusic = MusicJob != nullptr;
-	MusicJob.reset();
-	TextureJob.Reset();
-	Finish(bMusic ? TEXT("Music WAVs exported to") : TEXT("Textures exported to"));
+	const TCHAR* Exported = MusicJob ? TEXT("Music WAVs exported to") : TextJob ? TEXT("Text and font exported to") : TEXT("Textures exported to");
+	if (TextJob) { SaveFontSheetPicture(FontFolder(), TextJob->FontPicture()); }
+	ResetBackgroundJobs();
+	Finish(Exported);
 }
 
 void UGameAssetsSubsystem::Tick(float)
 {
-	if (MusicJob || TextureJob)
+	if (MusicJob || TextureJob || TextJob)
 	{
 		TickBackground();
 		return;

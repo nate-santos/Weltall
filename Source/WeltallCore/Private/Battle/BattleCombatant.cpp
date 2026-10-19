@@ -12,6 +12,8 @@ namespace Weltall
 		VisitBattleCombatantLayout(Combatant, BattleRecordBytes::FReader{Record});
 		const std::span<const uint8> ModelBytes = Record.subspan(CharacterRecordSize + FBattleGearPart::ModelBytesOffset, Combatant.GearPart.ModelBytes.size());
 		std::copy(ModelBytes.begin(), ModelBytes.end(), Combatant.GearPart.ModelBytes.begin());
+		Combatant.EtherAmmunition = {Record[EtherAmmunitionOffset], Record[EtherAmmunitionOffset + 1]};
+		std::copy_n(Record.begin() + ExtraBonusesOffset, Combatant.ExtraBonuses.size(), Combatant.ExtraBonuses.begin());
 		return Combatant;
 	}
 

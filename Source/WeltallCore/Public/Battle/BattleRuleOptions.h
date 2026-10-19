@@ -81,6 +81,17 @@ namespace Weltall
 		 * record's 70,000.
 		 */
 		bool bDeusSecondFormHp = true;
+		/**
+		 * Billy's ether guns fire the element of the ammunition loaded in them; the original reads it from his record's gun
+		 * slots, which only the battle's unreachable reload writes, so they stay the new game's wind and fire.
+		 */
+		bool bEtherAmmunitionElement = true;
+		/**
+		 * Deus's attack on one gear in his first fight (scene 64, command 11h) leaves the camera to the effect's framing.
+		 * The original's sequence hands the camera to the model camera, which holds it still, before the effect has
+		 * finished framing its target: from a view far enough away the effect waits for the camera forever.
+		 */
+		bool bDeusKeepsCamera = true;
 
 		/** Every fix off: the original's behavior throughout. */
 		static constexpr FBattleRuleOptions Original()
@@ -102,6 +113,8 @@ namespace Weltall
 			Options.bWholeAmounts = false;
 			Options.bCounterKeepsGroupAttack = false;
 			Options.bDeusSecondFormHp = false;
+			Options.bEtherAmmunitionElement = false;
+			Options.bDeusKeepsCamera = false;
 			return Options;
 		}
 	};

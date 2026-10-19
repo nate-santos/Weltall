@@ -287,9 +287,14 @@ namespace Weltall
 			Count
 		};
 		const FMessageTable& Text(EText Which) const { return Texts[static_cast<std::size_t>(Which)]; }
+		/** The section of the menus' data (directory 16, file 2) that holds a kind of text, from 1. */
+		WELTALLCORE_API static int32 SectionOfText(EText Which);
 
 	private:
 		FMenuResources() = default;
+
+		/** The prompts' and descriptions' tables with the player's messages the image gives in place. */
+		void UsePlayersMessages(const FCdImage& Image);
 
 		std::vector<FVramImage> Archive;
 		FMenuSpriteSheet SpriteSheet;

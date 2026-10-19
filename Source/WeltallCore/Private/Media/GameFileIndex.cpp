@@ -47,11 +47,13 @@ namespace Weltall
 		{
 			Result.DirectoryStarts[static_cast<std::size_t>(Directory)] = LittleEndian::ReadU16(Directories, static_cast<std::size_t>(Directory) * 2);
 		}
-		// These supported undubs reuse unused index slots for their program's code and state.
+		// These supported undubs reuse unused index slots for their program's code and state, and keep their movie
+		// subtitles past the records.
 		if (HasUndubCodeInUnusedSlots(Executable) && Result.AllRecords.size() > 381)
 		{
 			for (std::size_t Record = 280; Record <= 376; ++Record) Result.AllRecords[Record] = {};
 			Result.AllRecords[381] = {};
+			Result.Subtitles = FMovieSubtitleTable::Read(Executable);
 		}
 		return Result;
 	}
@@ -95,10 +97,28 @@ namespace Weltall
 		{
 			return MakeError("index record at sector " + std::to_string(Record.Lba) + " holds no file");
 		}
-		auto Override = Image.ReadAssetOverride(Record);
-		if (!Override) return Override.Error();
-		if (*Override) return std::move(**Override);
+		auto Replacement = Image.ReadReplacement(Record);
+		if (!Replacement) return Replacement.Error();
+		if (*Replacement) return std::move((*Replacement)->Bytes);
 		const uint64 Sectors = (static_cast<uint64>(Record.Size) + CdSector::Form1DataSize - 1) / CdSector::Form1DataSize;
 		return Image.ReadForm1(Record.Lba, Sectors * CdSector::Form1DataSize);
+	}
+
+	TResult<std::vector<uint8>> ReadFileBytes(const FCdImage& Image, const FIndexRecord& Record)
+	{
+		if (!Record.IsFile())
+		{
+			return MakeError("index record at sector " + std::to_string(Record.Lba) + " holds no file");
+		}
+		auto Replacement = Image.ReadReplacement(Record);
+		if (!Replacement) return Replacement.Error();
+		if (*Replacement)
+		{
+			std::vector<uint8> Bytes = std::move((*Replacement)->Bytes);
+			Bytes.resize(static_cast<std::size_t>((*Replacement)->Size));
+			return Bytes;
+		}
+		TResult<std::vector<uint8>> Sectors = Image.ReadForm1(Record.Lba, static_cast<uint64>(Record.Size));
+		return Sectors;
 	}
 }

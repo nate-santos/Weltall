@@ -5,6 +5,7 @@
 #include "Foundation/Result.h"
 #include "Graphics/MdlModel.h"
 #include "Graphics/Vram.h"
+#include "Text/MessageOverrides.h"
 
 #include <array>
 #include <span>
@@ -67,6 +68,8 @@ namespace Weltall
 		std::vector<uint8> EventScripts;
 		std::vector<uint8> Encounters;
 		std::vector<uint8> Messages;
+		/** Which of Messages are the player's (Assets/text), which the windows a script sizes are checked against. */
+		FReplacedMessages ReplacedMessages;
 	};
 
 	/**

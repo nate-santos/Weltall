@@ -87,6 +87,7 @@ namespace Weltall
 		Services.Text.ButtonMap = MesKernelButtonMap;
 		Services.Disc = static_cast<uint8>(Session.DiscNumber() + 1);
 		Services.Options = Session.Settings().Fixes.Field;
+		Services.EncounterRate = Session.Settings().Balance.Encounters;
 		Services.Story = Session.Story();
 		Services.Unreached = &Session.Unreached();
 		Program->FieldRuntime = std::make_unique<FFieldRuntime>(Services);
@@ -105,6 +106,7 @@ namespace Weltall
 		FieldRuntime->SetAlwaysRun(Settings.Controls.bAlwaysRun);
 		FieldRuntime->SetWalkIntoDoors(Settings.Controls.bWalkIntoDoors);
 		FieldRuntime->SetTextSpeed(Settings.TextSpeed);
+		FieldRuntime->SetEncounterRate(Settings.Balance.Encounters);
 		Culling = Settings.Field.Culling;
 		Presenter->SetPilotStandIns(Settings.Field.bDetailedPilots);
 		Presenter->SetGearStandIns(Settings.Field.GearModels);

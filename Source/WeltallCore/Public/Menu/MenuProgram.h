@@ -8,6 +8,7 @@
 #include "Menu/MenuOptions.h"
 #include "Menu/MenuPrimitive.h"
 #include "Menu/MenuTask.h"
+#include "Mods/PerfectWorks.h"
 #include "Presentation/DisplayOptions.h"
 #include "Text/MesWindow.h"
 
@@ -75,6 +76,16 @@ namespace Weltall
 		virtual void SetOutputMode(int32 Mode) = 0;
 	};
 
+	/** The mods the game found in its Mods folder, as the options screen offers them. */
+	struct FMenuMods
+	{
+		/** Perfect Works Build was found, and its version (empty where its README names none). */
+		bool bPerfectWorks = false;
+		std::string PerfectWorksVersion;
+		/** What the game took from it as it started; the settings' choice applies from the next start. */
+		FPerfectWorksOptions PerfectWorksInUse;
+	};
+
 	/**
 	 * The player's settings, which the options screen shows and changes: a change takes effect at once,
 	 * and the settings are kept (written for the next session) as the screen closes.
@@ -90,6 +101,8 @@ namespace Weltall
 		/** What the display offers the Display page; none where the game has no window. */
 		virtual FDisplayModes DisplayModes() const { return {}; }
 		virtual IMenuAssets* Assets() const { return nullptr; }
+		/** The mods found; none where the game looked for none. */
+		virtual FMenuMods Mods() const { return {}; }
 	};
 
 	/** A key, button or axis the player pressed, by the engine's name for it. */

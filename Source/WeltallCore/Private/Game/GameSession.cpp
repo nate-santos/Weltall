@@ -150,6 +150,31 @@ namespace Weltall
 		return VoiceDisc(DiscNumber());
 	}
 
+	TResult<std::optional<FMovieSubtitles>> FGameSession::MovieSubtitles(int32 Number) const
+	{
+		const int32 Disc = DiscNumber();
+		if (PlayerSettings.MovieSubtitles == EMovieSubtitles::Off || Disc < 0 || Disc >= static_cast<int32>(Discs.size()))
+		{
+			return std::optional<FMovieSubtitles>();
+		}
+		const FGameDisc& Undub = VoiceDiscs[1][static_cast<std::size_t>(Disc)];
+		if (Undub.Image == nullptr || (PlayerSettings.MovieSubtitles == EMovieSubtitles::Automatic && VoiceDisc(Disc).Image != Undub.Image))
+		{
+			return std::optional<FMovieSubtitles>();
+		}
+		const FMovieSubtitleEntry* Entry = Undub.Index->MovieSubtitles().Find(Number);
+		if (Entry == nullptr)
+		{
+			return std::optional<FMovieSubtitles>();
+		}
+		TResult<FMovieSubtitles> MovieLines = FMovieSubtitles::Load(*Undub.Image, *Undub.Index, *Entry);
+		if (!MovieLines)
+		{
+			return MovieLines.Error();
+		}
+		return std::optional<FMovieSubtitles>(std::move(*MovieLines));
+	}
+
 	TResult<FGameDisc> FGameSession::DriveDisc() const
 	{
 		const int32 Number = DiscNumber();
@@ -224,7 +249,7 @@ namespace Weltall
 
 	std::optional<FError> FGameSession::InitNewGame()
 	{
-		TResult<FGameState> NewGame = LoadNewGameState(DiscImage, FileIndex, TextResources.NameTables);
+		TResult<FGameState> NewGame = LoadNewGameState(Image(), Index(), TextResources.NameTables);
 		if (!NewGame)
 		{
 			return NewGame.Error();

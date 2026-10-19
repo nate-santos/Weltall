@@ -3,6 +3,7 @@
 #include "Battling/BattlingDrawing.h"
 #include "Field/FieldScene.h"
 #include "Game/BattlingGameProgram.h"
+#include "Graphics/Texture.h"
 #include "Presentation/ScreenLayout.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
@@ -19,9 +20,10 @@ namespace
 	/** Battling's screen, its 2D layer fitted in the display's middle as the world map's is; the scene fills the display. */
 	constexpr Weltall::FScreenSize BattlingScreen{Weltall::FBattlingFrame::ScreenWidth, Weltall::FBattlingFrame::ScreenHeight};
 
+	/** The clear colour as the GPU fills the screen with it. */
 	FLinearColor BattlingClearColor(const Weltall::FDrawColor& Color)
 	{
-		return FLinearColor(Color.R / 255.0f, Color.G / 255.0f, Color.B / 255.0f);
+		return FColor(Weltall::FilledChannel(Color.R), Weltall::FilledChannel(Color.G), Weltall::FilledChannel(Color.B)).ReinterpretAsLinear();
 	}
 
 	/**
@@ -145,6 +147,11 @@ public:
 			AddFieldScenePasses(GraphBuilder, *Mesh, *Vram, Draw, Output, Area);
 		}
 		AddScreenLayer(GraphBuilder, Screen, Columns, Output, Area);
+	}
+
+	virtual Weltall::FScreenSize ScreenSize() const override
+	{
+		return BattlingScreen;
 	}
 
 	FFieldSceneDraw Draw;

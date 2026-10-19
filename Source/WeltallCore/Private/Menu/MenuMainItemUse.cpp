@@ -121,7 +121,7 @@ namespace Weltall
 				bool bHelped = false;
 				for (int32 Member = 0; Member < 3; ++Member)
 				{
-					if ((Targets >> Member & 1) != 0 && ApplyItemInMenu(*Services.Game, this->Member(Member), ItemRecordOf(Items[Slot])))
+					if ((Targets >> Member & 1) != 0 && ApplyItemInMenu(*Services.Game, this->Member(Member), ItemRecordOf(Items[Slot]), UsesPerfectWorksRules()))
 					{
 						bHelped = true;
 					}

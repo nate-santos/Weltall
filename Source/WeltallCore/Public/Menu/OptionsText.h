@@ -34,10 +34,13 @@ namespace Weltall::OptionsText
 		inline constexpr std::string_view Camera = "Camera";
 		inline constexpr std::string_view Fixes = "Fixes";
 		inline constexpr std::string_view CustomFixes = "Custom Fixes";
+		inline constexpr std::string_view Crt = "CRT Filter";
 		inline constexpr std::string_view Controls = "Controls";
 		inline constexpr std::string_view Saves = "Saves";
 		inline constexpr std::string_view Import = "Import";
 		inline constexpr std::string_view Assets = "Assets";
+		inline constexpr std::string_view Modding = "Modding";
+		inline constexpr std::string_view PerfectWorks = "Perfect Works";
 	}
 
 	namespace Display
@@ -55,6 +58,8 @@ namespace Weltall::OptionsText
 		inline constexpr std::array<std::string_view, 4> FilterValues{"Sharp", "Crisp", "Smooth", "Upscaled"};
 		inline constexpr FRow MovieFilter{"Movie filter", {"Smooth keeps the movies' own", "look. Upscaled cleans them", "up and sharpens their lines."}};
 		inline constexpr std::array<std::string_view, 2> MovieFilterValues{"Smooth", "Upscaled"};
+		inline constexpr FRow Crt{"CRT filter", {"Draws scanlines and phosphors", "as on a CRT. Press Confirm to", "adjust each part of the look."}};
+		inline constexpr std::array<std::string_view, 4> CrtValues{"Off", "Monitor", "TV", "Custom"};
 		inline constexpr FRow AntiAliasing{"Anti-aliasing", {"Smooths jagged edges. MSAA", "is fast. Supersampling is", "sharper but costs more."}};
 		inline constexpr std::array<std::string_view, 3> AntiAliasingValues{"Off", "MSAA", "Supersampling"};
 		inline constexpr FRow Culling{"Widescreen drawing", {"Full draws everything in a", "widescreen view. Original", "draws only the 4:3 area."}};
@@ -69,7 +74,26 @@ namespace Weltall::OptionsText
 		inline constexpr std::array<std::string_view, 4> TextSpeedValues{"Normal", "2x", "4x", "Instant"};
 		inline constexpr FRow BattleSpeed{"Battle speed", {"How fast battles play. You", "can also change it in battle", "with Camera left and right."}};
 		inline constexpr std::array<std::string_view, 3> BattleSpeedValues{"Normal", "2x", "4x"};
+		inline constexpr FRow BattleFlashes{"Battle flashes", {"Softer dims the screen flashes", "of attacks and Ether. Off", "leaves them out."}};
+		inline constexpr std::array<std::string_view, 3> BattleFlashesValues{"Original", "Softer", "Off"};
 		inline constexpr FRow PauseInBackground{"Pause in background", {"Pauses the game while its", "window isn't in focus. Play", "time stops too."}};
+	}
+
+	/** The CRT filter's parts. */
+	namespace Crt
+	{
+		inline constexpr FRow Scanlines{"Scanlines", {"How dark the gaps between", "the lines are. 0 merges the", "lines into a smooth picture."}};
+		inline constexpr FRow Mask{"Phosphor mask", {"The red, green and blue dots", "behind the glass: a monitor's", "stripes or a TV's slots."}};
+		inline constexpr std::array<std::string_view, 3> MaskValues{"None", "Stripes", "Slots"};
+		inline constexpr FRow MaskStrength{"Mask strength", {"How clearly the phosphors", "show. They always fade from", "the brightest colors."}};
+		inline constexpr FRow MaskSize{"Mask size", {"How fine the phosphors are.", "Coarser ones are easier to", "see."}};
+		inline constexpr std::array<std::string_view, 3> MaskSizeValues{"Fine", "Medium", "Coarse"};
+		inline constexpr FRow Sharpness{"Sharpness", {"How crisp the picture is", "along each line. Lower is", "softer."}};
+		inline constexpr FRow ColorBleed{"Color bleed", {"How far colors spread to the", "side, as over S-Video. 0", "keeps them crisp."}};
+		inline constexpr FRow Glow{"Glow", {"Light spreading in the glass", "around the picture's bright", "parts."}};
+		inline constexpr FRow Curvature{"Curvature", {"How much the glass bulges.", "0 is a flat screen.", ""}};
+		inline constexpr FRow Corners{"Rounded corners", {"How round the screen's", "corners are.", ""}};
+		inline constexpr FRow Vignette{"Vignette", {"Darkens the picture toward", "its corners.", ""}};
 	}
 
 	namespace Sound
@@ -79,6 +103,50 @@ namespace Weltall::OptionsText
 		inline constexpr FRow InBackground{"Background audio", {"Keeps the sound playing", "while the game's window", "isn't in focus."}};
 		inline constexpr FRow Voices{"Voices", {"Auto follows the play disc.", "USA or undub discs supply", "voices for new movies/battles."}};
 		inline constexpr std::array<std::string_view, 3> VoiceValues{"Auto", "English", "Japanese"};
+		inline constexpr FRow Subtitles{"Subtitles", {"Movie subtitles from undub", "discs. Auto shows them with", "the Japanese voices."}};
+		inline constexpr std::array<std::string_view, 3> SubtitleValues{"Auto", "On", "Off"};
+	}
+
+	/** The Modding page: the game's balance as the player changes it, then the Assets page and the mods found. */
+	namespace Modding
+	{
+		inline constexpr std::string_view Balance = "Balance";
+		inline constexpr FRow Experience{"Experience", {"Multiplies the experience you", "get from battles. Normal is", "the original amount."}};
+		inline constexpr FRow Gold{"Gold", {"Multiplies the gold you get", "from battles. Normal is the", "original amount."}};
+		inline constexpr std::array<std::string_view, 5> RewardValues{"Normal", "1.5x", "2x", "3x", "4x"};
+		inline constexpr FRow Encounters{"Encounters", {"Changes how often random", "battles happen on the field", "and the world map."}};
+		inline constexpr std::array<std::string_view, 5> EncounterValues{"None", "1/4", "1/2", "Normal", "2x"};
+		inline constexpr std::string_view Mods = "Mods";
+		inline constexpr FRow Assets{"Assets", {"Export the game's files to", "edit, and load your own", "versions. Press Confirm."}};
+		/** "{}" is the version of the mod found; the first line has no version where its release names none. */
+		inline constexpr FRow PerfectWorks{"Perfect Works", {"Perfect Works Build {},", "found in the Mods folder.", "Press Confirm for options."}};
+		inline constexpr std::string_view PerfectWorksUnversioned = "Perfect Works Build,";
+	}
+
+	/** The Perfect Works page: the parts of the mod the game takes, from its next start. */
+	namespace PerfectWorks
+	{
+		/** The page's first line, which the cursor passes over. */
+		inline constexpr std::string_view Notice = "Changes apply on restart";
+		inline constexpr FRow Enabled{"Perfect Works", {"Uses Perfect Works from the", "Mods folder.", ""}};
+		inline constexpr std::string_view Story = "Story";
+		inline constexpr FRow Script{"Script", {"Uses the Perfect Works", "translation for names and", "story script."}};
+		inline constexpr FRow StoryMode{"Story mode", {"Uses Perfect Works' story", "mode: easy battles and no", "random battles on the field."}};
+		inline constexpr FRow Music{"Music", {"Uses Perfect Works' new music", "for some scenes.", ""}};
+		inline constexpr std::string_view Gameplay = "Gameplay";
+		inline constexpr FRow Party{"Party and items", {"Uses Perfect Works' stats and", "abilities for the party, its", "items and its battle rules."}};
+		inline constexpr FRow Enemies{"Enemies", {"Uses Perfect Works' stats and", "AI for some enemies and", "bosses."}};
+		inline constexpr FRow Arena{"Battling", {"Uses Perfect Works' rebalance", "of the Battling arena. Expert", "adds its tweaks for 2 players."}};
+		inline constexpr std::array<std::string_view, 3> ArenaValues{"Original", "Basic", "Expert"};
+		inline constexpr std::string_view Graphics = "Graphics";
+		inline constexpr FRow Portraits{"Portraits", {"Fixed uses Perfect Works'", "portrait fixes. Resized also", "narrows them for 4:3."}};
+		inline constexpr std::array<std::string_view, 3> PortraitValues{"Original", "Fixed", "Resized"};
+		inline constexpr FRow Roni{"Roni's portrait", {"Uses Perfect Works' portrait", "of Roni.", ""}};
+		inline constexpr FRow Emeralda{"Emeralda", {"Uses Perfect Works' fix for", "Emeralda's sprites when she", "sits down at the cafe."}};
+		inline constexpr FRow TitleScreen{"Title screen", {"Uses Perfect Works' title", "screen.", ""}};
+		/** A part's values with the mod's on, then the game's own. */
+		inline constexpr std::array<std::string_view, 2> ModValues{"Perfect Works", "Original"};
+		inline constexpr std::array<std::string_view, 2> FixValues{"Fixed", "Original"};
 	}
 
 	namespace Assets
@@ -86,6 +154,7 @@ namespace Weltall::OptionsText
 		inline constexpr FRow External{"External assets", {"Loads files from Assets", "beside Games. Missing files", "come from your discs."}};
 		inline constexpr FRow Capture{"Capture textures", {"Also saves textures as drawn,", "for any the export can't", "reach. Turn off when done."}};
 		inline constexpr FRow Textures{"Export textures", {"Saves every map's and sprite's", "texture as a PNG to edit.", "Existing files are kept."}};
+		inline constexpr FRow Text{"Export text", {"Saves the game's text and its", "font as files to edit.", "Existing files are kept."}};
 		inline constexpr FRow Export{"Dump disc assets", {"Copies your discs to Assets.", "Existing files are kept.", "Keep dumps on your computer."}};
 		inline constexpr FRow Music{"Export music WAVs", {"Renders songs as editable WAV.", "This can use several GB.", "Existing files are kept."}};
 		inline constexpr FRow Cancel{"Cancel export", {"Stops after this step.", "Completed files are kept.", "Start again to resume."}};
@@ -154,6 +223,7 @@ namespace Weltall::OptionsText
 		inline constexpr FRow ScenePictures{"Scene pictures", {"Painted backdrops stretch to", "fill screens up to 21:9.", "Original: black at the sides."}};
 		inline constexpr FRow WidescreenStaging{"Widescreen staging", {"No one waits in view beside", "the 4:3 area for a cue.", "Original: some can be seen."}};
 		inline constexpr FRow MoonGlow{"Moon glow", {"The glow around the moon", "fades into the night sky.", "Original: a dark square."}};
+		inline constexpr FRow SpriteFrames{"Sprite frames", {"Billy's hair stays on his", "head as he shakes it.", "Original: a lock floats off."}};
 		inline constexpr FRow SwimStroke{"Swimming stroke", {"Bart keeps his fast stroke", "past the waterway's exits.", "Original: it can turn slow."}};
 		inline constexpr FRow SilentSongs{"Silent song starts", {"A song started silently", "doesn't silence the next one.", "Original: it does."}};
 		inline constexpr FRow SoundPanning{"Sound panning", {"Sounds panning across end", "where they should. Original:", "they can end elsewhere."}};
@@ -166,6 +236,8 @@ namespace Weltall::OptionsText
 		inline constexpr FRow EtherHealing{"Ether healing", {"Ethers heal and cost the", "same in menus as in battle.", "Original: as a basic Ether."}};
 		inline constexpr FRow FixFrameHp{"Fix Frame HP", {"Repairs the caster's own", "Gear. Original: checks the", "first member's Gear."}};
 		inline constexpr FRow NamesEndingInS{"Names ending in s", {"Names keep their final s.", "Original: it is cut off, so", "Crescens shows as Crescen."}};
+		inline constexpr FRow MemberChangeEp{"EP in Member Change", {"Member Change shows EP, as", "every other screen does.", "Original: it shows MP."}};
+		inline constexpr FRow ShopPointer{"Shop pointer", {"The pointer at Buy, Sell and", "Exit sits beside the words.", "Original: it covers them."}};
 		inline constexpr FRow GearShopParts{"Gear shop parts", {"The Gear shop counts every", "part's bonus. Original: it", "skips some for a while."}};
 		inline constexpr FRow GearShopPace{"Gear shop pace", {"The Gear in the shop turns", "at the normal pace. Original:", "three times faster."}};
 		inline constexpr FRow SellingEquipped{"Selling equipped items", {"Selling worn equipment", "updates stats right away.", "Original: only later."}};
@@ -185,6 +257,8 @@ namespace Weltall::OptionsText
 		inline constexpr FRow LargeGearNumbers{"Large Gear numbers", {"Damage and healing on Gears", "past 65,535 stay correct.", "Original: they wrap around."}};
 		inline constexpr FRow Counters{"Counters", {"A counter no longer stops a", "group attack or hits other", "enemies. Original: it can."}};
 		inline constexpr FRow LastBossHp{"Last boss's HP", {"The final form has the HP its", "script gives it. Original:", "slightly less."}};
+		inline constexpr FRow DeusFirstFight{"Deus's first fight", {"Deus's attack on one Gear", "can't freeze the game.", "Original: it can, at times."}};
+		inline constexpr FRow EtherGuns{"Billy's ether guns", {"Ether guns fire the element", "of the ammo loaded. Original:", "always wind and fire."}};
 		inline constexpr FRow HiddenEnemies{"Hidden enemies", {"An enemy that reveals itself", "keeps its group working.", "Original: the group breaks."}};
 		inline constexpr FRow WeaponTrails{"Weapon trails", {"Weapon trails blend with the", "scene. Original: they cover", "what is behind them."}};
 		inline constexpr FRow SpellLighting{"Spell lighting", {"Spells with no lighting of", "their own use the stage's.", "Original: whatever was last."}};
@@ -316,10 +390,10 @@ namespace Weltall::OptionsText
 		/** The disc asked for is still not where the game looks for it. */
 		inline constexpr std::string_view NotFound = "Not found in Games.";
 
-		/** The screen shown while disc 1 is missing: what is wrong, where the discs go ("{}" the folder), what was found and what not. */
-		inline constexpr std::string_view FirstMissing = "Xenogears' first disc was not found.";
+		/** The screen shown while neither disc is there: what is wrong, where the discs go ("{}" the folder), what was found and what not. */
+		inline constexpr std::string_view Missing = "Xenogears' discs were not found.";
 		inline constexpr std::string_view WhereTheyGo = "Put your disc images of the USA release (BIN/CUE, CHD, ISO or IMG) in this folder:\n{}\n"
-														"The game starts as soon as disc 1 is there.";
+														"The game starts as soon as one is there.";
 		/** A disc found, "{}" its number then its file. */
 		inline constexpr std::string_view Found = "Found disc {}: {}";
 		inline constexpr std::string_view NotUsed = "Not used:";

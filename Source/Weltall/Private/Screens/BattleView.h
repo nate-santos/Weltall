@@ -9,6 +9,8 @@
 #include "Screens/GameScreen.h"
 
 class FBattleScreenFrame;
+class FBattleScreenWaveBuffers;
+class FBattleScreenWaveFrame;
 class FBattleTransitionFrame;
 class FFieldCoverPicture;
 class FVramTexture;
@@ -26,7 +28,8 @@ namespace Weltall
  * HUD's button pictures show the player's own buttons (Weltall::FMenuButtonIcons), as the glyph service shows them. A
  * battle first shows its transition: the picture of the screen before it broken into shards, or drawn as the mesh its
  * kind asks for. Between two of the show's frames the scene is drawn blended from the one before to the latest
- * (Weltall::BlendBattleFrames); the HUD as the latest frame has it.
+ * (Weltall::BlendBattleFrames); the HUD as the latest frame has it. While a screen wave holds the battle, the display
+ * shows the picture of the screen before it in the wave's mesh.
  */
 class FBattleView
 {
@@ -77,4 +80,8 @@ private:
 	TSharedPtr<FFieldCoverPicture> ScreenBefore;
 	mutable FBattleTransitionDrawBuilder Transition;
 	mutable TArray<TSharedRef<FBattleTransitionFrame>> TransitionFrames;
+	/** The picture of the screen before a screen wave and the wave's draw buffers, kept while it runs. */
+	TSharedPtr<FFieldCoverPicture> ScreenWave;
+	TSharedPtr<FBattleScreenWaveBuffers> WaveBuffers;
+	mutable TArray<TSharedRef<FBattleScreenWaveFrame>> WaveFrames;
 };

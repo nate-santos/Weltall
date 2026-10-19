@@ -135,11 +135,13 @@ namespace Weltall::BattlingFightOps
 	void ReadPad(FBattlingFight& Fight, FBattlingFighter& Fighter, const std::array<FBattlingPad, 2>& Pads)
 	{
 		const FBattlingPad& Pad = Pads[static_cast<std::size_t>(Fighter.SideIndex())];
-		const uint32 Held = Pad.Held;
+		const bool bAnalog = static_cast<uint32>(Pad.Type - 3) < 2;
+		// The port's stick also holds directions; an analog pad's holds none, so the bout steers by its tilt.
+		const uint32 Held = bAnalog ? Pad.Held & ~static_cast<uint32>(Pad.StickHeld) : Pad.Held;
 		const uint32 Pressed = Pad.Pressed;
 		uint8 StickX = Pad.LeftX;
 		uint8 StickY = Pad.LeftY;
-		if (static_cast<uint32>(Pad.Type - 3) >= 2)
+		if (!bAnalog)
 		{
 			StickX = Fight.Tables.DpadX[(Held >> 12) & 15];
 			StickY = Fight.Tables.DpadY[(Held >> 12) & 15];
@@ -179,7 +181,9 @@ namespace Weltall::BattlingFightOps
 		{
 			Fighter.Flags |= BattlingFlags::DashInput;
 		}
-		if ((Pressed & ButtonCross) != 0)
+		// Perfect Works' arena cancels as the guard is pressed too, and lets the queue be while it is held.
+		const bool bArena = ArenaRules(Fight);
+		if ((Pressed & (bArena ? ButtonCross | ButtonL1 : ButtonCross)) != 0)
 		{
 			QueueClear(Fighter);
 		}
@@ -191,7 +195,10 @@ namespace Weltall::BattlingFightOps
 		else
 		{
 			Fighter.Flags |= BattlingFlags::GuardInput;
-			QueueClear(Fighter);
+			if (!bArena)
+			{
+				QueueClear(Fighter);
+			}
 			Down <<= 2;
 			Fighter.Flags |= BattlingFlags::NoSteering;
 		}

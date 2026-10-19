@@ -15,6 +15,13 @@ namespace Weltall::Testing
 	 */
 	uint32 DrawBattleState(FXorShift32& G, FBattleContext& Context, FGameState& State);
 
+	/**
+	 * What the game's data guarantees and Perfect Works Build's Battles assume, drawn as the oracles' `--perfect-works`
+	 * modes draw it: every combatant's ether ammunition among the copied weapons, those weapons' attacks, and with
+	 * bWeakFuel each party gear's weak attack at 10 fuel.
+	 */
+	void DrawPerfectWorksData(FXorShift32& G, FBattleContext& Context, bool bWeakFuel);
+
 	/** The state in the order battle_scenario.digest_state takes the original's memory. */
 	void DigestBattleState(FOracleDigest& Digest, const FBattleContext& Context, const FGameState& State, const FPsxRandom& Random);
 }

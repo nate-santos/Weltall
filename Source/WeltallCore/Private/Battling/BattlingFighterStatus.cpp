@@ -1,6 +1,8 @@
 #include "BattlingFightOps.h"
 #include "BattlingMath.h"
 
+#include <algorithm>
+
 namespace Weltall::BattlingFightOps
 {
 	namespace
@@ -79,12 +81,12 @@ namespace Weltall::BattlingFightOps
 			}
 		}
 
-		void KnockDown(FBattlingFighter& Fighter, int32 Angle, int32 Shift, int32 Lift)
+		void KnockDown(FBattlingFight& Fight, FBattlingFighter& Fighter, int32 Angle, int32 Shift, int32 Lift)
 		{
 			Fighter.Animation = AnimationKnockedDown;
 			Fighter.LastAnimation = 0xFF;
 			Fighter.KnockDownTimer = KnockDownTicks;
-			Fighter.DownStun = KnockDownStun;
+			Fighter.DownStun = ArenaRules(Fight) ? int16{0} : KnockDownStun;
 			Fighter.Stun = KnockDownStun;
 			Fighter.Movement = BattlingMovement::Down;
 			Fighter.Action = BattlingAction::Free;
@@ -94,11 +96,62 @@ namespace Weltall::BattlingFightOps
 			ApplyPush(Fighter, Angle, Shift, Lift);
 		}
 
+		/**
+		 * Perfect Works' arena's push or knock-down: a hit knocks down once the knock-down stun reaches the hitter's gear's
+		 * threshold, a high hit (kind 2) too; otherwise at the fourth hit in a row (Basic's: the fifth after a swing).
+		 */
+		void ArenaHitReaction(FBattlingFight& Fight, FBattlingFighter& Fighter, uint32 Kind, int32 Angle, int32& Vibration)
+		{
+			const bool bOverThreshold = Opponent(Fight, Fighter).Stats->ArenaKnockDown <= Fighter.DownStun;
+			if (Kind == 3 || (Kind == 2 && bOverThreshold))
+			{
+				KnockDown(Fight, Fighter, Angle, 11, 0x80);
+				return;
+			}
+			if (Kind == 2)
+			{
+				StartAnimation(Fighter, AnimationHitHigh);
+				ApplyPush(Fighter, Angle, 12, 100);
+				return;
+			}
+			bool bKnockDown = bOverThreshold;
+			if (!bKnockDown)
+			{
+				if (ExpertRules(Fight))
+				{
+					bKnockDown = 3 < Fighter.HitsInRow;
+				}
+				else
+				{
+					// Basic tests the counter's low byte, and a swing's mark only where the threshold was not reached.
+					bKnockDown = (Fighter.SwingHit != 0 ? 4 : 3) < (Fighter.HitsInRow & 0xFF);
+					Fighter.SwingHit = 0;
+				}
+			}
+			if (!bKnockDown)
+			{
+				ApplyPush(Fighter, Angle, 10, Kind == 1 ? 0 : 0x1E);
+				return;
+			}
+			KnockDown(Fight, Fighter, Angle, 10, 0xA0);
+			Vibration = 15;
+			Fighter.Stun = 0;
+			if (!ExpertRules(Fight))
+			{
+				// Basic clears the counter's low byte.
+				Fighter.HitsInRow = static_cast<int16>(Fighter.HitsInRow & 0xFF00);
+			}
+		}
+
 		/** The reaction to this tick's hit: the push away from where it landed, a knock-down when it was hard enough. */
 		void HitReaction(FBattlingFight& Fight, FBattlingFighter& Fighter)
 		{
 			int32 Vibration = 4;
-			++Fighter.HitsInRow;
+			// Perfect Works' Expert arena counts the hits in a row as its projectiles land (CheckHits), not here.
+			if (!ExpertRules(Fight))
+			{
+				++Fighter.HitsInRow;
+			}
 			if (Fighter.KnockDownTimer == 0)
 			{
 				const uint32 Flags = Fighter.Flags;
@@ -136,18 +189,22 @@ namespace Weltall::BattlingFightOps
 				Angle += 0x800;
 			}
 			const uint32 Kind = static_cast<uint32>(Fighter.HitRequest - 1) & 7;
-			if (Kind == 2)
+			if (ArenaRules(Fight))
+			{
+				ArenaHitReaction(Fight, Fighter, Kind, Angle, Vibration);
+			}
+			else if (Kind == 2)
 			{
 				StartAnimation(Fighter, AnimationHitHigh);
 				ApplyPush(Fighter, Angle, 12, 100);
 			}
 			else if (Kind == 3)
 			{
-				KnockDown(Fighter, Angle, 11, 0x80);
+				KnockDown(Fight, Fighter, Angle, 11, 0x80);
 			}
 			else if (0x25 < Fighter.DownStun || 3 < Fighter.HitsInRow)
 			{
-				KnockDown(Fighter, Angle, 10, 0xA0);
+				KnockDown(Fight, Fighter, Angle, 10, 0xA0);
 				Vibration = 15;
 				Fighter.Stun = 0;
 				Fighter.DownStun = 0;
@@ -157,6 +214,33 @@ namespace Weltall::BattlingFightOps
 				ApplyPush(Fighter, Angle, 10, Kind == 1 ? 0 : 0x1E);
 			}
 			Vibrate(Fight, Fighter, Vibration);
+		}
+
+		/**
+		 * Perfect Works' arena's stuns each tick: the knock-down stun falls only while the stun is 0 (Basic's by 2; Expert's by 1,
+		 * 2 then), then the stun, capped at 15 while guarding, 20 otherwise.
+		 */
+		void TickArenaStuns(const FBattlingFight& Fight, FBattlingFighter& Fighter)
+		{
+			if (Fighter.DownStun != 0)
+			{
+				const int32 Fall = ExpertRules(Fight) ? 1 + (Fighter.Stun == 0 ? 1 : 0) : (Fighter.Stun == 0 ? 2 : 0);
+				Fighter.DownStun = static_cast<int16>(std::max(Fighter.DownStun - Fall, 0));
+			}
+			if (Fighter.Stun == 0)
+			{
+				Fighter.Flags &= ~BattlingFlags::RestartAnimation;
+				return;
+			}
+			const int32 Cap = (Fighter.Flags & BattlingFlags::GuardActive) != 0 ? 15 : 20;
+			Fighter.Stun = std::min(Fighter.Stun, Cap) - 1;
+		}
+
+		/** The power of the chain state's move: its strength, by the gear's percentage but in Perfect Works' arena. */
+		int32 AttackPower(const FBattlingFight& Fight, const FBattlingFighter& Fighter)
+		{
+			const int32 Strength = Fighter.Stats->StrengthOfState(Fighter.Chain);
+			return ArenaRules(Fight) ? Strength : Strength * Fighter.Stats->Power / 100;
 		}
 
 		/** The chain moves on by the attack (A or B) and the move of its new state starts, on the ground. */
@@ -171,7 +255,7 @@ namespace Weltall::BattlingFightOps
 			const FBattlingMove& Move = Fighter.File->Moves[Fighter.Chain];
 			if (Move.Animation == 0)
 			{
-				Fighter.Cooldown = AttackCooldown;
+				Fighter.Cooldown = ArenaRules(Fight) ? int16{0} : AttackCooldown;
 				QueueClear(Fighter);
 				return;
 			}
@@ -181,7 +265,7 @@ namespace Weltall::BattlingFightOps
 			bLunge = Move.Lunge != 0;
 			Fighter.Action = BattlingAction::Attacking;
 			Fighter.MoveState = static_cast<int8>(Fighter.Chain);
-			Fighter.AttackPower = Fighter.Stats->StrengthOfState(Fighter.Chain) * Fighter.Stats->Power / 100;
+			Fighter.AttackPower = AttackPower(Fight, Fighter);
 		}
 	}
 
@@ -237,7 +321,8 @@ namespace Weltall::BattlingFightOps
 		{
 			return true;
 		}
-		const int32 Damage = (Total - MaximumHeat) / OverheatDivisor;
+		// Perfect Works' arena takes the excess's 3/64 (/ 21 1/3).
+		const int32 Damage = ArenaRules(Fight) ? (Total - MaximumHeat) * 3 / 64 : (Total - MaximumHeat) / OverheatDivisor;
 		if (Fighter.Hp <= Damage)
 		{
 			Fighter.Heat = static_cast<int16>(Total - Heat);
@@ -322,7 +407,7 @@ namespace Weltall::BattlingFightOps
 		{
 			FBattlingPracticeInfo& Info = Fight.Practice[static_cast<std::size_t>(Fighter.SideIndex())];
 			Info.Move = Fighter.Chain;
-			Info.Power = static_cast<uint8>(Fighter.Stats->StrengthOfState(Fighter.Chain) * Fighter.Stats->Power / 100);
+			Info.Power = static_cast<uint8>(AttackPower(Fight, Fighter));
 		}
 	}
 
@@ -336,21 +421,28 @@ namespace Weltall::BattlingFightOps
 		{
 			return;
 		}
-		if (Fighter.Stun > 20)
+		if (ArenaRules(Fight))
 		{
-			Fighter.Stun = 20;
-		}
-		if (Fighter.Stun == 0)
-		{
-			Fighter.Flags &= ~BattlingFlags::RestartAnimation;
+			TickArenaStuns(Fight, Fighter);
 		}
 		else
 		{
-			--Fighter.Stun;
-		}
-		if (Fighter.DownStun != 0)
-		{
-			--Fighter.DownStun;
+			if (Fighter.Stun > 20)
+			{
+				Fighter.Stun = 20;
+			}
+			if (Fighter.Stun == 0)
+			{
+				Fighter.Flags &= ~BattlingFlags::RestartAnimation;
+			}
+			else
+			{
+				--Fighter.Stun;
+			}
+			if (Fighter.DownStun != 0)
+			{
+				--Fighter.DownStun;
+			}
 		}
 		if (Fighter.Cooldown != 0)
 		{
@@ -381,7 +473,15 @@ namespace Weltall::BattlingFightOps
 		{
 			--Fighter.KnockDownTimer;
 		}
-		if (Fighter.Heat != 0)
+		if (Fighter.Heat != 0 && ArenaRules(Fight))
+		{
+			// Perfect Works' arena: 6 moving, 8 standing; 1 more on sand, 1 less in water but for a desert gear.
+			const EBattlingGround Ground = Fighter.Ground();
+			const int32 Terrain = Ground == EBattlingGround::Sand ? 1 : (Ground == EBattlingGround::Water && (Fighter.Kind & 4) == 0 ? -1 : 0);
+			const int16 Cooled = static_cast<int16>(Fighter.Heat - Terrain - ((Fighter.Movement & BattlingMovement::Moving) != 0 ? 6 : 8));
+			Fighter.Heat = Cooled < 0 ? static_cast<int16>(0) : Cooled;
+		}
+		else if (Fighter.Heat != 0)
 		{
 			int16 Cooled = static_cast<int16>(Fighter.Heat - 8);
 			if ((Fighter.Movement & BattlingMovement::Moving) != 0)
@@ -655,7 +755,9 @@ namespace Weltall::BattlingFightOps
 			break;
 		}
 
-		Fighter.GroundSpeed = Fighter.Stick * static_cast<int16>(Fighter.MoveScale) * static_cast<int16>(Fighter.SpeedScale) >> 16;
+		// Perfect Works' arena runs by the gear table's speed scale, not the one the motion speed scales.
+		const int16 RunScale = ArenaRules(Fight) ? Fighter.RunScale : static_cast<int16>(Fighter.SpeedScale);
+		Fighter.GroundSpeed = Fighter.Stick * static_cast<int16>(Fighter.MoveScale) * RunScale >> 16;
 		if ((Fighter.Flags & BattlingFlags::DashInput) == 0)
 		{
 			Fighter.Flags2 &= ~BattlingFlags2::DashRefused;
@@ -663,7 +765,7 @@ namespace Weltall::BattlingFightOps
 		if ((Fighter.Flags & BattlingFlags::DashInput) != 0 && Fighter.Action == BattlingAction::Free && (Fighter.Flags2 & BattlingFlags2::DashRefused) == 0
 			&& 0x30 < Fighter.GroundSpeed && 1u < static_cast<uint32>(Fighter.Movement - 2))
 		{
-			if (HeatAdd(Fight, Fighter, DashHeat, 2))
+			if (HeatAdd(Fight, Fighter, ArenaRules(Fight) ? Fighter.DashHeat : DashHeat, 2))
 			{
 				Fighter.GroundSpeed <<= 1;
 				Fighter.SpeedBonus = static_cast<uint8>(Fighter.SpeedBonus << 1);
@@ -696,6 +798,19 @@ namespace Weltall::BattlingFightOps
 		Fighter.DrawnHp = FullHp;
 		Fighter.MaxHp = FullHp;
 		Fighter.EtherHeat = EtherBulletHeat;
+		if (ArenaRules(Fight))
+		{
+			// Perfect Works' arena: each gear's own HP, Ether heat, stick, running speed and dash heat.
+			const FBattlingGearStats& Stats = *Fighter.Stats;
+			Fighter.Acceleration = Stats.ArenaAcceleration;
+			Fighter.Deceleration = Stats.ArenaDeceleration;
+			Fighter.Hp = Stats.ArenaHp;
+			Fighter.DrawnHp = Stats.ArenaHp;
+			Fighter.MaxHp = Stats.ArenaHp;
+			Fighter.EtherHeat = static_cast<int16>(Stats.ArenaEtherHeat * 8);
+			Fighter.RunScale = Stats.Power;
+			Fighter.DashHeat = Stats.ArenaDashHeat;
+		}
 		Fighter.GaugeFlash = 0xF0;
 		Fighter.Yaw = 0;
 		Fighter.Movement = 0;
@@ -704,7 +819,8 @@ namespace Weltall::BattlingFightOps
 		Fighter.OverheatDamage = 0;
 		Fighter.AlarmTimer = 0;
 		Fighter.HpGauge = 0x7F;
-		Fighter.PreviousHpGauge = 0x7F;
+		// Perfect Works' arena writes the two gauges as one halfword.
+		Fighter.PreviousHpGauge = ArenaRules(Fight) ? uint8{0} : uint8{0x7F};
 		Fighter.Damage = 0;
 		Fighter.Chain = 0;
 		Fighter.Stun = 0;

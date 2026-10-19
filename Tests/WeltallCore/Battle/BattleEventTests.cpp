@@ -51,12 +51,14 @@ namespace
 		std::vector<uint8> Script;
 		int32 Frames = 0;
 
-		explicit FEventBattle(std::vector<uint8> InScript, const FBattleEventOptions& Options = FBattleEventOptions::Original()) : Script(std::move(InScript))
+		explicit FEventBattle(std::vector<uint8> InScript, const FBattleEventOptions& Options = FBattleEventOptions::Original(),
+			EBattleMessageLayout Layout = EBattleMessageLayout::Original)
+			: Script(std::move(InScript))
 		{
 			Context->GameState = &State;
 			Context->Random = &Random;
 			Context->EventOptions = Options;
-			BeginBattleEvent(*Context, Script, OneMessage);
+			BeginBattleEvent(*Context, Script, OneMessage, Layout);
 			Finish();
 		}
 
@@ -91,6 +93,65 @@ namespace
 			 0x0D, 0x0C, 0x00, 0x00,
 			 0x22, 0x00});
 	}
+}
+
+namespace
+{
+	/**
+	 * Actor 0: SetWindow (its operands literals) at the automatic place, 12 wide and 6 lines with style 0, ShowMessage 0
+	 * with Portrait, Return, End.
+	 */
+	std::vector<uint8> WindowThenMessage(uint8 Portrait)
+	{
+		return MakeScript({{0x0000}},
+			{0x1A, 0x00, 0x80, 0x00, 0x80, 0x0C, 0x80, 0x06, 0x80, 0x00, 0x80,
+			 0x19, Portrait, 0x00, 0x00, 0x00,
+			 0x22, 0x00});
+	}
+
+	/** The event's run until its message's text is made (as its window has grown), at most a second. */
+	const FBattleEventWork& RunToMessage(FEventBattle& Battle)
+	{
+		BeginBattleEventRun(*Battle.Context);
+		for (int32 Frame = 0; Frame < 60 && !Battle.Context->Event.bMessageShown && StepBattleEvent(*Battle.Context); ++Frame)
+		{
+		}
+		REQUIRE(Battle.Context->Fault == EBattleFault::None);
+		REQUIRE(Battle.Context->Event.bMessageShown);
+		return Battle.Context->Event;
+	}
+}
+
+TEST_CASE("A battle event's message window counts its width in letters and its text window keeps the lines asked for", "[Battle]")
+{
+	FEventBattle Battle(WindowThenMessage(0xFF));
+	const FBattleEventWork& Event = RunToMessage(Battle);
+	// 12 letters of 12 pixels and the window's 24 pixels of edges, centred: 160 - 84, and the text 12 pixels in.
+	CHECK(Event.TextX == 88u);
+	CHECK(Event.Text->WidthUnits() == 12 * 3 + 1);
+	CHECK(Event.Text->Lines() == 6);
+	CHECK(Event.Window.Lines == 6);
+}
+
+TEST_CASE("With Perfect Works' scripts a message window counts its width in 4-pixel columns", "[Battle]")
+{
+	FEventBattle Battle(WindowThenMessage(0xFF), FBattleEventOptions::Original(), EBattleMessageLayout::PerfectWorks);
+	const FBattleEventWork& Event = RunToMessage(Battle);
+	// 12 columns of 4 pixels: 160 - 36, and the text 12 pixels in.
+	CHECK(Event.TextX == 136u);
+	CHECK(Event.Text->WidthUnits() == 12 + 1);
+	CHECK(Event.Text->Lines() == 6);
+}
+
+TEST_CASE("With Perfect Works' scripts a message beside a portrait has 4 lines", "[Battle]")
+{
+	FEventBattle Battle(WindowThenMessage(0), FBattleEventOptions::Original(), EBattleMessageLayout::PerfectWorks);
+	const FBattleEventWork& Event = RunToMessage(Battle);
+	// The portrait's 64 pixels widen the centred window (160 - 68), and the text starts past it and 12 pixels in.
+	CHECK(Event.TextX == 168u);
+	CHECK(Event.Text->Lines() == 4);
+	CHECK(Event.Window.Lines == 4);
+	CHECK(Event.bPortraitShown);
 }
 
 TEST_CASE("A waited start of a script the actor has just started on another actor is skipped in the original", "[Battle]")

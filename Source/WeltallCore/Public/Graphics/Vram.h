@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Graphics/VramRect.h"
+#include "Graphics/VramUploads.h"
 
 #include <array>
 #include <cstddef>
@@ -12,17 +14,6 @@
 
 namespace Weltall
 {
-	/** A rectangle in the PlayStation's VRAM, measured in 16-bit units. */
-	struct FVramRect
-	{
-		int16 X = 0;
-		int16 Y = 0;
-		int16 Width = 0;
-		int16 Height = 0;
-
-		bool operator==(const FVramRect&) const = default;
-	};
-
 	/**
 	 * What an uploaded image is when it is one picture, as a TIM describes it: the depth its texels are read at (an
 	 * ETextureDepth) and, for an indexed one, the colours it comes with.
@@ -107,6 +98,12 @@ namespace Weltall
 		/** Copies an image in; like the GPU's transfers, a rectangle that crosses an edge wraps around. */
 		WELTALLCORE_API void Upload(const FVramImage& Image);
 
+		/** As Upload, for the console's MoveImage: Image holds the units read from From, and the uploads under From come with them. */
+		WELTALLCORE_API void UploadCopy(const FVramImage& Image, const FVramRect& From);
+
+		/** As Upload, for the console's fills (ClearImage): the units are no upload's. */
+		WELTALLCORE_API void UploadFill(const FVramImage& Image);
+
 		/**
 		 * Copies an image into the port's rows, its rectangle's y counted from the top of the console's (so from
 		 * Height): what lies above or below them is left out, and only its columns wrap.
@@ -174,7 +171,15 @@ namespace Weltall
 		/** The pictures uploaded into the console's rows that nothing has been uploaded over since. */
 		std::span<const FVramPicture> Pictures() const { return PictureList; }
 
+		/** Which upload each part of the console's rows holds, as Beetle PSX HW's texture tracker keeps it (FVramUploadTracker). */
+		std::span<const FVramUploadPart> UploadParts() const { return Tracker.Parts(); }
+
+		/** StoreImage: the uploads under the rectangle are kept with its units, to come back if the same units are uploaded to it again. */
+		WELTALLCORE_API void NoteReadback(const FVramRect& Rect);
+
 	private:
+		void WriteUnits(const FVramImage& Image);
+
 		std::vector<uint16> Units;
 		std::vector<uint8> Edges;
 		uint32 Uploads = 0;
@@ -184,6 +189,7 @@ namespace Weltall
 		bool bTrackingWrites = false;
 		std::vector<FVramRect> Writes;
 		std::vector<FVramPicture> PictureList;
+		FVramUploadTracker Tracker;
 	};
 
 	static_assert(std::tuple_size_v<FVramTiles> == FVram::TilesDown && FVram::TilesAcross == 64, "a tile row's bits fill an entry");

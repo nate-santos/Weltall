@@ -5,6 +5,7 @@
 #include "Battle/Show/BattleShowFrame.h"
 #include "BattleObjectsDraw.h"
 #include "FieldDrawBuilder.h"
+#include "Graphics/Texture.h"
 #include "Menu/MenuDrawing.h"
 #include "Presentation/DrawList.h"
 #include "Presentation/ScreenLayout.h"
@@ -544,9 +545,9 @@ namespace
 		Draw.Background = FLinearColor::Black;
 		if (Frame.bCleared)
 		{
-			const std::array<float, 3> Clear = Blend != nullptr
-				? Blend->ClearColor
-				: std::array<float, 3>{static_cast<float>(Frame.ClearColor[0]), static_cast<float>(Frame.ClearColor[1]), static_cast<float>(Frame.ClearColor[2])};
+			const std::array<float, 3> Clear = Blend != nullptr ? Blend->ClearColor
+				: std::array<float, 3>{static_cast<float>(Weltall::FilledChannel(Frame.ClearColor[0])), static_cast<float>(Weltall::FilledChannel(Frame.ClearColor[1])),
+					static_cast<float>(Weltall::FilledChannel(Frame.ClearColor[2]))};
 			Draw.Background = FLinearColor(Clear[0] / 255.0f, Clear[1] / 255.0f, Clear[2] / 255.0f);
 		}
 		Draw.Filter = Options.Filter;
@@ -614,18 +615,22 @@ namespace
 		}
 	}
 
-	/** The frame's fade layer, when it links one, as a primitive over the whole screen and past its edges. */
-	void BuildBattleFade(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, Weltall::FDrawList& Fade)
+	/** The frame's fade layer, when it links one, as a primitive over the whole screen and past its edges; an effect's flash as the player has them. */
+	void BuildBattleFade(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, Weltall::EBattleFlashes Flashes, Weltall::FDrawList& Fade)
 	{
 		Fade.Primitives.clear();
+		const float Share = Weltall::DrawnFadeShare(Frame.Fade, Flashes);
 		for (const Weltall::FBattleShowLink& Link : Frame.Order)
 		{
 			if (Link.Kind != Weltall::EBattleShowLink::Fade)
 			{
 				continue;
 			}
-			const auto Channel = [&Frame, Blend](std::size_t At)
-			{ return Blend != nullptr ? static_cast<uint8>(FMath::RoundToInt(Blend->FadeColor[At])) : Frame.Fade.Color[At]; };
+			const auto Channel = [&Frame, Blend, Share](std::size_t At)
+			{
+				const float Value = Blend != nullptr ? Blend->FadeColor[At] : static_cast<float>(Frame.Fade.Color[At]);
+				return static_cast<uint8>(FMath::RoundToInt(Value * Share));
+			};
 			const Weltall::FDrawColor Color{Channel(0), Channel(1), Channel(2)};
 			Weltall::FDrawPrimitive Tile = Weltall::MakeGouraudRect(BattleFadeTile, {Color, Color, Color, Color});
 			Tile.bGouraud = false;
@@ -639,7 +644,7 @@ namespace
 void BuildBattleFrameDraw(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, const FFieldRenderOptions& Options, FBattleFrameDraw& Draw)
 {
 	BuildBattleDraw(Frame, Blend, Options, BattleSceneLinks(Frame), Options.Sorting != EFieldSorting::PaintersOrder, Draw.Scene);
-	BuildBattleFade(Frame, Blend, Draw.Fade);
+	BuildBattleFade(Frame, Blend, Options.BattleFlashes, Draw.Fade);
 	// A layer has no depth: over it, the table's order alone.
 	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, false), false, Draw.OverFade);
 	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, true), false, Draw.OverHud);

@@ -9,6 +9,7 @@
 #include "FieldScreenFrame.h"
 #include "Game/BattleGameProgram.h"
 #include "Rendering/BattleRendering.h"
+#include "Rendering/BattleScreenWaveRendering.h"
 #include "Rendering/BattleTransitionRendering.h"
 #include "Rendering/SharedRenderResource.h"
 #include "Rendering/VramTexture.h"
@@ -49,6 +50,20 @@ public:
 	TSharedPtr<FFieldCoverPicture> Picture;
 };
 
+/** A displayed frame of the screen wave: the picture of the screen before it, in the wave's mesh over the frames before. */
+class FBattleScreenWaveFrame final : public IScreenFrame
+{
+public:
+	virtual void AddPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Output, const FIntRect& Area) const override
+	{
+		Buffers->AddPasses(GraphBuilder, Picture->Texture(GraphBuilder, Area.Size()), Draw, Output, Area);
+	}
+
+	FBattleScreenWaveDraw Draw;
+	TSharedPtr<FFieldCoverPicture> Picture;
+	TSharedPtr<FBattleScreenWaveBuffers> Buffers;
+};
+
 FBattleView::FBattleView(const FFieldRenderOptions& InOptions)
 	: Options(InOptions), Vram(ShareRenderResource(new FVramTexture())), NoMesh(MakeShared<const FFieldSceneMesh>(Weltall::FFieldScene{})),
 	  IconVram(ShareRenderResource(new FVramTexture()))
@@ -77,6 +92,21 @@ void FBattleView::Follow(const Weltall::FBattleGameProgram& Program, bool bNewPr
 	{
 		return;
 	}
+	if (Presentation.Show.ScreenWave().IsRunning())
+	{
+		// The wave's frames show only the picture of the screen before it, drawn from VRAM as it was: the capture the wave
+		// stored over the effects' VRAM is followed once it is over, and the frame after it is not blended from the one before.
+		bKept = false;
+		if (!ScreenWave.IsValid())
+		{
+			ScreenWave = FFieldCoverPicture::Make(Shown);
+			WaveBuffers = FBattleScreenWaveBuffers::Make();
+		}
+		return;
+	}
+	ScreenWave.Reset();
+	WaveBuffers.Reset();
+	WaveFrames.Reset();
 	const Weltall::FBattleShowFrame& Frame = Presentation.Show.Frame();
 	if (Frame.Vram != nullptr)
 	{
@@ -96,7 +126,7 @@ TSharedPtr<const IScreenFrame> FBattleView::Capture(const Weltall::FBattleGamePr
 {
 	const Weltall::FBattleRuntime& Runtime = Program.Runtime();
 	const Weltall::FBattleDefaultTransition* Shatter = Runtime.DefaultTransition();
-	const Weltall::FBattleSetupMesh* Mesh = Runtime.SetupTransition();
+	const Weltall::FBattleScreenMesh* Mesh = Runtime.SetupTransition();
 	if (Shatter != nullptr || Mesh != nullptr)
 	{
 		TSharedRef<FBattleTransitionFrame>* Free =
@@ -117,6 +147,16 @@ TSharedPtr<const IScreenFrame> FBattleView::Capture(const Weltall::FBattleGamePr
 	if (!Presentation.HasBegun())
 	{
 		return nullptr;
+	}
+	if (ScreenWave.IsValid() && Presentation.Show.ScreenWave().IsRunning())
+	{
+		TSharedRef<FBattleScreenWaveFrame>* FreeWave =
+			WaveFrames.FindByPredicate([](const TSharedRef<FBattleScreenWaveFrame>& Candidate) { return Candidate.IsUnique(); });
+		TSharedRef<FBattleScreenWaveFrame> Next = FreeWave != nullptr ? *FreeWave : WaveFrames.Add_GetRef(MakeShared<FBattleScreenWaveFrame>());
+		Next->Draw = BattleScreenWaveDraw(Presentation.Show.ScreenWave(), Alpha);
+		Next->Picture = ScreenWave;
+		Next->Buffers = WaveBuffers;
+		return Next;
 	}
 	const Weltall::FBattleShowFrame& Frame = Presentation.Show.Frame();
 	TSharedRef<FBattleScreenFrame>* Free = DisplayFrames.FindByPredicate([](const TSharedRef<FBattleScreenFrame>& Candidate) { return Candidate.IsUnique(); });
@@ -141,7 +181,8 @@ TSharedPtr<const IScreenFrame> FBattleView::Capture(const Weltall::FBattleGamePr
 	if (Frame.Vram != nullptr)
 	{
 		FollowTextureModSources(*Vram, *Frame.Vram, nullptr, {&Next->Draw.Scene, &Next->Draw.OverFade, &Next->Draw.OverHud}, {&Next->Draw.Fade, &Next->Draw.Hud},
-			Frame.Objects != nullptr ? std::span<const Weltall::FTexturePictureSeed>(Frame.Objects->TextureSeeds) : std::span<const Weltall::FTexturePictureSeed>());
+			Frame.Objects != nullptr ? std::span<const Weltall::FTexturePictureSeed>(Frame.Objects->TextureSeeds) : std::span<const Weltall::FTexturePictureSeed>(),
+			Program.HudTextureRegions());
 	}
 	return Next;
 }

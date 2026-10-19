@@ -139,3 +139,17 @@ TEST_CASE("Selling a worn accessory recomputes its wearer, or in the original le
 	CHECK(std::ranges::equal(Recomputed.Game.Block(), Expected.Block()));
 	CHECK_FALSE(std::ranges::equal(Kept.Game.Block(), Expected.Block()));
 }
+
+TEST_CASE("The shop's pointer at Buy, Sell and Exit sits beside their words with the fix, over them as the original draws it", "[Content][Menu]")
+{
+	// The arc shown with Buy chosen, then Sell.
+	FMenuScenario Scenario{"shop_pointer", EMenuMode::Shop, 3, {{0, 40}, {Down, 2}, {0, 20}}, 70};
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const FMenuRun Original = RunMenuScenario(*Disc, Scenario);
+	Scenario.Options.bShopPointerBesideWords = true;
+	const FMenuRun Fixed = RunMenuScenario(*Disc, Scenario);
+	REQUIRE(Original.Frames.size() == Fixed.Frames.size());
+	CHECK(Original.Frames.front() == Fixed.Frames.front());
+	CHECK(Original.Frames != Fixed.Frames);
+	CHECK(Original.Leaves == Fixed.Leaves);
+}

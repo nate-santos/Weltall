@@ -26,9 +26,11 @@ namespace Weltall
 		int32 Remaining = 0;
 		/** System commands 5A and 59: new fades are refused, or allowed again. */
 		bool bBlocked = false;
+		/** The last fade started was an effect's (its script's command CAh), not the battle's own. */
+		bool bFromEffect = false;
 
 		/** A fade's start: a new target from the colour shown now; nothing while fades are blocked. */
-		WELTALLCORE_API void Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue);
+		WELTALLCORE_API void Start(int32 Steps, int32 BlendMode, uint8 Red, uint8 Green, uint8 Blue, bool bEffect = false);
 		/** One step of its task. */
 		WELTALLCORE_API void Step();
 		/** The mode a script's fade takes when it names none: the current fade's, or 1 without one. */

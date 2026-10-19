@@ -145,11 +145,12 @@ bool FRenderStaging::Parse(const FString& Params, FRenderStaging& Staging)
 		Staging.bRisingParty = State == TEXT("Rising");
 		Staging.bStrongParty = Staging.bRisingParty || State == TEXT("Strong");
 	}
-	// The world map's own screen takes -Party for the party it starts with.
+	// The world map's own screen takes -Party for the party it starts with. Its dash keeps a setting's key ending in "party"
+	// (-Setting=...rebalanced_party=true) from reading as the option.
 	FString Screen;
 	FParse::Value(*Params, TEXT("Screen="), Screen);
 	FString Party;
-	if (Screen != TEXT("WorldMap") && FParse::Value(*Params, TEXT("Party="), Party, false))
+	if (Screen != TEXT("WorldMap") && FParse::Value(*Params, TEXT("-Party="), Party, false))
 	{
 		TArray<FString> Parts;
 		Party.ParseIntoArray(Parts, TEXT(","));
@@ -258,6 +259,7 @@ bool FRenderStaging::Parse(const FString& Params, FRenderStaging& Staging)
 		}
 		Staging.bKeys = true;
 	}
+	Staging.bMenuAssets = FParse::Param(*Params, TEXT("MenuAssets"));
 	FString Saves;
 	if (FParse::Value(*Params, TEXT("Saves="), Saves, false))
 	{
@@ -308,8 +310,9 @@ bool FRenderStaging::Parse(const FString& Params, FRenderStaging& Staging)
 		}
 		FParse::Value(*Params, TEXT("LeaderAtTime="), Staging.LeaderAtTime);
 	}
+	// With its dash: the setting mods.perfect_works.arena would match the bare name.
 	FString Arena;
-	if (FParse::Value(*Params, TEXT("Arena="), Arena, false))
+	if (FParse::Value(*Params, TEXT("-Arena="), Arena, false))
 	{
 		TArray<FString> Parts;
 		Arena.ParseIntoArray(Parts, TEXT(","));
@@ -324,7 +327,7 @@ bool FRenderStaging::Parse(const FString& Params, FRenderStaging& Staging)
 			Match[static_cast<std::size_t>(Byte)] = static_cast<uint8>(FCString::Atoi(*Parts[Byte]));
 		}
 		Staging.Arena = Match;
-		FParse::Value(*Params, TEXT("ArenaAt="), Staging.ArenaAt);
+		FParse::Value(*Params, TEXT("-ArenaAt="), Staging.ArenaAt);
 	}
 	return true;
 }
@@ -344,6 +347,10 @@ void FRenderStaging::Begin(FGameLoopScreen& Screen)
 	{
 		Keys.Set = Glyphs.Set;
 		Screen.SetMenuKeys(&Keys);
+	}
+	if (bMenuAssets)
+	{
+		Screen.SetMenuAssets(&Assets);
 	}
 	if (Weltall::FGameState* State = Screen.GameState(); State != nullptr && bFullState)
 	{

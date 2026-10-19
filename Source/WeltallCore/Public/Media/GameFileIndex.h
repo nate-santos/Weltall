@@ -3,6 +3,7 @@
 #include "Foundation/Result.h"
 #include "Foundation/Types.h"
 #include "Media/CdImage.h"
+#include "Media/MovieSubtitles.h"
 #include "Media/PsxExecutable.h"
 
 #include <array>
@@ -49,10 +50,14 @@ namespace Weltall
 		/** Record's name, or none for a record before every directory's start. */
 		WELTALLCORE_API std::optional<FFileName> NameOf(std::size_t Record) const;
 
+		/** The movie subtitles the supported undub keeps in the index's spare space; none on other discs. */
+		const FMovieSubtitleTable& MovieSubtitles() const { return Subtitles; }
+
 	private:
 		std::vector<FIndexRecord> AllRecords;
 		/** 1-based record numbers; 0 and FFFFh mean no directory. */
 		std::array<uint16, DirectoryCount> DirectoryStarts{};
+		FMovieSubtitleTable Subtitles;
 	};
 
 	/**
@@ -61,4 +66,7 @@ namespace Weltall
 	 * Size of them.
 	 */
 	WELTALLCORE_API TResult<std::vector<uint8>> ReadFileSectors(const FCdImage& Image, const FIndexRecord& Record);
+
+	/** A file's own bytes: the disc's to the size its record gives, a mod's to its own (which may be longer). */
+	WELTALLCORE_API TResult<std::vector<uint8>> ReadFileBytes(const FCdImage& Image, const FIndexRecord& Record);
 }

@@ -13,6 +13,7 @@
 #include <catch_amalgamated.hpp>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace Weltall;
@@ -203,6 +204,31 @@ TEST_CASE("The gear shop fits a frame without repairing and sums the parts by it
 	CHECK_FALSE(ApplyGearParts(State, 0, *Tables, 0xFF, EGearPartsCopy::Menu));
 }
 
+// Perfect Works Build's parts keep their defenses as words at +0Ch and +0Eh; under its rebalance both copies read them so, and
+// the original's rules read the bytes +0Dh and +0Eh (400 as 1, 300 as 44).
+TEST_CASE("The gear shop's copy reads Perfect Works Build's part defenses as the Menu's does", "[Game]")
+{
+	std::vector<uint8> Parts(2 * FGearPartTables::PartSize, 0);
+	LittleEndian::WriteU16(Parts, FGearPartTables::PartSize + 0x0C, 400);
+	LittleEndian::WriteU16(Parts, FGearPartTables::PartSize + 0x0E, 300);
+	auto Tables = FGearPartTables::Make(std::vector<uint8>(2 * FGearPartTables::FrameSize, 0), std::vector<uint8>(2 * FGearPartTables::ArmorSize, 0),
+		std::vector<uint8>(2 * FGearPartTables::EngineSize, 0), std::move(Parts), {});
+	REQUIRE(Tables);
+	FGameState State;
+	Build(State, 0, {1, 0, 0});
+	const std::span<uint8> Record = Gear(State, 0);
+	const auto Defenses = [&](EGearPartsCopy Copy)
+	{
+		REQUIRE(ApplyGearParts(State, 0, *Tables, 3, Copy));
+		return std::pair{LittleEndian::ReadU16(Record, 0x40), LittleEndian::ReadU16(Record, 0x42)};
+	};
+	Tables->SetPerfectWorksRules(true);
+	CHECK(Defenses(EGearPartsCopy::GearShop) == std::pair{uint16{400}, uint16{300}});
+	CHECK(Defenses(EGearPartsCopy::Menu) == std::pair{uint16{400}, uint16{300}});
+	Tables->SetPerfectWorksRules(false);
+	CHECK(Defenses(EGearPartsCopy::GearShop) == std::pair{uint16{1}, uint16{44}});
+}
+
 TEST_CASE("A gear naming a record the tables lack is left as it is", "[Game]")
 {
 	const FGearPartTables Tables = MakeTables();
@@ -219,52 +245,62 @@ TEST_CASE("A gear naming a record the tables lack is left as it is", "[Game]")
 	CHECK_FALSE(FGearPartTables::Make({}, {}, {}, {}, {52}));
 }
 
+namespace
+{
+	/** The recompute's four functions run on the oracle's random tables and states, each one's digest. */
+	std::array<std::string, 4> RecomputeDigests(bool bPerfectWorksRules)
+	{
+		using FApply = bool (*)(FGameState&, int32, const FGearPartTables&);
+		const std::array<FApply, 4> Functions{&ApplyGearFrame, &ApplyGearArmor, &ApplyGearEngine, &ApplyGearParts};
+		constexpr std::size_t Records = 256;
+		constexpr int32 CasesPerFunction = 200;
+		Testing::FXorShift32 Random(0x5A7E1D0C);
+		std::vector<uint8> Frames = RandomBytes(Random, Records * FGearPartTables::FrameSize);
+		std::vector<uint8> Armors = RandomBytes(Random, Records * FGearPartTables::ArmorSize);
+		std::vector<uint8> Engines = RandomBytes(Random, Records * FGearPartTables::EngineSize);
+		std::vector<uint8> Parts = RandomBytes(Random, Records * FGearPartTables::PartSize);
+		for (std::size_t Record = 0; Record < Records; ++Record)
+		{
+			Parts[Record * FGearPartTables::PartSize + 0x15] = static_cast<uint8>(Random.Next() % 13);
+		}
+		std::array<uint8, FGearPartTables::GearCount> Pilots;
+		for (uint8& Pilot : Pilots)
+		{
+			Pilot = static_cast<uint8>(Random.Next() % 16);
+		}
+		auto Tables = FGearPartTables::Make(std::move(Frames), std::move(Armors), std::move(Engines), std::move(Parts), Pilots);
+		REQUIRE(Tables);
+		Tables->SetPerfectWorksRules(bPerfectWorksRules);
+		std::array<std::string, 4> Digests;
+		for (std::size_t Function = 0; Function < Functions.size(); ++Function)
+		{
+			FSha1 Digest;
+			for (int32 Index = 0; Index < CasesPerFunction; ++Index)
+			{
+				FGameState State;
+				const std::vector<uint8> Block = RandomBytes(Random, FGameState::BlockSize);
+				std::copy(Block.begin(), Block.end(), State.Block().begin());
+				REQUIRE(Functions[Function](State, static_cast<int32>(Random.Next() % FGearPartTables::GearCount), *Tables));
+				Digest.Update(State.Block());
+			}
+			Digests[Function] = FSha1::ToHex(Digest.Finish());
+		}
+		return Digests;
+	}
+}
+
+// From the original functions under the oracle harness (save_digests), drawing the same cases.
 TEST_CASE("The gear recompute leaves what the Menu's own leaves on random parts and states", "[Game]")
 {
-	using FApply = bool (*)(FGameState&, int32, const FGearPartTables&);
-	struct FCase
-	{
-		FApply Apply;
-		const char* Digest;
-	};
-	// From the original functions under the oracle harness, drawing the same cases.
-	const std::array<FCase, 4> Cases{{
-		{&ApplyGearFrame, "13aa542c8030bf88c95fabdb5a0ad70c7a66ff5c"},
-		{&ApplyGearArmor, "ec08e633481226ac8d6bd6ceb02d717a6bbb027c"},
-		{&ApplyGearEngine, "a3c214a3a02f01cc4ed706e7d2c0246cd4efbbfa"},
-		{&ApplyGearParts, "bd88eba33641289afce2e118fc27e8d756a424a3"},
-	}};
-	constexpr std::size_t Records = 256;
-	constexpr int32 CasesPerFunction = 200;
-	Testing::FXorShift32 Random(0x5A7E1D0C);
-	std::vector<uint8> Frames = RandomBytes(Random, Records * FGearPartTables::FrameSize);
-	std::vector<uint8> Armors = RandomBytes(Random, Records * FGearPartTables::ArmorSize);
-	std::vector<uint8> Engines = RandomBytes(Random, Records * FGearPartTables::EngineSize);
-	std::vector<uint8> Parts = RandomBytes(Random, Records * FGearPartTables::PartSize);
-	for (std::size_t Record = 0; Record < Records; ++Record)
-	{
-		Parts[Record * FGearPartTables::PartSize + 0x15] = static_cast<uint8>(Random.Next() % 13);
-	}
-	std::array<uint8, FGearPartTables::GearCount> Pilots;
-	for (uint8& Pilot : Pilots)
-	{
-		Pilot = static_cast<uint8>(Random.Next() % 16);
-	}
-	const auto Tables = FGearPartTables::Make(std::move(Frames), std::move(Armors), std::move(Engines), std::move(Parts), Pilots);
-	REQUIRE(Tables);
-	for (const FCase& Case : Cases)
-	{
-		FSha1 Digest;
-		for (int32 Index = 0; Index < CasesPerFunction; ++Index)
-		{
-			FGameState State;
-			const std::vector<uint8> Block = RandomBytes(Random, FGameState::BlockSize);
-			std::copy(Block.begin(), Block.end(), State.Block().begin());
-			REQUIRE(Case.Apply(State, static_cast<int32>(Random.Next() % FGearPartTables::GearCount), *Tables));
-			Digest.Update(State.Block());
-		}
-		CHECK(FSha1::ToHex(Digest.Finish()) == Case.Digest);
-	}
+	CHECK(RecomputeDigests(false) == std::array<std::string, 4>{"13aa542c8030bf88c95fabdb5a0ad70c7a66ff5c", "ec08e633481226ac8d6bd6ceb02d717a6bbb027c",
+		"a3c214a3a02f01cc4ed706e7d2c0246cd4efbbfa", "bd88eba33641289afce2e118fc27e8d756a424a3"});
+}
+
+// The same with Perfect Works Build's rebalanced party's MENU_MAIN (save_digests --perfect-works-rebalance): only the parts differ.
+TEST_CASE("The gear recompute leaves what Perfect Works Build's rebalanced Menu leaves", "[Game]")
+{
+	CHECK(RecomputeDigests(true) == std::array<std::string, 4>{"13aa542c8030bf88c95fabdb5a0ad70c7a66ff5c", "ec08e633481226ac8d6bd6ceb02d717a6bbb027c",
+		"a3c214a3a02f01cc4ed706e7d2c0246cd4efbbfa", "0f1436a214c3cc3e5aad00c8ff8c0fe420dca941"});
 }
 
 TEST_CASE("The disc's tables recompute the new game's gears as the Menu does", "[Game][Content]")

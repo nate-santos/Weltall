@@ -1,8 +1,10 @@
 // The movie upscaler's steps, each in the same integer arithmetic as its twin in the core's MovieUpscale.cpp
 // (GuideChroma's two halves, Double's two, SharpenEdges' three, DisplayPixel), so that every GPU draws the pixels the
-// core computes. Samples carry the MDEC's four fraction bits; each pass draws its whole target.
+// core computes. Samples carry the MDEC's four fraction bits; each pass draws its whole target. The display step then
+// lays the undub's subtitle over the pixel it computes, which the core does not twin.
 
 #include "/Engine/Public/Platform.ush"
+#include "/Weltall/Private/MovieSubtitle.ush"
 
 #define WEIGHT_BITS 12
 #define WEIGHT_ONE 4096
@@ -32,6 +34,9 @@ int2 Direction;
 int4 DisplayRect;
 int2 ScreenSize;
 int4 Placement;
+// The undub's subtitle at the picture's size, clear when there is none.
+Texture2D<float4> Subtitle;
+SamplerState SubtitleSampler;
 
 int DivideRounded(int Numerator, int Denominator)
 {
@@ -311,5 +316,6 @@ float4 DisplayPS(float4 SvPosition : SV_POSITION) : SV_Target0
 	const int Blue = DivideRounded(Sum.y, WEIGHT_ONE);
 	const int Red = DivideRounded(Sum.z, WEIGHT_ONE);
 	const int3 Rgb = int3(ToUnsigned8(Y + ((359 * Red + 128) >> 8)), ToUnsigned8(Y + ((-88 * Blue - 183 * Red + 128) >> 8)), ToUnsigned8(Y + ((454 * Blue + 128) >> 8)));
-	return float4(Rgb / 255.0, 1.0);
+	const float2 Scale = float2(DisplayRect.zw) / float2(ScreenSize);
+	return float4(OverlaySubtitle(Rgb / 255.0, Subtitle, SubtitleSampler, float2(PictureX, PictureY) / 256.0, min(Scale.x, Scale.y)), 1.0);
 }

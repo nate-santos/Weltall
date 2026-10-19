@@ -4,6 +4,7 @@
 #include "Foundation/Types.h"
 #include "Graphics/Gte.h"
 #include "Graphics/GteMath.h"
+#include "Graphics/MdlModel.h"
 #include "Media/DiscIdentification.h"
 #include "Text/MessageTable.h"
 
@@ -101,6 +102,8 @@ namespace Weltall
 		std::array<uint8, 16> DpadY{};
 		/** The kernel's arctangents, which ratan2 reads. */
 		FGteArctangents Arctangents;
+		/** El-Fenrir's extra part, which the program keeps in its own data and hangs on the gear in place of one of its own. */
+		FMdlPart ElFenrirPart;
 
 		static constexpr int32 LessonCount = 10;
 		/**
@@ -117,6 +120,8 @@ namespace Weltall
 		std::array<FBattlingGlyph, GlyphCount> FontGlyphs{};
 		/** Each gear's name as the labels print it, by the gear's number. */
 		std::array<std::string, BattlingGears::Count> GearNames;
+		/** What the labels print as a round is won: the program's own string, which a mod may have changed. */
+		std::string KnockOutLabel;
 
 		WELTALLCORE_API const FBattlingSoundSet& SoundSetOf(int32 Gear) const;
 
@@ -124,11 +129,16 @@ namespace Weltall
 			EDiscRelease Release);
 	};
 
-	/** A gear's row of the gear table: the moves' strengths and the computer's traits. */
+	/**
+	 * A gear's row of the gear table: the moves' strengths and the computer's traits. Perfect Works Build's arena gives each
+	 * gear its own numbers in bytes the game leaves 0 or never reads (the second word, 1Bh on), which only its rules read.
+	 */
 	struct FBattlingGearStats
 	{
-		/** A percentage every move's strength is scaled by (100 for every gear). */
+		/** A percentage every move's strength is scaled by (100 for every gear); the arena's: the gear's speed scale for its running. */
 		int16 Power = 0;
+		/** Never read by the game (320); the arena's: the gear's HP. */
+		int16 ArenaHp = 0;
 		/** The story value from which the arena's menus offer the gear. */
 		int16 Threshold = 0;
 		/** The computer's traits A-D (80h for every gear). */
@@ -137,6 +147,13 @@ namespace Weltall
 		std::array<uint8, BattlingGears::Moves> Strengths{};
 		/** The Ether Bullet's strength, 0 for a gear without one. */
 		uint8 Ether = 0;
+		/** The arena's: a dash tick's heat, the stick's acceleration and deceleration, the Ether Bullet's heat / 8. */
+		uint8 ArenaDashHeat = 0;
+		uint8 ArenaAcceleration = 0;
+		uint8 ArenaDeceleration = 0;
+		uint8 ArenaEtherHeat = 0;
+		/** The arena's: the knock-down stun at which the gear's hits knock down. */
+		uint8 ArenaKnockDown = 0;
 
 		/**
 		 * The strength the program reads for a chain state: the byte 9 + State of the row, so state 0 reads trait D,
@@ -168,8 +185,9 @@ namespace Weltall
 		const FMessageTable& Table() const { return Messages; }
 
 	private:
-		/** The archive the table views. */
+		/** The archive the table views, or the table with the player's messages in place (Assets/text). */
 		std::vector<uint8> Archive;
+		std::vector<uint8> Replaced;
 		FMessageTable Messages;
 	};
 

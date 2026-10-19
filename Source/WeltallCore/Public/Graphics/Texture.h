@@ -14,6 +14,21 @@ namespace Weltall
 		Direct15,
 	};
 
+	/** A 5-bit colour channel widened to 8 bits so that 31 becomes 255: how the port shows the GPU's 15-bit colours, texels among them. */
+	constexpr uint8 WidenChannel(uint32 Channel)
+	{
+		return static_cast<uint8>(Channel << 3 | Channel >> 2);
+	}
+
+	/**
+	 * An 8-bit channel of a colour the GPU fills VRAM with (a draw environment's clear colour), as the port shows it: the GPU
+	 * keeps its top five bits, so the fill meets a texel of the same 15-bit colour exactly, as on the console.
+	 */
+	constexpr uint8 FilledChannel(uint8 Channel)
+	{
+		return WidenChannel(Channel >> 3u);
+	}
+
 	/** How the GPU combines a semi-transparent pixel with the one behind it (B) when drawing it (F). */
 	enum class EBlendMode : uint8
 	{

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Game/SaveStore.h"
 #include "Input/ButtonGlyphs.h"
+#include "Menu/MenuAssetPages.h"
 #include "Menu/MenuProgram.h"
 
 #include <array>
@@ -36,7 +37,8 @@ namespace Weltall
  * under the bindings the game has (without it, the game's own pictures);
  * -Saves=Folder, the folder the game keeps its saves in (without it the game has no save stores);
  * -Keys=a,b,..., the keys the options screen's Controls page hears, one each time it listens, a second after it
- * begins (an axis moved by its name and + or -: MouseX+); without it the screen has no Controls page.
+ * begins (an axis moved by its name and + or -: MouseX+); without it the screen has no Controls page;
+ * -MenuAssets, an asset store that is ready and exports nothing, so the options screen has its Assets page.
  */
 /** The glyphs of one icon set under the game's bindings, as a player of that device sees them. */
 class FRenderGlyphs final : public Weltall::IButtonGlyphs
@@ -80,6 +82,15 @@ private:
 	std::optional<double> ListenedAt;
 	double Now = 0.0;
 	int32 Next = 0;
+};
+
+/** An asset store for the options screen that is always ready and starts no export. */
+class FRenderAssets final : public Weltall::IMenuAssets
+{
+public:
+	virtual Weltall::FMenuAssetProgress Progress() const override { return {}; }
+	virtual bool StartExport(Weltall::EAssetExportKind) override { return false; }
+	virtual void CancelExport() override {}
 };
 
 struct FRenderStaging
@@ -128,11 +139,14 @@ struct FRenderStaging
 	/** -Keys: what the Controls page hears. */
 	bool bKeys = false;
 	FRenderKeys Keys;
+	/** -MenuAssets: the options screen's asset store. */
+	bool bMenuAssets = false;
+	FRenderAssets Assets;
 
 	/** The staging a command line asks for; false, logged, when it is malformed. */
 	static bool Parse(const FString& Params, FRenderStaging& Staging);
 
-	bool IsEmpty() const { return !bFullState && MenuMode < 0 && BattleFormation < 0 && LeaderAt.IsEmpty() && !Arena && CardChapter <= 0 && !bWideMenuArea && !bIcons && !Saves && !bKeys; }
+	bool IsEmpty() const { return !bFullState && MenuMode < 0 && BattleFormation < 0 && LeaderAt.IsEmpty() && !Arena && CardChapter <= 0 && !bWideMenuArea && !bIcons && !Saves && !bKeys && !bMenuAssets; }
 
 	/** Before the game's first frame. */
 	void Begin(FGameLoopScreen& Screen);

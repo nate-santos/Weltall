@@ -28,6 +28,8 @@ namespace Weltall
 		constexpr int32 ArcLabelsBase = 2;
 		/** The inner arc's places follow the shop's three. */
 		constexpr int32 InnerArcPlace = 3;
+		/** How far the fix raises the shop's own three places: to the inner arc's heights, the pointer clear of the words. */
+		constexpr int32 ArcRise = 4;
 		/** The faces' outlines: a red box around each face's 24 x 22 place. */
 		constexpr int16 FaceTop = 0xA6;
 		constexpr int16 FaceBottom = 0xBC;
@@ -79,7 +81,15 @@ namespace Weltall
 		MainCommands = Tables.MainCommands;
 		SubRows = Tables.SubCommands;
 		ArcX = Tables.ArcX;
-		ArcY = Tables.ArcY;
+		PlacesY = Tables.ArcY;
+		if (InServices.Options.bShopPointerBesideWords)
+		{
+			for (int32 Place = 0; Place < InnerArcPlace; ++Place)
+			{
+				PlacesY[static_cast<std::size_t>(Place)] -= ArcRise;
+			}
+		}
+		ArcY = PlacesY;
 		SubArcRows = SubRows;
 		SubArcFirstPlace = InnerArcPlace;
 		ChoiceX = Tables.ChoiceX;

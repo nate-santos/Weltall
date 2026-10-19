@@ -54,7 +54,7 @@ namespace Weltall
 			{
 				const uint8 Character = Member(Slot);
 				RecomputeCharacterEquipment(*Services.Game, Character, Resources.Equipment());
-				const FCharacterStats Stats = ComputeCharacterStats(*Services.Game, Character, !Services.Options.bAgilityShownCapped);
+				const FCharacterStats Stats = ComputeCharacterStats(*Services.Game, Character, !Services.Options.bAgilityShownCapped, UsesPerfectWorksRules());
 				std::copy(Stats.Values.begin(), Stats.Values.end(), ShownStats.begin());
 				co_await DrawStatusSheet(Slot, false);
 				DrawnSlot = Slot;

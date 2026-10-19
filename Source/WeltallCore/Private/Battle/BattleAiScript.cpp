@@ -27,6 +27,24 @@ namespace Weltall
 			ReactionScript = 3,
 		};
 
+		/**
+		 * Deus's first fight: the word of his turn script that queues his attack on one gear (command 11h, the queue's
+		 * type 1 written). Perfect Works Build's scene sets its third byte, which keeps the battle camera for the attack;
+		 * `bDeusKeepsCamera` reads the disc's word as if it did.
+		 */
+		constexpr uint8 DeusFirstScene = 64;
+		constexpr uint32 DeusOneGearAttack = 0xC22;
+
+		FWord AsRun(const FBattleContext& Context, uint32 Pc, FWord Word)
+		{
+			if (Context.RuleOptions.bDeusKeepsCamera && Context.Formation.Scene == DeusFirstScene && Pc == DeusOneGearAttack && Word.Op == 0x01
+				&& Word.A == 0 && Word.B == 1)
+			{
+				Word.C = 1;
+			}
+			return Word;
+		}
+
 		/** The script's word at Pc; past the scene's file faults. */
 		bool ReadWord(FBattleContext& Context, uint32 Pc, FWord& Word)
 		{
@@ -110,7 +128,7 @@ namespace Weltall
 					{
 						*bEndsCombo = true;
 					}
-					Next = BattleAiSteps::RunCommand(Context, Enemy, Word, Next);
+					Next = BattleAiSteps::RunCommand(Context, Enemy, AsRun(Context, Pc, Word), Next);
 					Pc += 4;
 				}
 				else if (!EvaluateCondition(Context, Enemy, Pc) && Context.Fault == EBattleFault::None)

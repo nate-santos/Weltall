@@ -100,6 +100,18 @@ namespace Weltall
 	/** The same through Palette (none for a direct page) rather than the view's CLUT. */
 	WELTALLCORE_API FImageRgba8 DecodeTextureRegionWith(const FVram& Vram, const FTextureRegion& Region, std::span<const uint16> Palette);
 
+	/** How a picture that carries its texels' kinds marks each in its alpha, as Beetle PSX HW's texture packs do. */
+	namespace TexelKindAlpha
+	{
+		inline constexpr uint8 Transparent = 0;
+		/** Bit 15 set: blended where its polygon is semi-transparent. */
+		inline constexpr uint8 SemiTransparent = 128;
+		inline constexpr uint8 Plain = 255;
+	}
+
+	/** The texels of the region's picture as DecodeTextureRegion gives them, each texel's alpha its kind (TexelKindAlpha). */
+	WELTALLCORE_API FImageRgba8 DecodeTextureRegionKinds(const FVram& Vram, const FTextureRegion& Region);
+
 	/** The colours a view's CLUT holds: 16 for a 4-bit page, 256 for an 8-bit one, none for a direct one. */
 	WELTALLCORE_API std::span<const uint16> ReadTextureViewClut(const FVram& Vram, uint32 View, std::array<uint16, 256>& Colors);
 }

@@ -43,6 +43,9 @@ public:
 	/** A device's key went down or up. */
 	void KeyChanged(const FKey& Key, FInputDeviceId Device, bool bDown);
 
+	/** An axis of a device moved, as the input heard it first. */
+	void AxisChanged(const FKey& Key, FInputDeviceId Device, float Value) { Ports.AxisChanged(Key, Device, Value); }
+
 private:
 	void DeviceConnectionChanged(EInputDeviceConnectionState State, FPlatformUserId User, FInputDeviceId Device);
 

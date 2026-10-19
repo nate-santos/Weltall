@@ -3,6 +3,7 @@
 #include "Game/PsxRandom.h"
 
 #include <cstring>
+#include <span>
 #include <string_view>
 
 namespace Weltall::Testing
@@ -62,7 +63,7 @@ namespace Weltall::Testing
 			return Value < 0 ? static_cast<uint8>(0xFF) : static_cast<uint8>(Value);
 		}
 
-		void Fighter(FBytes& B, const FBattlingFighter& F)
+		void Fighter(FBytes& B, const FBattlingFighter& F, EBattlingRules Rules)
 		{
 			B.Point(F.Position);
 			B.Point(F.Velocity);
@@ -112,13 +113,20 @@ namespace Weltall::Testing
 				B.I32(V.Id);
 				B.U8(Index8(V.MoveState));
 			}
+			if (Rules != EBattlingRules::Original)
+			{
+				B.I16(F.RunScale);
+				B.I32(F.DashHeat);
+				B.U8(F.SwingHit);
+			}
 		}
 
 		void Joints(FBytes& B, const FBattlingSkeleton& Skeleton)
 		{
 			B.Shorts(Skeleton.RootAngles);
 			B.Matrix(Skeleton.RootWorld);
-			for (const FBattlingJoint& Joint : Skeleton.Joints)
+			// The model's list: a part the program hangs on a joint (El-Fenrir's) is not in it.
+			for (const FBattlingJoint& Joint : std::span(Skeleton.Joints).first(Skeleton.File->Joints.size()))
 			{
 				B.Shorts(Joint.Angles);
 				B.Shorts(Joint.Translation);
@@ -395,10 +403,10 @@ namespace Weltall::Testing
 		switch (Part)
 		{
 		case EBattlingFightPart::Fighter1:
-			Fighter(B, Fight.Fighters[0]);
+			Fighter(B, Fight.Fighters[0], Fight.Settings.Rules);
 			break;
 		case EBattlingFightPart::Fighter2:
-			Fighter(B, Fight.Fighters[1]);
+			Fighter(B, Fight.Fighters[1], Fight.Settings.Rules);
 			break;
 		case EBattlingFightPart::Joints1:
 			Joints(B, Fight.Fighters[0].Skeleton);

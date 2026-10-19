@@ -39,6 +39,19 @@ TEST_CASE("VRAM counts its uploads, so what was decoded from it can tell it is o
 	CHECK(FVram{}.Lineage() != Vram.Lineage());
 }
 
+TEST_CASE("A colour the GPU fills the screen with meets a texel of the same 15-bit colour", "[Graphics]")
+{
+	// Shevat's sky, cleared to (104, 144, 248), is (13, 18, 31) in VRAM, as are the texels around its clouds.
+	CHECK(FilledChannel(104) == WidenChannel(13));
+	CHECK(FilledChannel(144) == WidenChannel(18));
+	CHECK(FilledChannel(248) == WidenChannel(31));
+	CHECK(FilledChannel(248) == 255);
+	// The low three bits are dropped: a fill a little brighter than a 15-bit colour still shows as it.
+	CHECK(FilledChannel(255) == 255);
+	CHECK(FilledChannel(150) == WidenChannel(18));
+	CHECK(FilledChannel(7) == 0);
+}
+
 TEST_CASE("Texture page and CLUT attributes decode to VRAM positions", "[Graphics]")
 {
 	// 8-bit, blend mode 1, second row of pages, fifth page across.

@@ -222,7 +222,8 @@ TEST_CASE("The battle's projection, colours and dome blend between frames", "[ba
 	FBattleFrameBlend Result = Blend(Latest, Previous, 0.5f);
 	CHECK(Result.ProjectionDistance == Catch::Approx(456.0f));
 	CHECK(Result.CentreY == Catch::Approx(157.0f));
-	CHECK(Result.ClearColor[2] == Catch::Approx(40.0f));
+	// The clear colours as the GPU fills with them, 20 as 16 and 60 as 57, blended.
+	CHECK(Result.ClearColor[2] == Catch::Approx(36.5f));
 	CHECK(Result.FadeColor[0] == Catch::Approx(75.0f));
 	REQUIRE(Result.DomeCorners.size() == 1);
 	CHECK(Result.DomeCorners[0][0][0] == Catch::Approx(5.0f));

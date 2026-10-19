@@ -452,7 +452,7 @@ namespace Weltall
 				}
 			}
 			Scratch.Rect = {Operation.ToX, Operation.ToY, Rect.Width, Rect.Height};
-			FieldVram.Upload(Scratch);
+			FieldVram.UploadCopy(Scratch, Rect);
 			WriteOverScreen();
 			ScreenInVram.insert(ScreenInVram.end(), ScreenCarried.begin(), ScreenCarried.end());
 			break;
@@ -464,7 +464,7 @@ namespace Weltall
 			constexpr int16 TallestClear = 511;
 			Scratch.Rect = {Rect.X, Rect.Y, std::clamp<int16>(Rect.Width, 0, WidestClear), std::clamp<int16>(Rect.Height, 0, TallestClear)};
 			Scratch.Units.assign(static_cast<std::size_t>(Scratch.Rect.Width * Scratch.Rect.Height), 0);
-			FieldVram.Upload(Scratch);
+			FieldVram.UploadFill(Scratch);
 			break;
 		}
 		case EFieldVramChange::Upload:
@@ -480,12 +480,14 @@ namespace Weltall
 		}
 		case EFieldVramChange::SaveArea:
 			ReadVram(Rect, SavedArea);
+			FieldVram.NoteReadback(Rect);
 			break;
 		case EFieldVramChange::RestoreArea:
 			FieldVram.Upload(SavedArea);
 			break;
 		case EFieldVramChange::SaveClutRows:
 			ReadVram(Rect, ClutRowsKept);
+			FieldVram.NoteReadback(Rect);
 			ClutRowsFaded = ClutRowsKept;
 			break;
 		case EFieldVramChange::FadeClutRow:

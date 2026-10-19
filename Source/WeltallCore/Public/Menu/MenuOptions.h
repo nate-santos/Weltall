@@ -32,10 +32,14 @@ namespace Weltall
 		/** Fix Frame HP asks whether the caster's own gear needs it; the original compares with party slot 0's gear. */
 		bool bGearRepairOwnGear = true;
 		/**
-		 * A name confirmed in Enter Name keeps what ends it; the original cuts every trailing byte 4Fh, a
-		 * blank in the Japanese font and "s" in the American one ("Crescens" becomes "Crescen").
+		 * A name confirmed in Enter Name loses only its trailing blanks, as the original means to; the original cuts every
+		 * trailing byte 4Fh, a blank in the Japanese font and "s" in the American one ("Crescens" becomes "Crescen").
 		 */
 		bool bNamesKeepTrailingS = true;
+		/** Member Change labels the EP "EP", as every other screen does; the original's panels say "MP". */
+		bool bMemberChangeSaysEp = true;
+		/** The shop's pointer at Buy, Sell and Exit sits beside their words, as on its Sell arc; the original's covers them. */
+		bool bShopPointerBesideWords = true;
 		/**
 		 * The gear shop recomputes a gear's parts as the rest of the Menu does: the original's own copy
 		 * leaves the parts' ether amplifier out of every gear it recomputes (until the Menu recomputes
@@ -68,6 +72,8 @@ namespace Weltall
 			Options.bEtherHealsAsBattle = false;
 			Options.bGearRepairOwnGear = false;
 			Options.bNamesKeepTrailingS = false;
+			Options.bMemberChangeSaysEp = false;
+			Options.bShopPointerBesideWords = false;
 			Options.bGearShopPartsAsMenu = false;
 			Options.bSaleRecomputesEquipment = false;
 			Options.bNewGameClockFromZero = false;

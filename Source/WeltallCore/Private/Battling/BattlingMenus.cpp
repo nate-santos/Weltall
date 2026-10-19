@@ -396,10 +396,11 @@ namespace Weltall
 			Menus.InputHeld = Pad.Held;
 			Menus.InputPressed = Pad.Pressed;
 			Menus.InputRepeated = Pad.Repeated;
-			// The menus take the d-pad alone: a stick pushed off its centre buzzes, once.
+			// The menus take the d-pad alone: a stick pushed off its centre buzzes, once. The port's stick that holds
+			// directions is a d-pad to them, so only one that holds none buzzes.
 			const int32 StickX = Pad.LeftX - 0x80;
 			const int32 StickY = Pad.LeftY - 0x80;
-			if ((Pad.Type == 3 || Pad.Type == 4) && StickDeadZone < SquareRoot0(StickY * StickY + StickX * StickX))
+			if ((Pad.Type == 3 || Pad.Type == 4) && Pad.StickHeld == 0 && StickDeadZone < SquareRoot0(StickY * StickY + StickX * StickX))
 			{
 				if (!Menus.bStickBuzzed)
 				{

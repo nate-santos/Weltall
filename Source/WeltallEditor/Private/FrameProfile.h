@@ -16,7 +16,7 @@ class IScreenFrame;
 class FFrameProfile
 {
 public:
-	FFrameProfile(FIntPoint InSize, Weltall::EDisplayAspect InAspect, double InFrom);
+	FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom);
 	~FFrameProfile();
 
 	/** Draws a captured frame and, from the moment timed on, notes its times; Update and Capture are its game thread's, in seconds, At its moment of play. */
@@ -27,7 +27,7 @@ public:
 
 private:
 	FIntPoint Size;
-	Weltall::EDisplayAspect Aspect;
+	Weltall::FDisplayOptions Options;
 	double From = 0.0;
 	TArray<double> Updates;
 	TArray<double> Captures;

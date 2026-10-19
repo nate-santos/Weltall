@@ -43,13 +43,12 @@ namespace Weltall
 		{
 			return MakeError("the disc lacks Battling's effects");
 		}
-		TResult<std::vector<uint8>> Sectors = ReadFileSectors(Image, *Record);
-		if (!Sectors)
+		TResult<std::vector<uint8>> Bytes = ReadFileBytes(Image, *Record);
+		if (!Bytes)
 		{
-			return Sectors.Error();
+			return Bytes.Error();
 		}
-		Sectors->resize(static_cast<std::size_t>(Record->Size));
-		TResult<FSoundEffectFile> Effects = FSoundEffectFile::Parse(std::move(*Sectors));
+		TResult<FSoundEffectFile> Effects = FSoundEffectFile::Parse(std::move(*Bytes));
 		if (!Effects)
 		{
 			return Effects.Error();

@@ -116,7 +116,11 @@ namespace Weltall
 						Kept.Textures.push_back({static_cast<uint16>(EightBitPage | Page), ClutRow});
 						continue;
 					}
-					if (Primitive.Traits().bTextured)
+					if (Primitive.Traits().bTextured && Skeleton.Joints[Joint].bOwnTextures)
+					{
+						State = Primitive.Texture(State);
+					}
+					else if (Primitive.Traits().bTextured)
 					{
 						// Every page a part names becomes the side's; a CLUT keeps its column in the side's row.
 						if (!Primitive.bInheritsTexturePage)

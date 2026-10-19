@@ -178,3 +178,23 @@ TEST_CASE("The kernel queues both ports' words together, each with its own press
 	CHECK(Pad.TakeMerged().Pressed == LogicalSquare);
 	CHECK_FALSE(Pad.PopBoth().has_value());
 }
+
+TEST_CASE("The kernel's words carry each port's stick and the directions only it holds", "[Input]")
+{
+	FKernelPad Pad;
+	FPadState First = Holding({EPadButton::Up, EPadButton::Square});
+	First.StickButtons = FPadState::Bit(EPadButton::Up);
+	First.StickX = 0x40;
+	First.StickY = 0x00;
+	First.bAnalog = true;
+	Pad.Vblank(First, 1);
+	const auto Words = Pad.PopBoth();
+	REQUIRE(Words.has_value());
+	CHECK((*Words)[0].Held == (LogicalUp | LogicalTriangle));
+	CHECK((*Words)[0].StickHeld == LogicalUp);
+	CHECK((*Words)[0].StickX == 0x40);
+	CHECK((*Words)[0].StickY == 0x00);
+	CHECK((*Words)[0].bAnalog);
+	CHECK((*Words)[1].StickX == FPadState::StickCentre);
+	CHECK_FALSE((*Words)[1].bAnalog);
+}

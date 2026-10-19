@@ -371,6 +371,11 @@ namespace Weltall
 		return Hud && Hud->IsListCursorShown();
 	}
 
+	std::span<const FTextureRegion> FBattleGameHud::TextureRegions() const
+	{
+		return Hud ? Hud->TextureRegions() : std::span<const FTextureRegion>();
+	}
+
 	EBattleHudFault FBattleGameHud::Fault() const
 	{
 		if (TableFault != EBattleHudFault::None)

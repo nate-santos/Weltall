@@ -796,6 +796,8 @@ namespace Weltall
 					Result.Defeated = static_cast<uint16>(Result.Defeated | BattleRules::GameSlotBit(Context, Enemy));
 				}
 			}
+			Result.TotalExp = RewardAt(Result.TotalExp, Context.Balance.Experience);
+			Gold = RewardAt(Gold, Context.Balance.Gold);
 			FGameState& State = *Context.GameState;
 			State.SetGold(std::min(State.Gold() + Gold, GoldCap));
 			if (Context.Show != nullptr)

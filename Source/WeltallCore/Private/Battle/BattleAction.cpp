@@ -182,6 +182,35 @@ namespace Weltall
 			}
 		}
 
+		/** Perfect Works' rebalance after a landed hit: the weapon's status, then the command's own, or its dispel, or its status on the actor. */
+		void ApplyPerfectWorksHitEffects(FBattleContext& Context, uint16 Flags)
+		{
+			if ((Flags & BattleCommandFlags::WeaponStatus) != 0)
+			{
+				BattleSteps::ApplyWeaponStatus(Context);
+			}
+			if ((Flags & BattleCommandFlags::StatusOnHit) != 0)
+			{
+				BattleSteps::HandlerStatus(Context);
+			}
+			else if ((Flags & BattleCommandFlags::Dispels) != 0)
+			{
+				BattleSteps::DispelBuffs(Context);
+			}
+			else if ((Flags & BattleCommandFlags::PerfectWorksSelfStatus) != 0)
+			{
+				// The actor takes the target's place for it, its turns counted on its own slot.
+				FBattleAction& Action = Context.Action;
+				const uint8 Target = Action.TargetCombatant;
+				const uint8 TargetSlot = Action.TargetSlot;
+				Action.TargetCombatant = Action.ActorCombatant;
+				Action.TargetSlot = Action.ActorSlot;
+				BattleSteps::HandlerStatus(Context);
+				Action.TargetCombatant = Target;
+				Action.TargetSlot = TargetSlot;
+			}
+		}
+
 		/** The command's display bytes and number for the show, with the actor's own element when it has none. */
 		void StoreActionElement(FBattleContext& Context)
 		{
@@ -284,7 +313,14 @@ namespace Weltall
 		}
 		if (Actor.Character == Billy && static_cast<uint8>(Action.Command - 4) < 2)
 		{
-			Command.Element = Actor.Weapons[static_cast<std::size_t>(Action.Command - 3)].Attack;
+			// Actions 4 and 5 fire his ether guns: the element is their slot's attack byte, which only a reload writes.
+			FBattleWeaponSlot& Gun = Actor.Weapons[static_cast<std::size_t>(Action.Command - 3)];
+			const std::size_t Loaded = static_cast<std::size_t>(Actor.EtherAmmunition[static_cast<std::size_t>(Action.Command - 4)] - FBattleTables::FirstAmmunition);
+			if (Context.RuleOptions.bEtherAmmunitionElement && Loaded < Context.AmmunitionAttacks.size())
+			{
+				Gun.Attack = Context.AmmunitionAttacks[Loaded];
+			}
+			Command.Element = Gun.Attack;
 		}
 		if ((Actor.Mental & 0x20) != 0 && (Action.Targets & 7) != 0 && Action.Targets < 7)
 		{
@@ -322,7 +358,11 @@ namespace Weltall
 				}
 				Handlers[Handler](Context);
 				ApplyTargetEffects(Context);
-				if (Action.Results[Action.TargetSlot] == BattleResults::HpDamage)
+				if (Action.Results[Action.TargetSlot] == BattleResults::HpDamage && Context.bPerfectWorksRebalance)
+				{
+					ApplyPerfectWorksHitEffects(Context, BattleRules::Command(Context).Flags);
+				}
+				else if (Action.Results[Action.TargetSlot] == BattleResults::HpDamage)
 				{
 					const uint16 Flags = BattleRules::Command(Context).Flags;
 					if ((Flags & BattleCommandFlags::WeaponStatus) != 0)

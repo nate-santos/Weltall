@@ -6,12 +6,6 @@ namespace Weltall
 	{
 		/** U and V are bytes, so a primitive addresses at most 256 x 256 texels of its page. */
 		constexpr int32 AddressableTexels = 256;
-
-		/** Widens a 5-bit channel to 8 bits so that 31 becomes 255. */
-		uint8 Widen5(uint32 Channel)
-		{
-			return static_cast<uint8>(Channel << 3 | Channel >> 2);
-		}
 	}
 
 	FTexturePage FTexturePage::FromAttribute(uint16 Attribute)
@@ -80,9 +74,9 @@ namespace Weltall
 				for (int32 U = 0; U < AddressableTexels; ++U)
 				{
 					const uint16 Texel = FetchTexel(Vram, Page, Clut, static_cast<uint8>(U), static_cast<uint8>(V));
-					*Pixel++ = Widen5(Texel & 0x1F);
-					*Pixel++ = Widen5(Texel >> 5 & 0x1F);
-					*Pixel++ = Widen5(Texel >> 10 & 0x1F);
+					*Pixel++ = WidenChannel(Texel & 0x1F);
+					*Pixel++ = WidenChannel(Texel >> 5 & 0x1F);
+					*Pixel++ = WidenChannel(Texel >> 10 & 0x1F);
 					*Pixel++ = Alpha(Texel);
 				}
 			}

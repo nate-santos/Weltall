@@ -21,7 +21,7 @@ namespace Weltall::EventOps
 			{
 				Encounters.PerPeriod = MaxEncountersPerPeriod;
 			}
-			if (Context.Random == nullptr || !Encounters.Schedule(*Context.Random))
+			if (Context.Random == nullptr || !Encounters.Schedule(*Context.Random, Context.EncounterRate))
 			{
 				Fail(Context, EEventFault::EncountersNeverScheduled, static_cast<uint32>(Encounters.PerPeriod));
 				return;

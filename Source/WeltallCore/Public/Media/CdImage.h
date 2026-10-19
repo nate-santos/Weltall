@@ -3,6 +3,7 @@
 #include "Foundation/ByteSource.h"
 #include "Foundation/Result.h"
 #include "Foundation/Types.h"
+#include "Media/DiscModFiles.h"
 
 #include <array>
 #include <filesystem>
@@ -15,6 +16,8 @@
 namespace Weltall
 {
 	class FDiscAssetStore;
+	class FMesFontSheet;
+	class FMessageOverrides;
 	struct FIndexRecord;
 	namespace CdSector
 	{
@@ -62,10 +65,27 @@ namespace Weltall
 		WELTALLCORE_API TResult<std::vector<uint8>> ReadSourceSector(uint32 Lba) const;
 		void SetAssetStore(std::shared_ptr<FDiscAssetStore> Store) const { Assets = std::move(Store); }
 		const std::shared_ptr<FDiscAssetStore>& GetAssetStore() const { return Assets; }
-		/** The asset store's replacement of a native file, none without one. */
-		WELTALLCORE_API TResult<std::optional<std::vector<uint8>>> ReadAssetOverride(const FIndexRecord& Record) const;
+		/** A mod's files standing for some of the disc's, beneath the asset store's replacements; none: the disc's own. */
+		void SetModFiles(std::shared_ptr<const FDiscModFiles> Files) const { Mods = std::move(Files); }
+		/** The changes to the game's code that the mod's files in use need; none without a mod. */
+		FModProgramChanges ModChanges() const { return Mods ? Mods->Changes() : FModProgramChanges{}; }
+		/** No asset store and no mod: the disc's files as they are, which the exports read. */
+		void UseDiscAlone() const
+		{
+			Assets.reset();
+			Mods.reset();
+		}
+		/**
+		 * A native file read in place of the disc's: the asset store's replacement (its own size taken as the record's),
+		 * else a mod's; none where neither has one.
+		 */
+		WELTALLCORE_API TResult<std::optional<FFileReplacement>> ReadReplacement(const FIndexRecord& Record) const;
 		/** The asset store's recording of a music sequence by its key (Weltall::MusicSequenceKey), none without one. */
 		WELTALLCORE_API TResult<std::optional<std::vector<uint8>>> ReadMusicReplacement(uint64 Key) const;
+		/** The player's messages the asset store gives, which the readers of the game's text put in place; none without them. */
+		WELTALLCORE_API std::shared_ptr<const FMessageOverrides> MessageOverrides() const;
+		/** The player's font sheet the asset store gives, which the font's load draws into its glyphs; none without one. */
+		WELTALLCORE_API std::shared_ptr<const FMesFontSheet> FontSheet() const;
 
 		WELTALLCORE_API TResult<FCdSectorHeader> ReadHeader(uint32 Lba) const;
 
@@ -83,5 +103,6 @@ namespace Weltall
 		uint64 TrackOffset;
 		uint32 Sectors;
 		mutable std::shared_ptr<FDiscAssetStore> Assets;
+		mutable std::shared_ptr<const FDiscModFiles> Mods;
 	};
 }

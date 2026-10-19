@@ -20,6 +20,8 @@ namespace Weltall
 		FGteVector Translation{};
 		/** Its part is not drawn (the animation events' hide and show). */
 		bool bHidden = false;
+		/** Its part keeps the texture pages and CLUTs it names, built with the gear's VRAM places cleared; the file's parts take the side's. */
+		bool bOwnTextures = false;
 		/** Its place in the gear, relative to the gear's position: the matrix the last pose built. */
 		FGteMatrix World = FGteMatrix::Identity();
 	};
@@ -33,6 +35,12 @@ namespace Weltall
 	{
 	public:
 		WELTALLCORE_API void Build(const FBattlingGearFile& GearFile, FMdlModel InModel);
+
+		/**
+		 * Hangs a part of the program's own on joint Parent, turned by Angles, after the file's joints: no animation or
+		 * event names it, and it keeps its own textures.
+		 */
+		WELTALLCORE_API void Attach(int32 Parent, FMdlPart Part, const FGteVector& Angles);
 
 		/** The root's rotation: the fighter's yaw about y; x and z stay 0. */
 		FGteVector RootAngles{};

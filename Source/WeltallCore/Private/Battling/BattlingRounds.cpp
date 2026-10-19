@@ -287,6 +287,7 @@ namespace Weltall::BattlingFightOps
 			for (std::size_t Pad = 0; Pad < 2; ++Pad)
 			{
 				Merged[Pad].Held = static_cast<uint16>(Merged[Pad].Held | Blank[Pad].Held);
+				Merged[Pad].StickHeld = static_cast<uint16>(Merged[Pad].StickHeld | Blank[Pad].StickHeld);
 				Merged[Pad].Pressed = static_cast<uint16>(Merged[Pad].Pressed | Blank[Pad].Pressed);
 				Merged[Pad].Repeated = static_cast<uint16>(Merged[Pad].Repeated | Blank[Pad].Repeated);
 			}

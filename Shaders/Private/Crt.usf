@@ -1,0 +1,261 @@
+// Draws a picture as a CRT shows it. The game screen's rows become the beam's lines: each row's light is a Gaussian
+// across its line, wider where it is brighter, averaged over each display pixel so the lines stay clean at any size. The
+// signal's bandwidth softens each row along its line (a television's colour more than its brightness), the phosphors'
+// mask tints the display's own pixels, light diffuses in the glass, and a television's glass bulges, its corners rounded.
+
+#include "/Engine/Public/Platform.ush"
+
+SamplerState LinearClamp;
+
+// Lines: the picture's rows, each the mean of the display rows its band covers, in the signal's own (gamma) values.
+Texture2D Picture;
+int2 PictureSize;
+// One row's height in display pixels, and the top of the first row in the picture.
+float LinePitch;
+float FirstLineTop;
+
+float4 LinesPS(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+	const int X = int(SvPosition.x);
+	const float Top = FirstLineTop + floor(SvPosition.y) * LinePitch;
+	const float Bottom = Top + LinePitch;
+	const int First = max(int(floor(Top)), 0);
+	const int Last = min(int(ceil(Bottom)), PictureSize.y) - 1;
+	float3 Sum = 0.0;
+	for (int Y = First; Y <= Last; ++Y)
+	{
+		const float Cover = min(Bottom, Y + 1.0) - max(Top, float(Y));
+		Sum += Picture.Load(int3(X, Y, 0)).rgb * Cover;
+	}
+	return float4(Sum / LinePitch, 1.0);
+}
+
+// A Gaussian's weights for the offsets From, From + 1, ... in turn without an exponential each: each weight is the one
+// before times a ratio, and each ratio the one before times a constant.
+struct FGaussianWeights
+{
+	float Weight;
+	float Ratio;
+	float Shrink;
+};
+
+FGaussianWeights GaussianFrom(float Sigma, int From)
+{
+	const float Falloff = 0.5 / (Sigma * Sigma);
+	FGaussianWeights Weights;
+	Weights.Weight = exp(-Falloff * From * From);
+	Weights.Ratio = exp(-Falloff * (2 * From + 1));
+	Weights.Shrink = exp(-2.0 * Falloff);
+	return Weights;
+}
+
+float NextWeight(inout FGaussianWeights Weights)
+{
+	const float Weight = Weights.Weight;
+	Weights.Weight *= Weights.Ratio;
+	Weights.Ratio *= Weights.Shrink;
+	return Weight;
+}
+
+// Signal: each line low-passed along itself, its brightness by LumaSigma and its colour by ChromaSigma (display pixels),
+// past the picture's edges black (the border's sampler), then made linear light by the tube's gamma.
+Texture2D Lines;
+SamplerState LinearBorder;
+int2 LinesSize;
+float LumaSigma;
+float ChromaSigma;
+float TubeGamma;
+
+// Two neighbouring taps of a Gaussian as one bilinear sample of a line, between the taps where their weights balance: the
+// sum of Offset's and the next pixel's colours, weighed as the Gaussian weighs them.
+float3 TapPair(int2 At, int Offset, float2 Texel, inout FGaussianWeights Steps, inout float Weights)
+{
+	const float First = NextWeight(Steps);
+	const float Second = NextWeight(Steps);
+	Weights += First + Second;
+	const float X = At.x + Offset + 0.5 + Second / max(First + Second, 1.0e-30);
+	return (First + Second) * Lines.SampleLevel(LinearBorder, float2(X, At.y + 0.5) * Texel, 0).rgb;
+}
+
+float4 SignalPS(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+	const int2 At = int2(SvPosition.xy);
+	const float2 Texel = 1.0 / float2(LinesSize);
+	// NTSC's YIQ.
+	const float3 ToY = float3(0.299, 0.587, 0.114);
+	const float3 ToI = float3(0.596, -0.274, -0.322);
+	const float3 ToQ = float3(0.211, -0.523, 0.312);
+	const int LumaReach = int(ceil(3.0 * LumaSigma));
+	FGaussianWeights LumaSteps = GaussianFrom(LumaSigma, -LumaReach);
+	float LumaWeights = 0.0;
+	float Y = 0.0;
+	for (int I = -LumaReach; I <= LumaReach; I += 2)
+	{
+		Y += dot(TapPair(At, I, Texel, LumaSteps, LumaWeights), ToY);
+	}
+	const int ChromaReach = int(ceil(3.0 * ChromaSigma));
+	FGaussianWeights ChromaSteps = GaussianFrom(ChromaSigma, -ChromaReach);
+	float ChromaWeights = 0.0;
+	float2 IQ = 0.0;
+	for (int J = -ChromaReach; J <= ChromaReach; J += 2)
+	{
+		const float3 Pair = TapPair(At, J, Texel, ChromaSteps, ChromaWeights);
+		IQ += float2(dot(Pair, ToI), dot(Pair, ToQ));
+	}
+	Y /= LumaWeights;
+	IQ /= ChromaWeights;
+	const float3 Rgb = float3(Y + 0.956 * IQ.x + 0.621 * IQ.y, Y - 0.272 * IQ.x - 0.647 * IQ.y, Y - 1.106 * IQ.x + 1.703 * IQ.y);
+	return float4(pow(saturate(Rgb), TubeGamma), 1.0);
+}
+
+// Glow: the signal's light gathered into cells a line square, blurred across by GlowSigma cells, then down by as many lines.
+Texture2D Signal;
+int2 SignalSize;
+Texture2D GlowAcross;
+int2 GlowSize;
+float GlowSigma;
+
+float4 GlowAcrossPS(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+	const float Centre = SvPosition.x * LinePitch;
+	const float V = SvPosition.y / SignalSize.y;
+	// Two taps a cell, each sampled bilinearly: the blur that follows hides what the taps skip.
+	const int Reach = int(ceil(6.0 * GlowSigma));
+	FGaussianWeights Steps = GaussianFrom(2.0 * GlowSigma, -Reach);
+	float Weights = 0.0;
+	float3 Sum = 0.0;
+	for (int I = -Reach; I <= Reach; ++I)
+	{
+		const float Weight = NextWeight(Steps);
+		Weights += Weight;
+		const float X = Centre + I * 0.5 * LinePitch;
+		if (X >= 0.0 && X < SignalSize.x)
+		{
+			Sum += Weight * Signal.SampleLevel(LinearClamp, float2(X / SignalSize.x, V), 0).rgb;
+		}
+	}
+	return float4(Sum / Weights, 1.0);
+}
+
+float4 GlowDownPS(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+	const int2 At = int2(SvPosition.xy);
+	const int Reach = int(ceil(3.0 * GlowSigma));
+	FGaussianWeights Steps = GaussianFrom(GlowSigma, -Reach);
+	float Weights = 0.0;
+	float3 Sum = 0.0;
+	for (int I = -Reach; I <= Reach; ++I)
+	{
+		const float Weight = NextWeight(Steps);
+		Weights += Weight;
+		const int Y = At.y + I;
+		if (Y >= 0 && Y < GlowSize.y)
+		{
+			Sum += Weight * GlowAcross.Load(int3(At.x, Y, 0)).rgb;
+		}
+	}
+	return float4(Sum / Weights, 1.0);
+}
+
+// Screen: the tube's face over the output's area.
+Texture2D Glow;
+float2 AreaMin;
+int LineCount;
+// The beam's width (a Gaussian's sigma, in lines) for black and for full light.
+float BeamMin;
+float BeamMax;
+// 0 none, 1 an aperture grille, 2 a slot mask; its triads MaskPitch display pixels wide, mixed in by MaskStrength.
+int MaskKind;
+int MaskPitch;
+float MaskStrength;
+// A slot mask's slots repeat every SlotPitch display rows, the last SlotGap of them dark, each triad's half a slot down
+// from its neighbour's.
+int SlotPitch;
+int SlotGap;
+float GlowAmount;
+// The glass: how far its edges bend (the vertical edges' and the horizontal ones', at the corners, in half picture heights),
+// its corners' radius in display pixels, and how much it darkens towards them.
+float2 Curve;
+float CornerRadius;
+float Vignette;
+float DisplayGamma;
+
+float Erf(float X)
+{
+	// Abramowitz and Stegun 7.1.26: within 1.5e-7.
+	const float A = abs(X);
+	const float T = 1.0 / (1.0 + 0.3275911 * A);
+	const float Tail = ((((1.061405429 * T - 1.453152027) * T + 1.421413741) * T - 0.284496736) * T + 0.254829592) * T * exp(-A * A);
+	return sign(X) * (1.0 - Tail);
+}
+
+// The mask over a pixel whose brightest channel's light is Brightest. Its phosphors gather the light the pixel would spread
+// evenly, so it neither makes nor loses light; where gathering would take a channel past full, as much less of it shows as
+// keeps the brightest one within (the mask fades from highlights, keeping their light and colour).
+float3 Mask(float2 Pixel, float Brightest)
+{
+	if (MaskKind == 0)
+	{
+		return 1.0;
+	}
+	// Each phosphor's stripe a third of the triad: the share of this pixel it covers, three times over for a mean of one.
+	const float Left = fmod(floor(Pixel.x), float(MaskPitch));
+	const float Stripe = MaskPitch / 3.0;
+	const float3 Starts = float3(0.0, Stripe, 2.0 * Stripe);
+	float3 Lit = 3.0 * max(min(Left + 1.0, Starts + Stripe) - max(Left, Starts), 0.0);
+	float Peak = 3.0;
+	if (MaskKind == 2)
+	{
+		const int Triad = int(floor(Pixel.x)) / MaskPitch;
+		const int Row = (int(floor(Pixel.y)) + (Triad & 1) * (SlotPitch / 2)) % SlotPitch;
+		const float Slot = float(SlotPitch) / (SlotPitch - SlotGap);
+		Lit *= Row < SlotPitch - SlotGap ? Slot : 0.0;
+		Peak *= Slot;
+	}
+	const float Room = (1.0 / max(Brightest, 1.0e-4) - 1.0) / (Peak - 1.0);
+	return lerp(1.0, Lit, clamp(Room, 0.0, MaskStrength));
+}
+
+float4 ScreenPS(float4 SvPosition : SV_POSITION) : SV_Target0
+{
+	const float2 Size = float2(PictureSize);
+	const float Half = 0.5 * Size.y;
+	const float Aspect = Size.x / Size.y;
+	// The glass bulges: each point shows the picture's point further from the middle, the vertical edges bending as on a
+	// 4:3 tube of the picture's height, the horizontal ones by as much however wide it is.
+	const float2 Flat = (SvPosition.xy - AreaMin - 0.5 * Size) / Half;
+	const float2 Across = float2(Flat.x / Aspect, Flat.y);
+	const float2 Bent = Flat * (1.0 + Curve * float2(Flat.y * Flat.y * (4.0 / 3.0) / Aspect, Across.x * Across.x));
+	const float2 Shown = Bent * Half + 0.5 * Size;
+	const float2 Beyond = abs(Bent * Half) - (0.5 * Size - CornerRadius);
+	const float Cover = saturate(0.5 - (length(max(Beyond, 0.0)) + min(max(Beyond.x, Beyond.y), 0.0) - CornerRadius));
+	if (Cover <= 0.0)
+	{
+		return float4(0.0, 0.0, 0.0, 1.0);
+	}
+
+	// The three lines nearest this point, each a Gaussian of its light averaged over the pixel's height; a line further off
+	// is at least one and a half lines away, past three of the widest beam's sigmas. A line's beam is as wide as its
+	// brightest channel makes it, which keeps its peak within full light.
+	const float Line = (Shown.y - FirstLineTop) / LinePitch - 0.5;
+	const float Nearest = round(Line);
+	const float HalfPixel = 0.5 / LinePitch;
+	const float U = Shown.x / Size.x;
+	float3 Light = 0.0;
+	for (int K = -1; K <= 1; ++K)
+	{
+		const float Row = Nearest + K;
+		if (Row >= 0.0 && Row < LineCount)
+		{
+			const float3 Colour = Signal.SampleLevel(LinearClamp, float2(U, (Row + 0.5) / LineCount), 0).rgb;
+			const float Scale = 1.0 / (sqrt(2.0) * (BeamMin + (BeamMax - BeamMin) * sqrt(max(Colour.r, max(Colour.g, Colour.b)))));
+			const float Distance = Line - Row;
+			Light += Colour * ((Erf((Distance + HalfPixel) * Scale) - Erf((Distance - HalfPixel) * Scale)) / (4.0 * HalfPixel));
+		}
+	}
+	Light *= Mask(SvPosition.xy, max(Light.r, max(Light.g, Light.b)));
+	Light += GlowAmount * Glow.SampleLevel(LinearClamp, float2(Shown.x / (GlowSize.x * LinePitch), (Line + 0.5) / LineCount), 0).rgb;
+	const float Corner = 0.5 * dot(Bent / float2(Aspect, 1.0), Bent / float2(Aspect, 1.0));
+	Light *= 1.0 - Vignette * Corner * Corner;
+	return float4(pow(saturate(Light), 1.0 / DisplayGamma) * Cover, 1.0);
+}

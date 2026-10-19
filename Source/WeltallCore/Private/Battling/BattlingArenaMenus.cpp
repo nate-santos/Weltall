@@ -147,7 +147,11 @@ namespace Weltall
 		Menus.Current = EMenu::None;
 		OpenMenu(Menus, EMenu::Top);
 		Menus.Cursor(EMenu::Top) = 0;
-		Menus.Cursor(EMenu::Bonus) = 0;
+		// Perfect Works' arena keeps bonus battling's cursor where it was left.
+		if (!ArenaRules(*this))
+		{
+			Menus.Cursor(EMenu::Bonus) = 0;
+		}
 		Settings.Mode = EBattlingMode::None;
 		Menus.bCaptureShown = false;
 		Menus.InvalidateHelp();
@@ -322,15 +326,16 @@ namespace Weltall
 			{
 				return;
 			}
-			// The cursor skips the other side's gear unless L2 is held, but steps once only when both stood on one.
+			// The cursor skips the other side's gear unless L2 is held, but steps once only when both stood on one. Perfect Works'
+			// arena never skips it.
 			int32& Cursor = Gears.Cursors[static_cast<std::size_t>(Side)];
 			const int32& Other = Gears.Cursors[static_cast<std::size_t>(1 - Side)];
-			const bool bApart = Cursor != Other;
+			const bool bSkips = Cursor != Other && !ArenaRules(Fight);
 			const int32 Last = static_cast<int32>(Menus.Roster.size()) - 1;
 			do
 			{
 				Cursor = StepMenuValue(Fight, Cursor, Last, MenuStep::Wraps | MenuStep::OnRepeat);
-			} while (Cursor == Other && (Menus.InputHeld & ButtonL2) == 0 && bApart);
+			} while (Cursor == Other && (Menus.InputHeld & ButtonL2) == 0 && bSkips);
 			const bool bConfirmed = Side == 0 ? Menus.InputPad == 0 && (Pads[0].Pressed & ButtonConfirm) != 0 : (Menus.InputPressed & ButtonConfirm) != 0;
 			if (bConfirmed)
 			{

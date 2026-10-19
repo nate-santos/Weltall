@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Presentation/CrtLook.h"
 
 #include <compare>
 #include <vector>
@@ -25,6 +26,15 @@ namespace Weltall
 		Standard,
 	};
 
+	/** Whether the picture is drawn as a CRT shows it: a studio monitor's look, a television's, or the player's own. */
+	enum class ECrtFilter : uint8
+	{
+		Off,
+		Monitor,
+		Television,
+		Custom,
+	};
+
 	/** How the player has the game's window. */
 	struct FDisplayOptions
 	{
@@ -37,9 +47,18 @@ namespace Weltall
 		bool bSoundInBackground = false;
 		/** The game fills the display without a border (never the display's own full-screen mode); off, a window of WindowSize. */
 		bool bFullScreen = false;
+		ECrtFilter Crt = ECrtFilter::Off;
+		/** The player's own look, which Custom draws with. */
+		FCrtLook CustomCrt = FCrtLook::Monitor();
 
 		bool operator==(const FDisplayOptions&) const = default;
 	};
+
+	/** The CRT's look in use: the chosen look's, or the player's own while Custom or off. */
+	constexpr FCrtLook ShownCrtLook(const FDisplayOptions& Options)
+	{
+		return Options.Crt == ECrtFilter::Monitor ? FCrtLook::Monitor() : Options.Crt == ECrtFilter::Television ? FCrtLook::Television() : Options.CustomCrt;
+	}
 
 	/** What the display offers the options screen: the sizes a window can take, smallest first, and the window's now. None where the game has no window. */
 	struct FDisplayModes

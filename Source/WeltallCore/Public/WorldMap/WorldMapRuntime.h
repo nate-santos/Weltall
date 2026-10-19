@@ -73,6 +73,8 @@ namespace Weltall
 		IWorldMapSound* Sound = nullptr;
 		/** The fixes of its broken effects in use. */
 		FWorldMapOptions Options;
+		/** How often the player asked random battles to come. */
+		EEncounterRate EncounterRate = EEncounterRate::Original;
 		/** The kernel's lock on boarding the gears as the world map starts: a cutscene leaves it as it is. */
 		uint8 GearLock = 0;
 		/** The port's story, whose documents add places to an era's scene as it is read (the game's state says whether the expanded second disc's do); none: the disc's places alone. */

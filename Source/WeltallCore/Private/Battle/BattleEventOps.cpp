@@ -4,6 +4,7 @@
 #include "Battle/BattleRules.h"
 #include "Battle/BattleSteps.h"
 #include "Battle/BattleTurn.h"
+#include "Text/MessageOverrides.h"
 
 namespace Weltall::BattleEventSteps
 {
@@ -141,8 +142,9 @@ namespace Weltall::BattleEventSteps
 			{
 				Event.ArrowFrame = 4;
 			}
-			Event.ArrowX = static_cast<int16>(Event.Text->CursorXUnits() * 4 + static_cast<int32>(Event.TextX) + 2);
-			Event.ArrowY = static_cast<int16>(Event.Text->CurrentLine() * 14 + static_cast<int32>(Event.TextY) + 5);
+			const bool bPerfectWorks = Event.Layout == EBattleMessageLayout::PerfectWorks;
+			Event.ArrowX = static_cast<int16>(Event.Text->CursorXUnits() * 4 + static_cast<int32>(Event.TextX) + (bPerfectWorks ? 0 : 2));
+			Event.ArrowY = static_cast<int16>(Event.Text->CurrentLine() * 14 + static_cast<int32>(Event.TextY) + (bPerfectWorks ? 4 : 5));
 			Event.bArrowShown = true;
 			MenuCue(Context, EBattleMenuCue::EventArrow, 0, 1);
 		}
@@ -178,7 +180,9 @@ namespace Weltall::BattleEventSteps
 					break;
 				}
 				const uint16 Style = Run.Style;
-				const uint16 TextWidth = static_cast<uint16>(Event.Window.Width * 12);
+				const bool bPerfectWorks = Event.Layout == EBattleMessageLayout::PerfectWorks;
+				const bool bPortraitAsked = (Style & Style::NoPortrait) == 0 && Portrait != NoPortrait;
+				const uint16 TextWidth = static_cast<uint16>(Event.Window.Width * (bPerfectWorks ? 4 : 12));
 				uint16 BoxWidth = static_cast<uint16>(TextWidth + 0x18);
 				uint16 X = Event.Window.X;
 				uint16 Y = Event.Window.Y;
@@ -187,7 +191,11 @@ namespace Weltall::BattleEventSteps
 				{
 					Y = (Style & Style::Bottom) != 0 ? BottomY : TopY;
 				}
-				const uint16 Lines = Event.Window.Lines < 5 ? Event.Window.Lines : uint16{4};
+				if (bPerfectWorks && bPortraitAsked)
+				{
+					Event.Window.Lines = 4;
+				}
+				const uint16 Lines = bPerfectWorks || Event.Window.Lines < 5 ? Event.Window.Lines : uint16{4};
 				const uint16 Height = static_cast<uint16>(Lines * 13 + 20);
 				if (Event.Window.X == FBattleEventWindow::Automatic)
 				{
@@ -198,7 +206,7 @@ namespace Weltall::BattleEventSteps
 				Run.bPortrait = false;
 				if ((Style & Style::NoWindow) == 0)
 				{
-					if ((Style & Style::NoPortrait) == 0 && Portrait != NoPortrait)
+					if (bPortraitAsked)
 					{
 						BoxWidth = static_cast<uint16>(TextWidth + 0x58);
 						Run.bPortrait = true;
@@ -257,7 +265,12 @@ namespace Weltall::BattleEventSteps
 				{
 					Event.Text.emplace(0, 0);
 				}
-				Event.Text->Reinitialize(Event.Window.Width * 3, Event.Window.Lines);
+				const int32 WidthUnits = Event.Layout == EBattleMessageLayout::PerfectWorks ? Event.Window.Width : Event.Window.Width * 3;
+				Event.Text->Reinitialize(WidthUnits, Event.Window.Lines);
+				if (Event.Replaced != nullptr)
+				{
+					Event.Replaced->CheckWindow(Number, Event.Messages.String(Number), WidthUnits, Event.Window.Lines);
+				}
 				MenuCue(Context, EBattleMenuCue::EventText);
 				Event.Text->HideBox();
 				Event.Text->Reset();

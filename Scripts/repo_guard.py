@@ -64,6 +64,8 @@ class Entry:
 def path_problem(path: str) -> str | None:
     normalized = path.replace("\\", "/").casefold()
     parts = PurePosixPath(normalized).parts
+    if parts and parts[0] == "mods":
+        return "local mod files belong outside Git"
     if any(part in FORBIDDEN_DIRECTORIES for part in parts[:-1]):
         return "local game data or generated output directory"
     if PurePosixPath(normalized).suffix in FORBIDDEN_EXTENSIONS:

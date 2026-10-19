@@ -14,14 +14,13 @@ namespace Weltall
 		constexpr int32 SecondScrollCommand = 0x25;
 		constexpr int32 ScreenWaveCommand = 0x54;
 		/**
-		 * The screen wave: the screen it captures and where it puts the capture, the screen area it clears after, and its length
-		 * in vertical blanks (164 frames of two, then three more), after which the battle's frame runs its most catch-up steps.
+		 * The screen wave: the screen it captures and where it puts the capture, the screen area it clears after, and the
+		 * battle frame's catch-up steps after its blanks.
 		 */
 		constexpr FVramRect CapturedScreen{0, 0, 0x140, 0xE0};
 		constexpr int16 CaptureX = 0x2C0;
 		constexpr int16 CaptureY = 0x100;
 		constexpr FVramRect ClearedScreen{0, 0, 0x140, 0x1C0};
-		constexpr int32 ScreenWaveBlanks = 2 * (164 + 3);
 		constexpr int32 MostCatchUpSteps = 4;
 		/** The gear places whose columns the wave keeps from its capture. */
 		constexpr std::array<std::size_t, 2> KeptPlaces{1, 2};
@@ -119,6 +118,7 @@ namespace Weltall
 		{
 			const FGearTexturePlace& Place = Objects.Tables->GearPlaces[KeptPlaces[Index]];
 			ReadVram(Vram, {Place.X, Place.Y, ColumnWidth, ColumnHeight}, Kept[Index]);
+			Vram.NoteReadback(Kept[Index].Rect);
 		}
 		FVramImage Capture;
 		ReadVram(Vram, CapturedScreen, Capture);
@@ -136,10 +136,13 @@ namespace Weltall
 		FVramImage Cleared;
 		Cleared.Rect = ClearedScreen;
 		Cleared.Units.assign(static_cast<std::size_t>(ClearedScreen.Width) * static_cast<std::size_t>(ClearedScreen.Height), 0);
-		Vram.Upload(Cleared);
-		// Its frames flip the draw buffers an even number of times from the first.
+		Vram.UploadFill(Cleared);
+		// Its frames flip the draw buffers an even number of times from the first, clearing both ordering tables: the
+		// frame's links so far are lost, and it leaves a black screen-sized tile behind the links still to come.
 		Battle.DrawBuffer = 0;
-		HoldFrames = ScreenWaveBlanks;
+		Links.clear();
+		bCoveredByWave = true;
+		WaveHold.Start();
 		PendingCatchUp = MostCatchUpSteps;
 	}
 

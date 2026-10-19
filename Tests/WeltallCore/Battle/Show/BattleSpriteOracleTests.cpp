@@ -707,6 +707,11 @@ namespace
 			C.Digest(One);
 			INFO("frame " << Frame << ": fault " << static_cast<int32>(C.Sprites.Fault()) << ", " << C.Sprites.FaultValue());
 			REQUIRE(C.Sprites.Fault() == ESpriteFault::None);
+			// Every fade here is a script's, which the Battle flashes setting draws as the player has them.
+			if (C.Fade.Fade.bOn && !C.Fade.Fade.bFromEffect)
+			{
+				FAIL("a fade a sprite script started is not marked as an effect's");
+			}
 		}
 		C.Battle.End();
 		Whole.Raw(One.Finish());

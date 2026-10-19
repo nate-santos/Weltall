@@ -4,6 +4,7 @@
 #include "Foundation/Result.h"
 #include "Foundation/Types.h"
 #include "Text/MesWindow.h"
+#include "Text/MessageOverrides.h"
 
 #include <cstddef>
 #include <span>
@@ -29,10 +30,19 @@ namespace Weltall
 		int32 Count() const { return static_cast<int32>(Scripts.size()); }
 		std::span<const uint8> Script(int32 Number) const { return Scripts[static_cast<std::size_t>(Number)]; }
 		std::span<const uint8> Messages(int32 Number) const { return MessageTables[static_cast<std::size_t>(Number)]; }
+		/** How the scripts measure their message windows: Perfect Works' where the disc's mod gives its own scripts. */
+		EBattleMessageLayout Layout() const { return MessageLayout; }
+		/** Which of event Number's messages are the player's (Assets/text); none where the archive was parsed alone. */
+		const FReplacedMessages* Replaced(int32 Number) const
+		{
+			return static_cast<std::size_t>(Number) < ReplacedMessages.size() ? &ReplacedMessages[static_cast<std::size_t>(Number)] : nullptr;
+		}
 
 	private:
 		std::vector<std::vector<uint8>> Scripts;
 		std::vector<std::vector<uint8>> MessageTables;
+		std::vector<FReplacedMessages> ReplacedMessages;
+		EBattleMessageLayout MessageLayout = EBattleMessageLayout::Original;
 	};
 
 	namespace BattleEventScript
@@ -55,7 +65,8 @@ namespace Weltall
 	 * each actor's init thread, the order, the message window's defaults, the Wait counters on. The
 	 * script and its messages must outlive the battle. Run it with StepBattleEvent.
 	 */
-	WELTALLCORE_API void BeginBattleEvent(FBattleContext& Context, std::span<const uint8> Script, std::span<const uint8> Messages);
+	WELTALLCORE_API void BeginBattleEvent(FBattleContext& Context, std::span<const uint8> Script, std::span<const uint8> Messages,
+		EBattleMessageLayout Layout = EBattleMessageLayout::Original, const FReplacedMessages* Replaced = nullptr);
 
 	/**
 	 * A hook's run of the scripts: the battle's opening, a turn's boundary, after the

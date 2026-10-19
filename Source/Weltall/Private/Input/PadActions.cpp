@@ -5,6 +5,7 @@
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
+#include "Input/PadStick.h"
 #include "WeltallLog.h"
 
 namespace
@@ -57,6 +58,8 @@ UInputAction* UPadActions::MakeAction(const TCHAR* Name, EInputActionValueType T
 void UPadActions::Map(const Weltall::FControlBindings& Bindings)
 {
 	Keys->UnmapAll();
+	Bound = Bindings;
+	Stick = PadStick::BoundStick(Bindings);
 	MouseDegrees = Weltall::MouseDegreesPerCount(Bindings.MouseSensitivity);
 	StickScale = Weltall::StickRateScale(Bindings.StickSensitivity);
 	for (int32 Index = 0; Index < Weltall::ControlActionCount; ++Index)
@@ -112,6 +115,12 @@ Weltall::FPadState UPadActions::ReadHeld(const UEnhancedPlayerInput& Input) cons
 		{
 			Held.Buttons |= Weltall::FPadState::Bit(*Button);
 		}
+	}
+	Held.StickButtons = PadStick::OnlyStickHolds(Bound, Held, [&Input](const FKey& Key) { return Input.IsPressed(Key); });
+	if (Stick != 0)
+	{
+		const TPair<FKey, FKey> Axes = PadStick::Axes(Stick);
+		PadStick::Report(Input.GetRawKeyValue(Axes.Key), Input.GetRawKeyValue(Axes.Value), Held);
 	}
 	return Held;
 }

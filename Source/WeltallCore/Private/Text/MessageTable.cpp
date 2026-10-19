@@ -8,7 +8,6 @@ namespace Weltall
 	{
 		constexpr uint16 EmptyTable = 0xFFFF;
 		constexpr std::size_t OffsetsStart = 4;
-		constexpr int32 GlyphMapTable = 27;
 	}
 
 	TResult<FMessageTable> FMessageTable::Parse(std::span<const uint8> Bytes)
@@ -148,13 +147,22 @@ namespace Weltall
 		return Parsed ? Parsed->String(Index) : std::span<const uint8>();
 	}
 
+	std::span<const uint8> FMesNameTables::Table(int32 Table) const
+	{
+		if (Table < 0 || Table >= Count())
+		{
+			return {};
+		}
+		return std::span<const uint8>(Data).subspan(Offsets[static_cast<std::size_t>(Table)]);
+	}
+
 	std::span<const uint8> FMesNameTables::GlyphMapEntry(int32 Index) const
 	{
 		if (GlyphMapTable >= Count() || Index < 0)
 		{
 			return {};
 		}
-		const std::size_t Offset = Offsets[GlyphMapTable] + static_cast<std::size_t>(Index) * 2;
+		const std::size_t Offset = Offsets[static_cast<std::size_t>(GlyphMapTable)] + static_cast<std::size_t>(Index) * 2;
 		return Offset + 2 <= Data.size() ? std::span<const uint8>(Data).subspan(Offset, 2) : std::span<const uint8>();
 	}
 }

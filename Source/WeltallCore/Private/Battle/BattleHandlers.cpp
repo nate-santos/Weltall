@@ -49,7 +49,11 @@ namespace Weltall
 			const bool bTaken = TryInflictStatus(Context, Command.StatusChance, Command.StatusGroup, Command.StatusBits);
 			// The original sets the count before it looks at the outcome.
 			const bool bCounts = bTaken || !Context.RuleOptions.bFailedStatusKeepsCount;
-			if ((Command.Flags & BattleCommandFlags::StatusOnHit) == 0)
+			// Perfect Works' rebalance: a Deathblow's status and one on the actor itself last the record's own turns; any
+			// other, a hit's too, counts the command's power and marks a miss.
+			constexpr uint16 OwnTurns = BattleCommandFlags::Deathblow | BattleCommandFlags::PerfectWorksSelfStatus;
+			const bool bRebalance = Context.bPerfectWorksRebalance;
+			if ((Command.Flags & (bRebalance ? OwnTurns : BattleCommandFlags::StatusOnHit)) == 0)
 			{
 				if (bCounts)
 				{
@@ -62,7 +66,7 @@ namespace Weltall
 			}
 			else if (bCounts)
 			{
-				SetStatusDuration(Context, Action.TargetSlot, Command.StatusGroup, Command.StatusBits, 5);
+				SetStatusDuration(Context, Action.TargetSlot, Command.StatusGroup, Command.StatusBits, bRebalance ? Command.OwnStatusTurns : uint8{5});
 			}
 		}
 

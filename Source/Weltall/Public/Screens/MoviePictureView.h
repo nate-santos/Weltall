@@ -5,12 +5,16 @@
 #include "Presentation/GameScreen.h"
 #include "Screens/GameScreen.h"
 
+#include <memory>
+
 class FMoviePictureFrame;
 class FMoviePictureTexture;
+class FMovieSubtitleTexture;
 
 namespace Weltall
 {
 	class FMoviePlayer;
+	struct FMovieSubtitlePicture;
 }
 
 /** A movie player's picture on the GPU, made again each time the player shows another, and drawn on a game screen. */
@@ -32,6 +36,9 @@ private:
 	TSharedPtr<FMoviePictureTexture> Picture;
 	/** Which of the player's pictures the texture holds. */
 	uint32 PictureNumber = 0;
+	/** The subtitle line shown with it, kept on the GPU while the line shows. */
+	std::shared_ptr<const Weltall::FMovieSubtitlePicture> SubtitleLine;
+	TSharedPtr<FMovieSubtitleTexture> Subtitle;
 	/** Frames handed out; one the rendering thread no longer holds is filled again. */
 	mutable TArray<TSharedRef<FMoviePictureFrame>> Frames;
 };

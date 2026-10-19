@@ -229,7 +229,9 @@ namespace Weltall
 		{
 			Turn.Costs[static_cast<std::size_t>(Command)] = Context.Commands[FBattleContext::GearCommandIndex(Slot, Command)].FuelCost;
 		}
-		Turn.Charge = Gear.ChargeMultiplier == 0 ? 30 : static_cast<uint16>(Gear.ChargeMultiplier * Turn.Costs[0]);
+		// Perfect Works' rebalance charges by 10 where the original takes the weak attack's fuel cost.
+		const uint16 ChargeBase = Context.bPerfectWorksRebalance ? uint16{10} : Turn.Costs[0];
+		Turn.Charge = Gear.ChargeMultiplier == 0 ? 30 : static_cast<uint16>(Gear.ChargeMultiplier * ChargeBase);
 		const uint8 Level = Member.AttackLevel;
 		if (Level >= 1 && Level <= 3)
 		{
@@ -280,7 +282,12 @@ namespace Weltall
 		if ((Gear.Status & 0x080) != 0) Turn.Lamps |= 0x2000;
 		if ((Gear.Status & 0x010) != 0) Turn.Lamps |= 0x1000;
 		if (Gear.Fuel < (Gear.MaxFuel >> 3)) Turn.Lamps |= 0x800;
-		if (Gear.Fuel == 0)
+		if (Gear.Fuel == 0 && Context.bPerfectWorksRebalance)
+		{
+			// Its booster lives in the gear's permanent buffs.
+			Gear.PermanentBuffs &= 0x7FFF;
+		}
+		else if (Gear.Fuel == 0)
 		{
 			Gear.Buffs &= 0x7FFF;
 			Member.Buffs &= 0x7FFF;

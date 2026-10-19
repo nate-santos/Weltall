@@ -1,11 +1,14 @@
 // Draws a movie picture decoded by the MDEC: scales its luma with a Catmull-Rom filter and its
 // half-resolution chroma bilinearly (each chroma sample sits at the centre of the 2x2 pixels it
-// covers), then converts to RGB with the BT.601 weights the MDEC uses, full range.
+// covers), converts to RGB with the BT.601 weights the MDEC uses, full range, then lays the
+// undub's subtitle over it (clear when there is none).
 
 #include "/Engine/Public/Platform.ush"
+#include "/Weltall/Private/MovieSubtitle.ush"
 
 Texture2D<float> Luma;
 Texture2D<float2> Chroma;
+Texture2D<float4> Subtitle;
 SamplerState LinearClamp;
 // Where the game screen lies in the render target, in its pixels: x, y, width, height.
 float4 ScreenRect;
@@ -57,5 +60,6 @@ float4 MainPS(float4 SvPosition : SV_POSITION) : SV_Target0
 		Y + 1.402 * CbCr.y,
 		Y - 0.344136 * CbCr.x - 0.714136 * CbCr.y,
 		Y + 1.772 * CbCr.x);
-	return float4(saturate(Rgb / 255.0), 1.0);
+	const float2 Scale = ScreenRect.zw / ScreenSize;
+	return float4(OverlaySubtitle(saturate(Rgb / 255.0), Subtitle, LinearClamp, Position, min(Scale.x, Scale.y)), 1.0);
 }

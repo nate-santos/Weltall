@@ -4,6 +4,7 @@
 #include "BattleView.h"
 #include "BattlingView.h"
 #include "ChapterCardView.h"
+#include "TitleMarkView.h"
 #include "FieldView.h"
 #include "MenuView.h"
 #include "WorldMapView.h"
@@ -254,6 +255,7 @@ FGameLoopScreen::FGameLoopScreen(const Weltall::FIso9660& InDisc, FStartSound In
 	  WorldMap(MakeUnique<FWorldMapView>(GameLoopWorldMapOptions(InSettings.Field))), Battle(MakeUnique<FBattleView>(InSettings.Field)),
 	  Battling(MakeUnique<FBattlingView>(GameLoopWorldMapOptions(InSettings.Field))),
 	  ChapterCard(MakeUnique<FChapterCardView>()),
+	  TitleMark(MakeUnique<FTitleMarkView>()),
 	  BattleSpeedMark(MakeUnique<FBattleSpeedMarkView>()),
 	  Blank(MakeShared<FBlankScreenFrame>())
 {
@@ -571,17 +573,22 @@ TSharedRef<const IScreenFrame> FGameLoopScreen::CaptureProgramFrame() const
 	}
 	if (const Weltall::FFieldProgram* FieldProgram = GameLoop->Field())
 	{
-		// A menu the field runs is drawn over the field's last picture, standing still.
+		// A menu the field runs is drawn over the field's last picture, standing still, the title's mark part of it.
 		if (Menus->Running() != nullptr)
 		{
-			if (TSharedPtr<const IScreenFrame> Frame = Menu->Capture(Field->CaptureStill(*FieldProgram), Alpha))
+			TSharedPtr<const IScreenFrame> Still = Field->CaptureStill(*FieldProgram);
+			if (Still.IsValid())
+			{
+				Still = TitleMark->Capture(*Session, *FieldProgram, Still.ToSharedRef(), true);
+			}
+			if (TSharedPtr<const IScreenFrame> Frame = Menu->Capture(Still, Alpha))
 			{
 				return Frame.ToSharedRef();
 			}
 		}
 		if (TSharedPtr<const IScreenFrame> Frame = Field->Capture(*FieldProgram, Alpha))
 		{
-			return ChapterCard->Capture(*Session, Frame.ToSharedRef());
+			return TitleMark->Capture(*Session, *FieldProgram, ChapterCard->Capture(*Session, Frame.ToSharedRef()));
 		}
 	}
 	if (const Weltall::FWorldMapProgram* WorldMapProgram = GameLoop->WorldMap())
@@ -667,6 +674,12 @@ void FGameLoopScreen::SetMenuAssets(Weltall::IMenuAssets* InAssets)
 	FollowMenuServices();
 }
 
+void FGameLoopScreen::SetMenuMods(Weltall::FMenuMods InMods)
+{
+	MenuMods = MoveTemp(InMods);
+	FollowMenuServices();
+}
+
 void FGameLoopScreen::SetDisplayModes(FDisplayModesAsked InDisplayModes)
 {
 	DisplayModes = MoveTemp(InDisplayModes);
@@ -686,6 +699,7 @@ void FGameLoopScreen::FollowMenuServices()
 		return;
 	}
 	Menus->SetAssets(MenuAssets);
+	Menus->SetMods(MenuMods);
 	Menus->SetKeys(MenuKeys);
 	if (Quit)
 	{

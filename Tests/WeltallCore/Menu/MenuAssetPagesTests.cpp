@@ -1,4 +1,6 @@
 #include "Menu/MenuAssetPages.h"
+#include "Menu/MenuSettingsPages.h"
+#include "Menu/OptionsText.h"
 #include "Support/GameDiscs.h"
 #include "Support/GameText.h"
 #include "Text/MesGlyphs.h"
@@ -11,15 +13,17 @@ TEST_CASE("Asset status rows preserve the selected action through progress and c
 {
 	FPlayerSettings Settings;
 	auto Rows = AssetSettingsRows(Settings, {});
-	REQUIRE(Rows.size() == 6);
+	REQUIRE(Rows.size() == 7);
 	CHECK(Rows[0].Value == "Off");
 	CHECK(Rows[AssetRow::Capture].Label == "Capture textures");
 	CHECK(Rows[AssetRow::Textures].Label == "Export textures");
+	CHECK(Rows[AssetRow::Text].Label == "Export text");
 	CHECK(Rows[AssetRow::Dump].Label == "Dump disc assets");
 	CHECK(Rows[AssetRow::Music].Label == "Export music WAVs");
 	CHECK(Rows[AssetRow::Status].Value == "Ready");
 	CHECK(Rows[AssetRow::Status].bReadOnly);
 	CHECK(AssetRowExport(AssetRow::Textures) == EAssetExportKind::Textures);
+	CHECK(AssetRowExport(AssetRow::Text) == EAssetExportKind::Text);
 	CHECK_FALSE(AssetRowExport(AssetRow::Capture));
 	Settings.bExternalAssets = true;
 	Rows = AssetSettingsRows(Settings, {EAssetExportState::Running, EAssetExportKind::Dump, 7, 10, 1});
@@ -37,6 +41,10 @@ TEST_CASE("Asset status rows preserve the selected action through progress and c
 	Rows = AssetSettingsRows(Settings, {EAssetExportState::Running, EAssetExportKind::Textures, 221, 884, 3});
 	CHECK(Rows[AssetRow::Textures].Label == "Cancel export");
 	CHECK(Rows[AssetRow::Status].Value == "25%");
+	Rows = AssetSettingsRows(Settings, {EAssetExportState::Running, EAssetExportKind::Text, 371, 741, 4});
+	CHECK(Rows[AssetRow::Text].Label == "Cancel export");
+	CHECK(Rows[AssetRow::Textures].bReadOnly);
+	CHECK(Rows[AssetRow::Status].Value == "50%");
 }
 
 TEST_CASE("Asset page words fit the game's font and menu strips", "[Menu][Assets][Content]")
@@ -63,6 +71,13 @@ TEST_CASE("Asset page words fit the game's font and menu strips", "[Menu][Assets
 			for (const auto& Line : Row.Help) { CHECK(Width(Line) <= 244); }
 		}
 	}
+	// The Modding page's rows that open this page and the mod's, and the heading over them.
+	CHECK(Width(OptionsText::Modding::Assets.Label) + 8 <= 256);
+	CHECK(Width(OptionsText::Modding::Mods) <= 256);
+	for (const std::string_view Line : OptionsText::Modding::Assets.Help) { CHECK(Width(Line) <= 244); }
+	CHECK(Width(OptionsText::Modding::PerfectWorks.Label) + 8 + Width(OptionsText::Off) <= 256);
+	for (const std::string& Line : OptionsText::Fill(OptionsText::Modding::PerfectWorks.Help, {"0.11.10"})) { CHECK(Width(Line) <= 244); }
+	CHECK(Width(OptionsText::Modding::PerfectWorksUnversioned) <= 244);
 }
 
 TEST_CASE("Voice language choices cycle independently of sound output and persist", "[Menu][Assets][Settings]")
@@ -80,4 +95,20 @@ TEST_CASE("Voice language choices cycle independently of sound output and persis
 	const auto Invalid = ReadPlayerSettings("sound.voices = invalid\nassets.external = invalid\n");
 	CHECK(Invalid.VoiceLanguage == EVoiceLanguage::Automatic);
 	CHECK_FALSE(Invalid.bExternalAssets);
+}
+
+TEST_CASE("Movie subtitles step through Auto, On and Off beside the voices and persist", "[Menu][Settings]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Label == OptionsText::Sound::Subtitles.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Value == "Auto");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 3, 1, Settings, bCustomPicked));
+	CHECK(Settings.MovieSubtitles == EMovieSubtitles::On);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 3, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Value == "Off");
+	CHECK(Settings.VoiceLanguage == EVoiceLanguage::Automatic);
+	CHECK(ReadPlayerSettings(WritePlayerSettings(Settings)).MovieSubtitles == EMovieSubtitles::Off);
+	CHECK(ReadPlayerSettings("sound.subtitles = on\n").MovieSubtitles == EMovieSubtitles::On);
+	CHECK(ReadPlayerSettings("sound.subtitles = invalid\n").MovieSubtitles == EMovieSubtitles::Automatic);
 }

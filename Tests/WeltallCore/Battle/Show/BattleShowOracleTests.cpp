@@ -6,6 +6,7 @@
 #include "Battle/Show/BattleStageFiles.h"
 #include "Battle/Show/BattleShowNumbers.h"
 #include "Battle/Show/BattleShowScreen.h"
+#include "Battle/Show/BattleShowScreenWave.h"
 #include "Battle/Show/BattleShowTransition.h"
 #include "Game/PsxRandom.h"
 #include "Graphics/GteMath.h"
@@ -40,6 +41,104 @@ namespace
 		}
 		auto Table = FGteArctangents::Read(*Executable);
 		return Table ? std::optional<FGteArctangents>(*Table) : std::nullopt;
+	}
+
+	/**
+	 * A mesh of the screen's picture as the oracle digests it: made (its triangles' places or corners, both buffers' packets),
+	 * then stepped and drawn Frames times with the draw buffer swapping before each (its state, each triangle's depths and
+	 * colours, its entry and its corners on the screen).
+	 */
+	void DigestScreenMesh(EBattleScreenMesh Kind, int32 Buffer, uint32 Frames, std::vector<FBattleMeshTriangle>& Triangles, FOracleDigest& One)
+	{
+		/** Where the meshes keep the picture, and their packets' codes: a flat and a shaded textured triangle, semi-transparent. */
+		constexpr int32 PictureX = 0x2C0;
+		constexpr uint8 FlatCode = 0x26;
+		constexpr uint8 ShadedCode = 0x36;
+
+		FBattleScreenMesh Mesh;
+		Mesh.Create(Kind);
+		const bool bWave = Mesh.IsWave();
+		const int32 Cell = bWave ? 16 : 32;
+		const auto State = [&Mesh, &One, bWave]()
+		{
+			if (!bWave)
+			{
+				One.I32(Mesh.Steps());
+				return;
+			}
+			// The wave's block: its numbers, its place, a word it never writes, its angles.
+			One.I32(Mesh.Brightness(), Mesh.Phase(), Mesh.Amplitude(), Mesh.Steps(), Mesh.Speed(), 0, 0, Mesh.Depth(), 0);
+			One.I16(0, 0, 0, 0);
+		};
+		State();
+		Mesh.Draw(0, 0, Mesh.Columns(), Triangles);
+		REQUIRE(Triangles.size() == static_cast<std::size_t>(FBattleScreenMesh::Sides * Mesh.Rows() * Mesh.Columns()));
+		for (std::size_t Index = 0; Index < Triangles.size(); ++Index)
+		{
+			const FBattleMeshTriangle& Triangle = Triangles[Index];
+			const int32 Column = static_cast<int32>(Index) % Mesh.Columns();
+			if (bWave)
+			{
+				for (const FGteVector& Corner : Triangle.Corners)
+				{
+					One.I16(Corner[0], Corner[1], 0);
+				}
+			}
+			else
+			{
+				One.I16(0, 0, 0);
+				One.I32(Triangle.Matrix.T[0], Triangle.Matrix.T[1], Triangle.Matrix.T[2]);
+			}
+			for (int32 Packet = 0; Packet < 2; ++Packet)
+			{
+				One.U8(bWave ? ShadedCode : FlatCode);
+				for (int32 Corner = 0; Corner < (bWave ? 3 : 1); ++Corner)
+				{
+					One.U8(0x80, 0x80, 0x80);
+				}
+				for (const std::array<int32, 2>& Pixel : Triangle.Pixels)
+				{
+					One.U8(((Column * Cell) & 0x3F) + Pixel[0] - Column * Cell, Pixel[1]);
+				}
+				const int32 X = PictureX + Column * Cell;
+				One.I16(2 << 7 | static_cast<int32>(Mesh.Blend()) << 5 | 1 << 4 | (X & 0x3FF) >> 6);
+			}
+		}
+		for (uint32 Frame = 0; Frame < Frames; ++Frame)
+		{
+			Buffer ^= 1;
+			Mesh.Step(Buffer);
+			Mesh.Draw(Buffer, 0, Mesh.Columns(), Triangles);
+			State();
+			for (const FBattleMeshTriangle& Triangle : Triangles)
+			{
+				if (bWave)
+				{
+					One.I16(Triangle.Corners[0][2], Triangle.Corners[1][2], Triangle.Corners[2][2]);
+					for (const uint8 Color : Triangle.Colors)
+					{
+						One.U8(Color, Color, Color);
+					}
+				}
+				else
+				{
+					One.I32(Triangle.Matrix.T[2]);
+					for (const uint8 Color : Mesh.BufferColors())
+					{
+						One.U8(Color, Color, Color);
+					}
+				}
+				const FBattleMeshLink Link = Mesh.Link(Triangle);
+				One.I16(Link.bLinked ? Link.Entry : 0xFFFF);
+				if (Link.bLinked)
+				{
+					for (const std::array<int16, 2>& Corner : Link.Screen)
+					{
+						One.I16(Corner[0], Corner[1]);
+					}
+				}
+			}
+		}
 	}
 
 	void DigestShards(const FBattleShatter& Shatter, FOracleDigest& Digest, bool bPackets)
@@ -109,12 +208,8 @@ TEST_CASE("The setup's transitions match the original's meshes frame by frame", 
 	constexpr uint32 Seed = 0x7A45E7A2;
 	constexpr int32 Cases = 16;
 	constexpr const char* OriginalDigest = "3db432d673dcb57f7479b03fda2201204cfd071b";
-	constexpr std::array<EBattleSetupTransition, 4> Kinds{EBattleSetupTransition::Triangles, EBattleSetupTransition::TrianglesStill,
-		EBattleSetupTransition::Wave, EBattleSetupTransition::WaveSine};
-	/** Where the transitions keep the picture, and their packets' codes: a flat and a shaded textured triangle, semi-transparent. */
-	constexpr int32 PictureX = 0x2C0;
-	constexpr uint8 FlatCode = 0x26;
-	constexpr uint8 ShadedCode = 0x36;
+	constexpr std::array<EBattleScreenMesh, 4> Kinds{EBattleScreenMesh::Triangles, EBattleScreenMesh::TrianglesStill,
+		EBattleScreenMesh::Wave, EBattleScreenMesh::WaveSine};
 
 	FXorShift32 G(Seed);
 	FOracleDigest Whole;
@@ -123,93 +218,29 @@ TEST_CASE("The setup's transitions match the original's meshes frame by frame", 
 	{
 		FOracleDigest One;
 		const uint32 Kind = G.Next() & 3;
-		int32 Buffer = static_cast<int32>(G.Next() & 1);
+		const int32 Buffer = static_cast<int32>(G.Next() & 1);
 		const uint32 Frames = 1 + G.Below(100);
 		One.U8(Kind);
-		FBattleSetupMesh Mesh;
-		Mesh.Create(Kinds[Kind]);
-		const bool bWave = Mesh.IsWave();
-		const int32 Cell = bWave ? 16 : 32;
-		const auto State = [&Mesh, &One, bWave]()
-		{
-			if (!bWave)
-			{
-				One.I32(Mesh.Steps());
-				return;
-			}
-			// The wave's block: its numbers, its place, a word it never writes, its angles.
-			One.I32(Mesh.Brightness(), Mesh.Phase(), Mesh.Amplitude(), Mesh.Steps(), Mesh.Speed(), 0, 0, Mesh.Depth(), 0);
-			One.I16(0, 0, 0, 0);
-		};
-		State();
-		Mesh.Draw(0, 0, Mesh.Columns(), Triangles);
-		REQUIRE(Triangles.size() == static_cast<std::size_t>(FBattleSetupMesh::Sides * Mesh.Rows() * Mesh.Columns()));
-		for (std::size_t Index = 0; Index < Triangles.size(); ++Index)
-		{
-			const FBattleMeshTriangle& Triangle = Triangles[Index];
-			const int32 Column = static_cast<int32>(Index) % Mesh.Columns();
-			if (bWave)
-			{
-				for (const FGteVector& Corner : Triangle.Corners)
-				{
-					One.I16(Corner[0], Corner[1], 0);
-				}
-			}
-			else
-			{
-				One.I16(0, 0, 0);
-				One.I32(Triangle.Matrix.T[0], Triangle.Matrix.T[1], Triangle.Matrix.T[2]);
-			}
-			for (int32 Packet = 0; Packet < 2; ++Packet)
-			{
-				One.U8(bWave ? ShadedCode : FlatCode);
-				for (int32 Corner = 0; Corner < (bWave ? 3 : 1); ++Corner)
-				{
-					One.U8(0x80, 0x80, 0x80);
-				}
-				for (const std::array<int32, 2>& Pixel : Triangle.Pixels)
-				{
-					One.U8(((Column * Cell) & 0x3F) + Pixel[0] - Column * Cell, Pixel[1]);
-				}
-				const int32 X = PictureX + Column * Cell;
-				One.I16(2 << 7 | static_cast<int32>(Mesh.Blend()) << 5 | 1 << 4 | (X & 0x3FF) >> 6);
-			}
-		}
-		for (uint32 Frame = 0; Frame < Frames; ++Frame)
-		{
-			Buffer ^= 1;
-			Mesh.Step(Buffer);
-			Mesh.Draw(Buffer, 0, Mesh.Columns(), Triangles);
-			State();
-			for (const FBattleMeshTriangle& Triangle : Triangles)
-			{
-				if (bWave)
-				{
-					One.I16(Triangle.Corners[0][2], Triangle.Corners[1][2], Triangle.Corners[2][2]);
-					for (const uint8 Color : Triangle.Colors)
-					{
-						One.U8(Color, Color, Color);
-					}
-				}
-				else
-				{
-					One.I32(Triangle.Matrix.T[2]);
-					for (const uint8 Color : Mesh.BufferColors())
-					{
-						One.U8(Color, Color, Color);
-					}
-				}
-				const FBattleMeshLink Link = Mesh.Link(Triangle);
-				One.I16(Link.bLinked ? Link.Entry : 0xFFFF);
-				if (Link.bLinked)
-				{
-					for (const std::array<int16, 2>& Corner : Link.Screen)
-					{
-						One.I16(Corner[0], Corner[1]);
-					}
-				}
-			}
-		}
+		DigestScreenMesh(Kinds[Kind], Buffer, Frames, Triangles, One);
+		Whole.Raw(One.Finish());
+	}
+	CHECK(Whole.Hex() == OriginalDigest);
+}
+
+TEST_CASE("The screen wave's mesh matches the original's frame by frame, its whole length", "[Battle][Oracle]")
+{
+	constexpr uint32 Seed = 0x5C9EE006;
+	constexpr int32 Cases = 2;
+	constexpr const char* OriginalDigest = "41ff938a02667b3b1bc77f6422fc7cd2272e42e2";
+
+	FXorShift32 G(Seed);
+	FOracleDigest Whole;
+	std::vector<FBattleMeshTriangle> Triangles;
+	for (int32 Case = 0; Case < Cases; ++Case)
+	{
+		FOracleDigest One;
+		const int32 Buffer = static_cast<int32>(G.Next() & 1);
+		DigestScreenMesh(EBattleScreenMesh::ScreenWave, Buffer, FBattleScreenWave::FrameCount, Triangles, One);
 		Whole.Raw(One.Finish());
 	}
 	CHECK(Whole.Hex() == OriginalDigest);

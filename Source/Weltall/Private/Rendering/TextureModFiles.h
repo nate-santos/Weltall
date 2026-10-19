@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BeetleTexturePacks.h"
 #include "CoreMinimal.h"
 #include "Graphics/TextureSheet.h"
 
@@ -10,7 +11,8 @@ class IImageWrapperModule;
 
 /**
  * Where a textures folder's replacements are, by key: PNGs whose names end in their key, and the pictures of sheets (a
- * PNG with its layout beside it, Weltall::FTextureSheetLayout). Game thread, but for the readers it hands out.
+ * PNG with its layout beside it, Weltall::FTextureSheetLayout); and the pictures of Beetle PSX HW texture packs, by
+ * their names (FBeetleTexturePacks). Game thread, but for the readers it hands out.
  */
 class FTextureModFiles
 {
@@ -23,6 +25,9 @@ public:
 	void Empty();
 	bool Contains(uint64 Key) const { return Pngs.Contains(Key) || Cells.Contains(Key); }
 	int32 Count() const { return Pngs.Num() + Cells.Num(); }
+	const FBeetleTexturePacks& Packs() const { return Beetle; }
+	IImageWrapperModule* ImageWrappers() const { return Wrappers; }
+	const std::filesystem::path& CanonicalRoot() const { return Root; }
 
 	/** A picture read: its pixels, or its size alone when they would exceed the budget, or a failure. */
 	struct FRead
@@ -53,6 +58,9 @@ public:
 	static constexpr int32 MaxScale = 16;
 
 private:
+	/** Finds the Beetle PSX HW packs' pictures below Folder but Originals. */
+	void FindPacks(const FString& Folder, const TCHAR* Originals);
+
 	struct FSheet
 	{
 		FString Png;
@@ -65,4 +73,5 @@ private:
 	TArray<TSharedRef<const FSheet>> Sheets;
 	/** Each key a sheet holds: the sheet and its picture. */
 	TMap<uint64, TPair<int32, int32>> Cells;
+	FBeetleTexturePacks Beetle;
 };

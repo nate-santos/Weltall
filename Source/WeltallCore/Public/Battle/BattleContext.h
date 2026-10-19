@@ -11,6 +11,7 @@
 #include "Battle/BattleTables.h"
 #include "Battle/BattleTurnState.h"
 #include "Foundation/Types.h"
+#include "Game/GameBalance.h"
 
 #include <array>
 #include <cstddef>
@@ -417,6 +418,12 @@ namespace Weltall
 		std::array<uint8, SlotCount> NameEntries{};
 		/** The next of the eight message boxes the enemies' messages take in a turn (1 at its start). */
 		uint8 NextMessageBox = 0;
+		/**
+		 * With `bDeusKeepsCamera`, the last queue write's third byte (Perfect Works' rebalance: the byte after it): while it
+		 * is set, the show's next taking of the camera for a model (sequence op 68) is passed over, and that op or the next
+		 * damage numbers clear it.
+		 */
+		uint8 KeepCamera = 0;
 		/** The route the next approach walks, from the actor's place (for the show). */
 		std::array<FBattleWaypoint, RouteLength> Route{};
 		/** The battle event's variables, which the enemies' scripts may write; there are none without an event. */
@@ -428,6 +435,13 @@ namespace Weltall
 		FBattleEventOptions EventOptions;
 		/** The fixes of the rules' broken effects in use; the setup keeps them. */
 		FBattleRuleOptions RuleOptions;
+		/**
+		 * The rules of Perfect Works Build's rebalance in place of the original's, which its party and items are made for
+		 * (research inputs/perfect-works-build.md, "Its rebalance code"); the setup keeps them.
+		 */
+		bool bPerfectWorksRebalance = false;
+		/** The player's changes to the balance in use (the rewards'); the setup keeps them. */
+		FGameBalance Balance;
 		/** What the battle's result works out (BattleResult.h), and its routine with the screen. */
 		FBattleResultWork Result;
 		FBattleResultRun ResultRun;
@@ -455,6 +469,8 @@ namespace Weltall
 		 */
 		std::array<FBattleCommand, CommandRecordCount> Commands{};
 		std::array<FBattleItem, FBattleTables::ItemCount> Items{};
+		/** The copied weapons' attacks (FBattleTables::AmmunitionAttacks). */
+		std::array<uint8, FBattleTables::AmmunitionCount> AmmunitionAttacks{};
 		/** The inventory's battle items as the battle lists them: the item in each of the list's cells and its count. */
 		std::array<uint8, ListedItemCount> ListedItems{};
 		std::array<uint8, ListedItemCount> ListedCounts{};

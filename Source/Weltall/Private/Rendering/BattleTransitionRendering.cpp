@@ -76,7 +76,7 @@ void FBattleTransitionDrawBuilder::Take(const Weltall::FBattleDefaultTransition&
 	}
 }
 
-void FBattleTransitionDrawBuilder::Take(const Weltall::FBattleSetupMesh& Mesh, int32 Buffer)
+void FBattleTransitionDrawBuilder::Take(const Weltall::FBattleScreenMesh& Mesh, int32 Buffer)
 {
 	Mesh.Draw(Buffer, -Mesh.WingColumns(), Mesh.Columns() + Mesh.WingColumns(), MeshTriangles);
 	Latest.Reset();
@@ -146,7 +146,7 @@ void FBattleTransitionDrawBuilder::Build(const Weltall::FBattleDefaultTransition
 	Finish(Alpha, Draw);
 }
 
-void FBattleTransitionDrawBuilder::Build(const Weltall::FBattleSetupMesh& Mesh, int32 Buffer, int32 Frame, float Alpha, FBattleTransitionDraw& Draw)
+void FBattleTransitionDrawBuilder::Build(const Weltall::FBattleScreenMesh& Mesh, int32 Buffer, int32 Frame, float Alpha, FBattleTransitionDraw& Draw)
 {
 	bNewFrame = BeginFrame(Frame);
 	if (bNewFrame)
@@ -165,7 +165,12 @@ void AddBattleTransitionPasses(FRDGBuilder& GraphBuilder, FRDGTextureRef Picture
 		return;
 	}
 	AddClearRenderTargetPass(GraphBuilder, Output, Draw.Background, Area);
-	if (Picture == nullptr)
+	AddBattleTransitionTriangles(GraphBuilder, Picture, Draw, Output, Area);
+}
+
+void AddBattleTransitionTriangles(FRDGBuilder& GraphBuilder, FRDGTextureRef Picture, const FBattleTransitionDraw& Draw, FRDGTextureRef Output, const FIntRect& Area)
+{
+	if (Picture == nullptr || Area.Width() <= 0 || Area.Height() <= 0)
 	{
 		return;
 	}

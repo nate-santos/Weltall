@@ -217,6 +217,8 @@ namespace Weltall
 	{
 		/** The blend key of the shading's tile in the field's 2D layer: the picture under the menu is the frame without it. */
 		static constexpr uint32 BlendKey = 3;
+		/** How much grey each level takes from the picture. */
+		static constexpr int32 GreyPerLevel = 4;
 
 		/** Drawn over this frame. */
 		bool bShown = false;

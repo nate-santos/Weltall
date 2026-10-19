@@ -127,7 +127,8 @@ namespace Weltall
 				FBattleCombatant& Actor = BattleRules::Actor(Context);
 				if (Command >= 3 && Command <= 11)
 				{
-					Actor.InfinityCounter = static_cast<uint8>(Actor.InfinityCounter + Command / 3);
+					// Perfect Works' rebalance counts the Deathblow's number twice instead of its third.
+					Actor.InfinityCounter = static_cast<uint8>(Actor.InfinityCounter + (Context.bPerfectWorksRebalance ? Command * 2 : Command / 3));
 				}
 				if (Command == 5 || Command == 8 || Command == 11)
 				{
@@ -274,7 +275,9 @@ namespace Weltall
 					if (Action.Results[Action.TargetSlot] == BattleResults::HpDamage)
 					{
 						const uint16 Flags = BattleRules::Command(Context).Flags;
-						if ((Flags & BattleCommandFlags::WeaponStatus) != 0)
+						// Perfect Works' rebalance gives the command's own status before the weapon's.
+						const bool bOwnFirst = Context.bPerfectWorksRebalance && (Flags & BattleCommandFlags::StatusOnHit) != 0;
+						if ((Flags & BattleCommandFlags::WeaponStatus) != 0 && !bOwnFirst)
 						{
 							GearApplyStatus(Context, true);
 						}

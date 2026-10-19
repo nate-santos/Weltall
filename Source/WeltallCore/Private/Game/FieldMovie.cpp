@@ -27,9 +27,10 @@ namespace Weltall
 		}
 	}
 
-	FFieldMovie::FFieldMovie(FGameSession& InSession, const FFieldRequest& Request, const FCdImage& Image, FMovieLocation Location)
+	FFieldMovie::FFieldMovie(FGameSession& InSession, const FFieldRequest& Request, const FCdImage& Image, FMovieLocation Location,
+		std::optional<FMovieSubtitles> Subtitles)
 		: Session(InSession), Movie(Request.Movie), MovieView(Request.MovieView),
-		  MoviePlayer(Image, Location, PlaybackOf(Request.Movie), *InSession.Sound().Sound())
+		  MoviePlayer(Image, Location, PlaybackOf(Request.Movie), *InSession.Sound().Sound(), std::move(Subtitles))
 	{
 	}
 
@@ -57,7 +58,12 @@ namespace Weltall
 		{
 			return MakeError("the field's movie " + std::to_string(Request.Movie.Movie) + " is not among the disc's movies");
 		}
-		std::unique_ptr<FFieldMovie> Movie(new FFieldMovie(Session, Request, *Disc->Image, *Location));
+		TResult<std::optional<FMovieSubtitles>> Subtitles = Session.MovieSubtitles(Request.Movie.Movie);
+		if (!Subtitles)
+		{
+			return Subtitles.Error();
+		}
+		std::unique_ptr<FFieldMovie> Movie(new FFieldMovie(Session, Request, *Disc->Image, *Location, std::move(*Subtitles)));
 		if (auto Error = Movie->LoadCues())
 		{
 			return *Error;

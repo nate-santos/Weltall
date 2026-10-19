@@ -10,11 +10,6 @@ namespace Weltall
 		/** The two low bits of each 5-bit channel: the field's action-mode palettes set them in every colour but 0. */
 		constexpr uint16 BrightenedBits = 0x0C63;
 
-		uint8 Widen5(uint32 Channel)
-		{
-			return static_cast<uint8>(Channel << 3 | Channel >> 2);
-		}
-
 		int32 TexelsInUnit(ETextureDepth Depth)
 		{
 			return Depth == ETextureDepth::Indexed4 ? 4 : Depth == ETextureDepth::Indexed8 ? 2 : 1;
@@ -35,6 +30,33 @@ namespace Weltall
 				return Vram.TexelAt(X, Y);
 			}
 			return 0;
+		}
+
+		/** The region's picture through Palette, each texel's alpha its kind (TexelKindAlpha) with bKinds, else only whether it is transparent. */
+		FImageRgba8 DecodeTexels(const FVram& Vram, const FTextureRegion& Region, std::span<const uint16> Palette, bool bKinds)
+		{
+			const FTexturePage Page = TextureViewPage(Region.View);
+			const bool bDirect = Page.Depth == ETextureDepth::Direct15;
+			const int32 FirstU = Region.PictureFirstU();
+			const int32 FirstV = Region.PictureFirstV();
+			FImageRgba8 Image;
+			Image.Width = Region.PictureTexelsWide();
+			Image.Height = Region.PictureTexelsHigh();
+			Image.Pixels.resize(static_cast<std::size_t>(Image.Width) * Image.Height * 4);
+			uint8* Pixel = Image.Pixels.data();
+			for (int32 V = FirstV; V < FirstV + Image.Height; ++V)
+			{
+				for (int32 U = FirstU; U < FirstU + Image.Width; ++U)
+				{
+					const uint16 Read = ReadTexel(Vram, Page, U, V);
+					const uint16 Texel = bDirect ? Read : Read < Palette.size() ? Palette[Read] : 0;
+					*Pixel++ = WidenChannel(Texel & 0x1F);
+					*Pixel++ = WidenChannel(Texel >> 5 & 0x1F);
+					*Pixel++ = WidenChannel(Texel >> 10 & 0x1F);
+					*Pixel++ = Texel == 0 ? TexelKindAlpha::Transparent : bKinds && (Texel & 0x8000) != 0 ? TexelKindAlpha::SemiTransparent : TexelKindAlpha::Plain;
+				}
+			}
+			return Image;
 		}
 
 		/** Inclusive bounds, so that a merged rectangle can grow past one byte while its pieces are joined. */
@@ -255,30 +277,15 @@ namespace Weltall
 		return DecodeTextureRegionWith(Vram, Region, ReadTextureViewClut(Vram, Region.View, Colors));
 	}
 
+	FImageRgba8 DecodeTextureRegionKinds(const FVram& Vram, const FTextureRegion& Region)
+	{
+		std::array<uint16, 256> Colors{};
+		return DecodeTexels(Vram, Region, ReadTextureViewClut(Vram, Region.View, Colors), true);
+	}
+
 	FImageRgba8 DecodeTextureRegionWith(const FVram& Vram, const FTextureRegion& Region, std::span<const uint16> Palette)
 	{
-		const FTexturePage Page = TextureViewPage(Region.View);
-		const bool bDirect = Page.Depth == ETextureDepth::Direct15;
-		const int32 FirstU = Region.PictureFirstU();
-		const int32 FirstV = Region.PictureFirstV();
-		FImageRgba8 Image;
-		Image.Width = Region.PictureTexelsWide();
-		Image.Height = Region.PictureTexelsHigh();
-		Image.Pixels.resize(static_cast<std::size_t>(Image.Width) * Image.Height * 4);
-		uint8* Pixel = Image.Pixels.data();
-		for (int32 V = FirstV; V < FirstV + Image.Height; ++V)
-		{
-			for (int32 U = FirstU; U < FirstU + Image.Width; ++U)
-			{
-				const uint16 Read = ReadTexel(Vram, Page, U, V);
-				const uint16 Texel = bDirect ? Read : Read < Palette.size() ? Palette[Read] : 0;
-				*Pixel++ = Widen5(Texel & 0x1F);
-				*Pixel++ = Widen5(Texel >> 5 & 0x1F);
-				*Pixel++ = Widen5(Texel >> 10 & 0x1F);
-				*Pixel++ = Texel == 0 ? 0 : 255;
-			}
-		}
-		return Image;
+		return DecodeTexels(Vram, Region, Palette, false);
 	}
 
 	std::span<const uint16> ReadTextureViewClut(const FVram& Vram, uint32 View, std::array<uint16, 256>& Colors)
