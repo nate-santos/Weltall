@@ -164,8 +164,10 @@ Weltall::FTouchRect SWeltallTouchControls::SettingsButton() const
 {
 	const float Width = FMath::Min(static_cast<float>(Size.X) * 0.17f, static_cast<float>(Size.Y) * 0.24f);
 	const float Height = static_cast<float>(Size.Y) * 0.08f;
-	const float CenterX = Options.bReserveSides ? Layout.Controls[0].Center().X : static_cast<float>(Size.X) * 0.5f;
-	return {CenterX - Width * 0.5f, Options.bReserveSides ? static_cast<float>(Size.Y) * 0.41f : 8.0f, Width, Height};
+	// Keep the recovery shortcut in the edge area: the top-center battle HUD contains the party's health.
+	// Use the default D-pad anchor so moving a control cannot hide the shortcut behind the settings panel.
+	const float CenterX = Weltall::FTouchLayout::Build(static_cast<float>(Size.X), static_cast<float>(Size.Y), {}).Controls[0].Center().X;
+	return {CenterX - Width * 0.5f, static_cast<float>(Size.Y) * 0.41f, Width, Height};
 }
 
 Weltall::FTouchRect SWeltallTouchControls::SettingsPanel() const
