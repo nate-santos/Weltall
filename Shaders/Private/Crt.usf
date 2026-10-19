@@ -199,7 +199,9 @@ float3 Mask(float2 Pixel, float Brightest)
 		return 1.0;
 	}
 	// Each phosphor's stripe a third of the triad: the share of this pixel it covers, three times over for a mean of one.
-	const float Left = fmod(floor(Pixel.x), float(MaskPitch));
+	// Pixel columns and the pitch are integers. A floating remainder can put an exact
+	// triad boundary just below MaskPitch, dropping that column's red phosphor.
+	const float Left = float(int(floor(Pixel.x)) % MaskPitch);
 	const float Stripe = MaskPitch / 3.0;
 	const float3 Starts = float3(0.0, Stripe, 2.0 * Stripe);
 	float3 Lit = 3.0 * max(min(Left + 1.0, Starts + Stripe) - max(Left, Starts), 0.0);

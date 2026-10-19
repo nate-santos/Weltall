@@ -34,7 +34,9 @@ TEST_CASE("Touch buttons preserve a controller's analog report through the kerne
 	const FPadState Combined = MergePads(MergePads(Hardware, Touch), {});
 	FKernelPad Kernel;
 	Kernel.Vblank(Combined, 1);
-	const FKernelPadWords Words = Kernel.TakeMerged();
+	const auto Both = Kernel.PopBoth(); // Battling reads complete reports from both ports.
+	REQUIRE(Both);
+	const FKernelPadWords& Words = (*Both)[0];
 	CHECK(Words.bAnalog);
 	CHECK(Words.StickX == Hardware.StickX);
 	CHECK(Words.StickY == Hardware.StickY);
@@ -44,6 +46,10 @@ TEST_CASE("Touch buttons preserve a controller's analog report through the kerne
 
 	const FPadState ActionOnly{FPadState::Bit(EPadButton::Square)};
 	CHECK(MergePads(Hardware, ActionOnly).StickButtons == Right);
+	Kernel.Vblank(MergePads(Hardware, ActionOnly), 2);
+	const auto Next = Kernel.Pop();
+	REQUIRE(Next);
+	CHECK(Next->StickHeld == FKernelPad::LogicalButtons(FKernelPad::ReportWord(FPadState{Right})));
 }
 
 TEST_CASE("Touch movement and two action fingers remain independent", "[Input][Touch]")
