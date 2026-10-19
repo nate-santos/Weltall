@@ -35,6 +35,8 @@
  * of that rate takes frames, draws each at the size given, and from -From seconds on logs what
  * the frames cost (FFrameProfile). Without
  * -AllowCommandletRendering a commandlet has no renderer and every frame comes out black.
+ * -GameTrace=S optionally logs the normal loop, field position/lock/camera and battle menu/waits at
+ * interval S (at least 1/60 second), without changing gameplay state. Keep these game-derived logs local.
  */
 UCLASS()
 class URenderScreenCommandlet final : public UCommandlet

@@ -2,6 +2,12 @@
 
 Updated during the October 19, 2026 continuation. The user requested later-story saves to avoid replaying the opening. Read [AndroidSaveCheckpoints.md](AndroidSaveCheckpoints.md) for the local catalog, current card locations and verified native save/load checks. No build or reference capture remains running.
 
+Latest continuation: the Moto completed late Disc 2 corridor/door/platform navigation and the core dialogue, then entered a surrounding-orb Gear battle through normal play. Attacks, fuel charging, booster selection, mixed face buttons and an enemy counterattack work; a completed result/return and matching PC combat remain pending. The user then explicitly suggested killing/restarting the app for an easier battle. All 16 expected saves were verified unchanged/checksum-valid before restart. The app was restarted without clearing data and loaded the genuine cave save from Card 5, No. 01 (`easier-battle-cave-loaded`). Its new processes are 21614/21656. Prefer this ordinary encounter for the first completed battle; the unfinished endgame boss attempt is not a combat pass.
+
+PC `disc2-core-retouch-reference` now reaches the same unlocked core scene from the unmodified late save (exit 0, 210 simulated seconds). The earlier platform, long-Up, jump and side-approach captures stop at the lift; retain them but do not count them as core entries. Reapproaching the lift after its scripted entrance walk unlocks succeeds. Editor-only `-GameTrace=S` now logs loop, field position/lock/camera and battle menu/waits without changing state. Its build passes, and all 28 overlapping PNGs match the equivalent untraced run byte for byte. The installed APK is unchanged. Logs/captures and the compiled core StorySweep tool remain ignored local files.
+
+Read the actual settings before assuming Reset defaults: the latest app settings report 15% idle / 40% pressed opacity, 100% scale, sides off, zero offsets, normal battle speed, double text speed and camera zoom 1.25. Preserve these current preferences. Older default-setting statements below describe the earlier tests.
+
 The unfinished objective is to complete milestones 1–5 in AndroidPortPlan.md and establish alpha readiness through both-disc gameplay validation. The game builds, installs, extracts both discs and plays the opening with user-confirmed sound. Downloaded saves now load later checkpoints on both PC and Moto. A native Android save at a legal cave save point reloads on both platforms. Comprehensive gameplay validation remains incomplete. Check the live goal status on resumption; do not infer an active or completed goal from this document.
 
 ## Current source and device
@@ -20,7 +26,7 @@ Bundled Python: C:/Users/baldr/.cache/codex-runtimes/codex-primary-runtime/depen
 
 Normal package command: `python -u Scripts/android_package.py --include-discs ../bin --configuration Development`. It exports committed HEAD into out/android/project, preserves build caches and uses a fresh archive directory. Do not use --clean-export. Do not refresh the export while a build/editor process is using it. Inspect the specific live session/log before treating a quiet build as stopped.
 
-The short-touch APK build in session 75446 completed successfully in about 4 minutes 22 seconds; both installation attempts also succeeded. The editor-only rebuild for 91b5628 also succeeded (4 actions, about 24 seconds). All subsequent PC reference runs have finished, including the dense prologue capture in session 16279 (owned editor PID 20924 exited). No engine/native build or reference capture remains active at this snapshot. Do not treat old session IDs as ongoing jobs. The last source checkpoint before this documentation handoff is 980642f, already pushed to origin/android-port.
+The short-touch APK build in session 75446 completed successfully in about 4 minutes 22 seconds; both installation attempts also succeeded. The editor-only rebuild for 91b5628 also succeeded (4 actions, about 24 seconds). The later GameTrace editor build succeeded (9 actions, about 38 seconds); all PC reference processes have finished, including the 210-second core entry. Do not treat old session IDs as ongoing jobs. The last pushed checkpoint before this continuation was 4e43274; inspect Git for subsequent progress commits.
 
 ## Verified evidence
 
@@ -60,8 +66,8 @@ Temporary rendering-test UECommandLine.txt was removed and the game returned to 
 
 ## Next work
 
-1. Check current device and Git state. Use the later checkpoints in AndroidSaveCheckpoints.md for further gameplay checks; the phone last shows the loaded late Disc 2 save. The matched prologue comparison below reproduces blue/magenta lighting on PC, so the earlier unmatched screenshots do not establish a platform rendering defect. Broader matching real-content comparisons remain required.
-2. Defaults are restored. Clean up only known unchanged generated saves once they are no longer needed for load comparisons. Keep captures private.
+1. Check current device and Git state. After the user's explicit restart suggestion, the phone loaded Card 5's cave save for an easier encounter. Use the later checkpoints in AndroidSaveCheckpoints.md for targeted checks. The matched prologue comparison below reproduces blue/magenta lighting on PC, so the earlier unmatched screenshots do not establish a platform rendering defect. Broader matching real-content comparisons remain required.
+2. Preserve the latest preferences noted at the top. Clean up only known unchanged generated saves once they are no longer needed for load comparisons. Keep captures private.
 3. Expand the real save/load checks beyond the passing cave checkpoint, preserving user saves and documenting entry state. Complete field/battle multi-touch and controller combinations, audio/lifecycle interruption and extraction recovery/storage tests. Physical sensor flipping, forced landscape surfaces, basic Stadia controls/idle disconnection, editable positions and zero-opacity recovery have direct evidence above.
 4. Expand matching PC/Android real-content references and complete the both-disc gameplay matrix, disc switching, saves and extended progression/playthrough. Automated sweeps and sampled fixtures supplement this; they do not replace it.
 5. Audit every milestone exit against actual evidence. Docs/AndroidGameplayValidation.md is the acceptance record. Do not claim alpha readiness from core/GPU tests or opening movies alone, or mark the objective complete while required work remains.

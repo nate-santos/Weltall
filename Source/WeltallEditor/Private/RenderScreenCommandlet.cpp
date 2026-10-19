@@ -1,6 +1,10 @@
 #include "RenderScreenCommandlet.h"
 
 #include "Audio.h"
+#include "Battle/BattleRuntime.h"
+#include "Game/BattleGameProgram.h"
+#include "Game/FieldProgram.h"
+#include "Game/GameLoop.h"
 #include "Game/GameSession.h"
 #include "Game/PlayerSettings.h"
 #include "GlobalShader.h"
@@ -36,6 +40,34 @@ DEFINE_LOG_CATEGORY_STATIC(LogRenderScreen, Log, All);
 namespace
 {
 	constexpr double TickSeconds = 1.0 / 60.0;
+
+	/** Optional reference diagnostics: observe the normal loop without staging or changing its state. */
+	void TraceGame(FGameLoopScreen& Game, double Elapsed, Weltall::FPadState Held)
+	{
+		const Weltall::FGameLoop* Loop = Game.Loop();
+		if (Loop == nullptr)
+		{
+			return;
+		}
+		UE_LOG(LogRenderScreen, Display, TEXT("GameTrace %.3f stage=%d program=%d pad=%04X"), Elapsed,
+			static_cast<int32>(Loop->Stage()), static_cast<int32>(Loop->Program()), Held.Buttons);
+		if (const Weltall::FFieldProgram* Field = Loop->Field())
+		{
+			const Weltall::FEventContext& Context = Field->Runtime().Context();
+			if (Context.LeaderActor < Context.States.size())
+			{
+				const auto& At = Context.States[Context.LeaderActor].Position;
+				UE_LOG(LogRenderScreen, Display, TEXT("GameTrace field map=%d leader=%d position=%d,%d,%d lock=%04X yaw=%d"),
+					Context.RunningMap, Context.LeaderActor, At[0] >> 16, At[1] >> 16, At[2] >> 16, Context.PlayerLock, Context.Camera.GoalViewYaw);
+			}
+		}
+		if (const Weltall::FBattleGameProgram* Battle = Loop->Battle())
+		{
+			const Weltall::FBattleContext& Context = Battle->Runtime().Context();
+			UE_LOG(LogRenderScreen, Display, TEXT("GameTrace battle actor=%d menu=%d end=%d waits=%d,%d,%d"),
+				Context.Party.Actor, Context.Party.MenuState, Context.End, Context.Waits[0], Context.Waits[1], Context.Waits[2]);
+		}
+	}
 
 	/** The game's sound beside the screen, as in the game: nothing hears it here, so it is made and dropped as time passes. */
 	struct FRenderSound
@@ -709,7 +741,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 			TEXT("-AA=None|MSAA|SSAA -Cull=Original|InRange -ViewZoom=Z -ViewTilt=D -ViewTurn=D] [-Story=N -Location=N -Entrance=N -Yaw=N -Scene=N -Party=a,b,c -Gears ")
 			TEXT("-Vehicle=x,y,z,h -VehicleFlags=N -Cull=Original|InRange|Extended] [-State=Full|Weak|Strong|Rising] [-Menu=Mode,Parameter -MenuAt=S] [-Battle=Formation,Kind -BattleAt=S -BattleEvery=S -Party=a,b,c -Ride=a,b,c -GearOf=c:g] [-Arena=From,Kind,Gear1,Gear2,Wins,Level -ArenaAt=S] ")
 			TEXT("[-FieldStory=N -FieldEntrance=K -FieldParty=a,b,c -FieldGears=g,h,... -FieldCards=Folder -StoryFolder=Folder -StoryMode=Original|Expanded] [-Disc=1|2] [-Card=Chapter[,Subtitle] -CardAt=S] [-MenuArea=Screen|Wide] [-Icons=Set] [-Saves=Folder] [-Keys=a,b] [-Setting=key=value;...] ")
-			TEXT("[-Pad=a,b+c,... -PadStep=S] [-Route=x,z;!x,z;... [-RouteBattles]] [-Reader=Base,PerGlyph] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] -Seconds=S [-Every=S] [-Profile=Hz] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] -Out=path.png"));
+			TEXT("[-Pad=a,b+c,... -PadStep=S] [-Route=x,z;!x,z;... [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] -Seconds=S [-Every=S] [-Profile=Hz] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] -Out=path.png"));
 		return 1;
 	}
 	const FIntPoint Size(FCString::Atoi(*WidthText), FCString::Atoi(*HeightText));
@@ -754,6 +786,13 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	}
 	double Every = 0.0;
 	FParse::Value(*Params, TEXT("Every="), Every);
+	double GameTrace = 0.0;
+	if (FParse::Value(*Params, TEXT("GameTrace="), GameTrace) && (!FMath::IsFinite(GameTrace) || GameTrace < TickSeconds))
+	{
+		UE_LOG(LogRenderScreen, Error, TEXT("-GameTrace takes an interval of at least 1/60 second"));
+		return 1;
+	}
+	double NextGameTrace = 0.0;
 	double NextShot = Every;
 	FParse::Value(*Params, TEXT("From="), NextShot);
 	TSharedPtr<FGameLoopScreen> Game;
@@ -817,6 +856,11 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		const double UpdateStart = FPlatformTime::Seconds();
 		Screen->Update(DisplaySeconds, Step.Held);
 		const double Updated = FPlatformTime::Seconds();
+		if (GameTrace > 0.0 && Game.IsValid() && Elapsed + DisplaySeconds >= NextGameTrace)
+		{
+			TraceGame(*Game, Elapsed + DisplaySeconds, Step.Held);
+			NextGameTrace += GameTrace;
+		}
 		// As the display takes a frame every tick: a screen may show its last one again (a battle's transition does).
 		const TSharedRef<const IScreenFrame> Frame = Screen->CaptureFrame();
 		const double Captured = FPlatformTime::Seconds();
