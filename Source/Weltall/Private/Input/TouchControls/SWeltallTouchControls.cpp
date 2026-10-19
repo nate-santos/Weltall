@@ -121,6 +121,7 @@ void SWeltallTouchControls::ApplyOptions(const Weltall::FTouchOptions& InOptions
 void SWeltallTouchControls::ResetTouches()
 {
 	Pad.Reset();
+	SettingsPointer.Reset();
 	DragPointer.Reset();
 	DragControl.Reset();
 }
@@ -189,9 +190,11 @@ int32 SWeltallTouchControls::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 		DrawControl(Elements, Layer, Geometry, Control, Layout.Controls[Index], Color);
 	}
 	const FTouchRect Button = SettingsButton();
-	Outline(Elements, Layer + 2, Geometry, Button, FLinearColor(1, 1, 1, 0.5f));
+	const float ButtonOpacity = bEditing ? 0.8f : SettingsPointer.IsSet() ? Options.PressedOpacity : Options.IdleOpacity;
+	const FLinearColor ButtonColor = FLinearColor(1, 1, 1, FMath::Clamp(ButtonOpacity, 0.0f, 1.0f)) * Style.GetColorAndOpacityTint();
+	Outline(Elements, Layer + 2, Geometry, Button, ButtonColor);
 	Text(Elements, Layer + 3, Geometry, bEditing ? TEXT("Done") : bSettingsOpen ? TEXT("Close") : TEXT("Controls"),
-		{Button.Center().X, Button.Center().Y}, FLinearColor(1, 1, 1, 0.8f), FMath::Max(12, FMath::RoundToInt(Button.Height * 0.32f)));
+		{Button.Center().X, Button.Center().Y}, ButtonColor, FMath::Max(12, FMath::RoundToInt(Button.Height * 0.32f)));
 	if (bEditing)
 	{
 		Text(Elements, Layer + 3, Geometry, TEXT("Drag a control. Tap Done to save."), {Size.X * 0.5, Size.Y * 0.12}, FLinearColor::White,
@@ -267,7 +270,8 @@ FReply SWeltallTouchControls::OnTouchStarted(const FGeometry& Geometry, const FP
 		{
 			bSettingsOpen = !bSettingsOpen;
 		}
-		return FReply::Handled();
+		SettingsPointer = Event.GetPointerIndex();
+		return FReply::Handled().CaptureMouse(SharedThis(this));
 	}
 	if (bSettingsOpen)
 	{
@@ -300,6 +304,10 @@ FReply SWeltallTouchControls::OnTouchStarted(const FGeometry& Geometry, const FP
 
 FReply SWeltallTouchControls::OnTouchMoved(const FGeometry& Geometry, const FPointerEvent& Event)
 {
+	if (SettingsPointer.IsSet() && *SettingsPointer == Event.GetPointerIndex())
+	{
+		return FReply::Handled();
+	}
 	const Weltall::FTouchPoint Point = LocalPoint(Geometry, Event);
 	if (DragPointer.IsSet() && DragControl.IsSet() && *DragPointer == Event.GetPointerIndex())
 	{
@@ -314,6 +322,11 @@ FReply SWeltallTouchControls::OnTouchMoved(const FGeometry& Geometry, const FPoi
 
 FReply SWeltallTouchControls::OnTouchEnded(const FGeometry&, const FPointerEvent& Event)
 {
+	if (SettingsPointer.IsSet() && *SettingsPointer == Event.GetPointerIndex())
+	{
+		SettingsPointer.Reset();
+		return FReply::Handled().ReleaseMouseCapture();
+	}
 	if (DragPointer.IsSet() && *DragPointer == Event.GetPointerIndex())
 	{
 		DragPointer.Reset();
@@ -329,6 +342,10 @@ void SWeltallTouchControls::OnMouseCaptureLost(const FCaptureLostEvent& Event)
 	// Slate releases capture per pointer. Clearing every finger here would break multi-touch
 	// whenever the player lifted one action finger while still holding the D-pad.
 	Pad.Cancel(Event.PointerIndex);
+	if (SettingsPointer.IsSet() && Event.PointerIndex >= 0 && *SettingsPointer == static_cast<uint32>(Event.PointerIndex))
+	{
+		SettingsPointer.Reset();
+	}
 	if (DragPointer.IsSet() && Event.PointerIndex >= 0 && *DragPointer == static_cast<uint32>(Event.PointerIndex))
 	{
 		DragPointer.Reset();

@@ -47,6 +47,7 @@ private:
 	FVector2D Origin = FVector2D::ZeroVector;
 	bool bSettingsOpen = false;
 	bool bEditing = false;
+	TOptional<uint32> SettingsPointer;
 	TOptional<uint32> DragPointer;
 	TOptional<Weltall::ETouchControl> DragControl;
 	Weltall::FTouchPoint DragStart;
