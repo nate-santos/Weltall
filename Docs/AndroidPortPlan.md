@@ -136,6 +136,7 @@ Exit: documented local gameplay matrix covering both discs, no save corruption, 
 
 ### 6. Optimize and distribute a beta (1–2 weeks)
 
+- The user explicitly accepts the current APK-bundled plus extracted disc copies for alpha. Defer deduplication/compressed-disc or direct-package access changes until beta optimization. The measured roughly 1.41 GB of user data is principally the two extracted BIN/CUE pairs; changing Development to Shipping does not remove that working copy.
 - Tune custom-pass resolution, uploads, draw batching, render-target reuse and upscaling based on profiling.
 - Define low/default/high device settings with measured thermal behavior. Test a midrange device rather than only a flagship.
 - Validate 4 KB and 16 KB page-size compatibility for every native library with the chosen engine/toolchain.
