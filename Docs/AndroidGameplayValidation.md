@@ -4,6 +4,10 @@ This is the acceptance record for milestones 1–5 of [AndroidPortPlan.md](Andro
 
 Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pairs. Compare PC and Android using the same source revision, settings and save inputs. Keep saves, logs, captures, extracted data and detailed story-sweep output under ignored `out/`; this tracked document contains authored procedure and outcome summaries only.
 
+## Upstream 0.8.2 continuation
+
+Roman215 `687b2ff` is merged, resolved and pushed. Updated both-disc runtime `0275208` is installed on the Moto. Windows/Moto synthetic suites each pass 807 cases, and all 64 GPU checks pass on both platforms after fixing the new CRT filter's floating remainder at phosphor boundaries. All 48 saves and user control preferences survive the APK update and graphics automation unchanged. Native title, Load preview, Disc2 confirmation and the existing Android-created Gear-victory save's field return pass on this version. Full core suites and further normal gameplay are still running; earlier matrix rows remain evidence for their recorded pre-merge revisions until rechecked. Alpha readiness is still unproven.
+
 ## Current evidence
 
 | Gate | Observed result | Evidence / remaining work |

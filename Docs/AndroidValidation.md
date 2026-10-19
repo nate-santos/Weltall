@@ -2,7 +2,15 @@
 
 Updated October 18, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
 
-## Completed checks
+## Upstream 0.8.2 revalidation (October 19, 2026)
+
+Installed runtime `0275208` includes upstream `687b2ff`, Android integration and the verified CRT pixel-modulo fix. Windows and Moto each pass 807 synthetic cases / 390,303 assertions without skips. Moto touch checks pass 12 cases / 426 assertions. All 64 shared GPU checks pass on the updated PC editor and installed Moto, including CRT, screen wave, subtitle overlay and Beetle textures; one texture-negative-input test reports expected warnings.
+
+The final both-disc APK is 1,572,463,499 bytes, SHA-256 `f7aa09880cdceed8127ae1090a26a1804bd3b6f841da5ba2a85c4bc6dfd46b32`. Signature, ZIP validation, all seven ARM64 ELF load alignments at 16 KiB, embedded-pak integrity and both BIN/CUE pairs pass. App update and subsequent graphics tests preserve all 48 saves and current preferences byte-for-byte. Normal title/load/disc-2 confirmation restores the native Disc 2 victory save to its field scene.
+
+Complete corrected Windows and Moto core suites are running; their final counts are pending. The initial Windows full run's sole failed case was the new regression test using the digital-only consumer; its corrected Battling input check passes both synthetic suites. The first PC GPU run exposed the real CRT issue despite exit0; unchanged strict assertions pass after integer modulo. The three optional Perfect Works fixture tests are classified as Content so the isolated suite uploads/requires no mod files. See AndroidHandoff.md for exact local reports and running jobs. Earlier baseline results below refer to the pre-merge runtime.
+
+## Earlier baseline checks
 
 | Check | Result | What it establishes |
 | --- | --- | --- |

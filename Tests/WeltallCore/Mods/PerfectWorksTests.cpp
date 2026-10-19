@@ -127,7 +127,7 @@ TEST_CASE("Perfect Works' battle events' scripts are left out with a version of 
 	CHECK_FALSE(Release->Changes(Options, Files).bPerfectWorksBattleMessages);
 }
 
-TEST_CASE("Perfect Works 0.11.4's battle events' scripts come with its change to their message windows", "[Mods]")
+TEST_CASE("Perfect Works 0.11.4's battle events' scripts come with its change to their message windows", "[Mods][Content]")
 {
 	const std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
 	if (!Release || Release->Version() != "0.11.4")
@@ -161,7 +161,7 @@ TEST_CASE("Perfect Works' rebalances are left out with versions of their code th
 	CHECK_FALSE(Release->Changes(Options, Release->Files(Options, 1)).bPerfectWorksRebalance);
 }
 
-TEST_CASE("Perfect Works 0.11.4's rebalances come in its patcher's merged folders, and not with story mode", "[Mods]")
+TEST_CASE("Perfect Works 0.11.4's rebalances come in its patcher's merged folders, and not with story mode", "[Mods][Content]")
 {
 	const std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
 	if (!Release || Release->Version() != "0.11.4")
@@ -216,7 +216,7 @@ TEST_CASE("Perfect Works' arena and its script's Battling are left out with vers
 	CHECK_FALSE(Chosen(*Release, Options).contains(35));
 }
 
-TEST_CASE("Perfect Works 0.11.4's arena modes take their folder's own files, and not with story mode", "[Mods]")
+TEST_CASE("Perfect Works 0.11.4's arena modes take their folder's own files, and not with story mode", "[Mods][Content]")
 {
 	const std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
 	if (!Release || Release->Version() != "0.11.4")
