@@ -790,12 +790,11 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	FParse::Value(*Params, TEXT("Profile="), ProfileRate);
 	double ProfileFrom = 0.0;
 	FParse::Value(*Params, TEXT("From="), ProfileFrom);
-	TOptional<FFrameProfile> Profile;
-	if (ProfileRate > 0.0)
-	{
-		Profile.Emplace(Size, Aspect, ProfileFrom);
-	}
-	const double DisplaySeconds = Profile ? 1.0 / ProfileRate : TickSeconds;
+	// Every simulated display frame must draw and retire its uploads, even between PNG captures.
+	// The profiling path already supplies those frame boundaries and waits for the GPU. Skipping
+	// them queues field/VRAM work indefinitely and can exhaust memory during a long reference.
+	FFrameProfile Frames(Size, Aspect, ProfileFrom);
+	const double DisplaySeconds = ProfileRate > 0.0 ? 1.0 / ProfileRate : TickSeconds;
 	for (double Elapsed = 0.0; Elapsed + DisplaySeconds / 2 < Seconds; Elapsed += DisplaySeconds)
 	{
 		const int32 PadIndex = static_cast<int32>(Elapsed / PadStep);
@@ -822,10 +821,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		const TSharedRef<const IScreenFrame> Frame = Screen->CaptureFrame();
 		const double Captured = FPlatformTime::Seconds();
 		Sound.Advance(DisplaySeconds);
-		if (Profile)
-		{
-			Profile->Draw(*Frame, Updated - UpdateStart, Captured - Updated, Elapsed);
-		}
+		Frames.Draw(*Frame, Updated - UpdateStart, Captured - Updated, Elapsed);
 		if (Every > 0.0 && Elapsed + DisplaySeconds >= NextShot)
 		{
 			const FString Shot = FString::Printf(TEXT("%s-%06.2f.png"), *FPaths::GetBaseFilename(Out, false), NextShot);
@@ -836,9 +832,9 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 			NextShot += Every;
 		}
 	}
-	if (Profile)
+	if (ProfileRate > 0.0)
 	{
-		Profile->Log(ProfileRate);
+		Frames.Log(ProfileRate);
 	}
 	if (!SaveFrame(*Screen, Size, Aspect, Out))
 	{
