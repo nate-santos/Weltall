@@ -2,6 +2,14 @@
 
 Updated October 20, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
 
+## Current raw-movie and volume-callback validation
+
+Runtime/editor `57a5096` includes the Development-only raw-movie check and the explicit UE source-setup correction for its Android volume receiver's clock. Initial full Disc1/Disc2 cases pass and separate replays receive the user's clear-sound confirmation. Disc1's listening replay exposes an engine ensure on a real volume change; symbolication resolves the JNI callback's game-thread-only clock access. The bounded setup helper corrects that receiver timestamp using Unreal's thread-safe approximate clock, with the known uncorrected source blocked by the packager.
+
+After rebuilding/relinking the corrected Android engine object, both full movie cases pass while real volume buttons change10→11→10. Disc1 renders1062 pictures in70.765 seconds; Disc2 renders505 in33.600 seconds. Each report has one success and zero warnings/failures/unrun, and native UI-thread logs prove both volume events. The six actual OS focus/input-recovery cases also pass,19.489 seconds test/27.969 elapsed. All31 Python tooling and16 guard tests pass. No broad core/GPU rerun is inferred. Matching PC clips have complete non-silent stereo output and sampled frame review; direct movie-screen checks do not replace ordinary story transitions or the original disc handoff.
+
+The rebuilt both-disc APK passes fresh actual embedded-PAK integrity/both-disc listing, signature/same signer, zipalign16KiB and seven native ELF alignments, then installs by signed update. All49 saves/checksums, LastSaved106 and current5898-byte settings remain identical; media volume returns to10. Evidence and exact APK/hash are in AndroidHandoff.md, with current case reports under `out/testing/android-app/raw-movie-disc{1-07,2-01}-volume-keys-57a5096` and `audio-focus-volume-clock-57a5096`. M4/M5 and alpha readiness remain incomplete.
+
 ## Bundled-disc fault validation on5ad5235
 
 The actual bundled-disc worker's seven generated-data automation cases pass on Windows and Moto:7 success, zero warnings/failures/unrun,0.151/0.142 seconds test time respectively. They exercise parser/filename validation, native copies and verification, ready restart reuse, low/unknown space, initial/in-flight cancellation, abandoned-partial cleanup and completed-file reuse, missing/corrupt sources and sibling-file isolation. The tests are development-only and use small generated files. Final PC source hashes match committed5ad5235. The first PC NUL-fixture failure is corrected and retained as historical evidence, not counted as a pass. Reports: `out/testing/unreal/bundled-discs-faults-pc-final/report/index.json`, `out/testing/android-app/bundle-faults-moto-5ad5235/index.json`.
