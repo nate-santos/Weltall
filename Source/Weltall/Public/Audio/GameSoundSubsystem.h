@@ -52,6 +52,7 @@ public:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FWeltallAudioFocusTestAccess;
+	friend class FWeltallRawMovieTestAccess;
 #endif
 	void Stop();
 

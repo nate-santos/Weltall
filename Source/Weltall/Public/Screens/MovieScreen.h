@@ -41,6 +41,9 @@ public:
 	bool IsFinished() const { return Player.IsFinished(); }
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FWeltallRawMovieTestAccess;
+#endif
 	Weltall::FMoviePlayer Player;
 	Weltall::FTickClock Vblanks;
 	Weltall::FPadLatch Latch;
