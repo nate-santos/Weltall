@@ -2,7 +2,13 @@
 
 Updated October 20, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
 
-## Current raw-movie and volume-callback validation
+## Current save-interruption validation
+
+Source4a57f5c adds standalone tests/tools only; installed runtime/editor remain57a5096. Windows and Moto each pass two generated-data save-failure cases, 21 assertions without failure/skip. The standalone native Moto probe passes all16 process-death/suspension cases at eight production save-store libc boundaries, with independently reopened exact/checksummed bytes, valid pointers, unrelated-slot retention and successful retry. Reports: `out/testing/android/20261020T174100Z-37e3bb2b/summary.json`, `out/testing/save-interruption/20261020T173559Z-f1b1f133/summary.json`. The probe's source/build hashes and transport are beside its report. All33 Python tooling checks pass. No production save/game behavior changed; no APK rebuild or broad core/GPU rerun is claimed. These tests do not establish sudden-power-loss durability or actual save-point UI interruption.
+
+A separate ActivityManager kill removes the background game's processes and retains its task. Returning it cold-starts successfully, with all49 saves/current preferences unchanged. AndroidHandoff.md records exact evidence and continuation. Broader M4/M5 remain open.
+
+## Previous raw-movie and volume-callback validation
 
 Runtime/editor `57a5096` includes the Development-only raw-movie check and the explicit UE source-setup correction for its Android volume receiver's clock. Initial full Disc1/Disc2 cases pass and separate replays receive the user's clear-sound confirmation. Disc1's listening replay exposes an engine ensure on a real volume change; symbolication resolves the JNI callback's game-thread-only clock access. The bounded setup helper corrects that receiver timestamp using Unreal's thread-safe approximate clock, with the known uncorrected source blocked by the packager.
 

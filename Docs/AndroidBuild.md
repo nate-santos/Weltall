@@ -108,6 +108,18 @@ Every execution gets a separate remote working directory and `TMPDIR`. JUnit, co
 python -m unittest discover -s Tests/Python -p "test_android*.py" -v
 ```
 
+## Isolated save-interruption validation
+
+After configuring the native Android CMake test build described above:
+
+```text
+cmake --build out/tests/android-arm64 --target WeltallSaveInterruptionProbe WeltallCoreTests --parallel 4
+python Scripts/android_test.py --filter "[SaveFailure]"
+python Scripts/android_save_interruption.py
+```
+
+The first runner checks temporary-file failures and stale-file recovery. The second uses generated saves in fresh standalone Android processes, intercepting only that executable's libc write/close/rename boundaries. It verifies the exact stopped process before signalling, reopens committed saves/pointers, then retries each save. The game APK/process and player folders are not accessed. Reports stay under ignored `out/testing/save-interruption/`; device fixtures remain in uniquely named folders under `/data/local/tmp/weltall-tests/SaveInterruption/`. The probe requires Linux/Android and a static C++ runtime so its linker wrappers cover file operations. These tests supplement actual in-game save/lifecycle checks and do not establish sudden-power-loss durability.
+
 ## Required device checks
 
 Mobile renderer settings live in `Config/DefaultEngine.ini`, including HDR, forward local lights, the no-static-lighting CSM branch and mobile DBuffer/shading path. The Windows cooker initializes global render caches from its own engine config; Android-only overrides can therefore disagree with shader decisions made during cooking. Keep compile-time mobile choices shared between cooker and runtime. Startup validation remains required after changing them; successful cooking alone does not prove that runtime materials are complete.
