@@ -7,7 +7,7 @@ This fork extends [Roman215's Weltall](https://github.com/Roman215/Weltall) with
 Android port** for ARM64 phones, including configurable on-screen controls and hardware controller
 support. It stays in landscape and rotates between both landscape directions. Android testing is
 in progress on a Moto G Stylus 2025 with a Bluetooth Stadia controller; complete both-disc playthrough
-and controller disconnect/resume validation remain unfinished. See the
+and broader controller/lifecycle testing remain unfinished. See the
 [Android validation record](Docs/AndroidGameplayValidation.md) for current coverage.
 
 You'll need your own copy of the USA release or a supported English undub. Weltall doesn't include
@@ -23,13 +23,13 @@ have both versions, choose which voices you hear under **Options → Sound → V
 Subtitles** can also show the undub's subtitles with the English voices, or turn them off. Japanese
 retail discs aren't playable, but you can dump their files (see [the modding guide](Docs/Modding.md)).
 
-**Status:** Both discs are playable, including field exploration, character and Gear battles, the
-world map, menus, the Battling arena and movies. Gameplay behavior has been checked against the
-original game's code. My own playthrough is still in progress, with over 18 hours played without
-a hang. Automated tests have run every map and story battle, along with long stretches of the story
-from save to save. You should be able to play from start to finish, and I'm fixing reported issues as
-they come in. If something goes wrong, the game displays an error and tells you which log to include
-in a bug report.
+**Upstream desktop status:** Both discs are playable, including field exploration, character and Gear
+battles, the world map, menus, the Battling arena and movies. Gameplay behavior has been checked
+against the original game's code. The upstream developer reports an ongoing playthrough with over
+18 hours played without a hang. Automated tests have run every map and story battle, along with long
+stretches of the story from save to save. The desktop port aims for start-to-finish play, with reported
+issues still being fixed. If something goes wrong, the game displays an error and tells you which log
+to include in a bug report.
 
 ## What Weltall adds
 
@@ -65,7 +65,7 @@ two examples. These are separate from the main port and aren't included in the d
 Weltall is not affiliated with or endorsed by the owners of *Xenogears*. All game content and
 trademarks belong to their respective owners.
 
-## Playing
+## Playing on Windows or Linux
 
 Download the build for your system and unzip it wherever you want. Put the USA or undub disc images in
 the `Games` folder (subfolders work too), then run `Weltall.exe` on Windows or `Weltall.sh` on Linux.

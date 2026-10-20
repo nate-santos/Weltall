@@ -1,10 +1,10 @@
 # Building the Android port
 
-The Android implementation is in development. The source currently has ARM64/mobile Vulkan settings, sensor-driven rotation between both landscape sides, app-private paths and local disc bundling. An APK build and real-device validation are required before these are considered working Android features.
+The experimental Android port builds ARM64 APKs with mobile Vulkan, rotation between both landscape sides, configurable on-screen controls, hardware controller input, app-private storage and local disc bundling. Both-disc builds have been installed and tested on a Moto G Stylus 2025. Extended gameplay and broader controller/lifecycle validation remain in progress; see [AndroidGameplayValidation.md](AndroidGameplayValidation.md) for coverage and [AndroidHandoff.md](AndroidHandoff.md) for the current continuation.
 
 ## Prerequisites
 
-Use Unreal Engine 5.8 and the Android SDK, NDK and JDK versions selected by that engine's Turnkey/setup tools. Set `UE_ROOT` in the environment or the ignored `local.env` file. Existing desktop packaging remains in `Scripts/package.py`; Android packaging is separate.
+Use an Unreal Engine 5.8 source build and the Android SDK, NDK and JDK versions selected by that engine's Turnkey/setup tools. The tested Windows setup uses UE 5.8.4, SDK 36/build tools 36.0.0, NDK r27c and JDK 21. Set `UE_ROOT` in the environment or the ignored `local.env` file; the [README](../README.md#building-the-experimental-android-port) includes an example. Existing desktop packaging remains in `Scripts/package.py`; Android packaging is separate.
 
 The packager also accepts `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `NDKROOT`, `NDK_ROOT` and `ANDROID_NDK_HOME` from `local.env`. Existing environment values take precedence. These tool locations are passed only to the build process; the script does not change global environment settings or inherit arbitrary keys from the local file.
 

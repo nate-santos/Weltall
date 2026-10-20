@@ -18,6 +18,8 @@ Powering off while holding the stick sends Android to its launcher; both game pr
 
 ## Current evidence
 
+Installed f382596 now passes the Moto held-stick disconnect/background/resume regression that failed on0275208. The native menu stays on Abilities across four untouched captures with an advancing clock; touch Down changes once to Gear and remains released, and touch cancel restores the field. After reconnecting, the user confirms first-press X, stick selection/release and B work without sticking. Both app processes survive throughout. The update and final test preserve all48 saves and current5889-byte settings exactly. Private reports use `controller-fix-*`; AndroidHandoff.md records the exact sequence and limits. This is one verified Stadia/Moto regression sequence; extended controller gameplay, Start/Select/rumble and wider lifecycle coverage remain pending.
+
 | Gate | Observed result | Evidence / remaining work |
 | --- | --- | --- |
 | Disc and core baseline | Both USA discs identified; Windows and Moto each passed 1,358 cases with the same six optional-undub skips | Counts and local report paths in [AndroidValidation.md](AndroidValidation.md). These are not gameplay passes. |
