@@ -2,6 +2,12 @@
 
 Updated October 20, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
 
+## Bundled-disc fault validation on5ad5235
+
+The actual bundled-disc worker's seven generated-data automation cases pass on Windows and Moto:7 success, zero warnings/failures/unrun,0.151/0.142 seconds test time respectively. They exercise parser/filename validation, native copies and verification, ready restart reuse, low/unknown space, initial/in-flight cancellation, abandoned-partial cleanup and completed-file reuse, missing/corrupt sources and sibling-file isolation. The tests are development-only and use small generated files. Final PC source hashes match committed5ad5235. The first PC NUL-fixture failure is corrected and retained as historical evidence, not counted as a pass. Reports: `out/testing/unreal/bundled-discs-faults-pc-final/report/index.json`, `out/testing/android-app/bundle-faults-moto-5ad5235/index.json`.
+
+The new both-disc APK builds and passes fresh actual embedded-PAK integrity/both-disc listing, same-signer, zipalign16KiB and seven ELF alignment checks before signed update installation. Normal startup discovers both discs and native Card8No01 Load/Disc2 confirmation restores the expected scene/party/stats/gold and responsive menu. All48 saves/checksums and current5889-byte settings remain byte-identical. All nine existing disc/readiness/verification file metadata records remain unchanged through the tests and normal restart; generated fixtures and the launch override are removed. AndroidHandoff.md records APK/hash/log paths and current phone state. Historical complete core/GPU counts below stay tied to their earlier source revisions. Broader gameplay, movie audio and lifecycle acceptance remain pending.
+
 ## Current gameplay and screen-lock validation
 
 Runtime/editor f382596 now has matching PC/Moto representative menus on both native Android-created cave/Disc2 victory saves: party-panel swap/restore, status/member changes, skills, equipment and inventory lists, abilities, Gear pages, Display/Sound options and cancellation to the field. Disc2 equipment-preview cancellation, healing-item count/HP changes and Ether targeting/HP/EP changes match. These are unsaved session changes, not modifications to source saves. The three accepted PC references exit0 with source bytes unchanged; earlier mistimed Disc1 input scripts are preserved as incomplete, not passes.
