@@ -1,6 +1,12 @@
 # Android port validation
 
-Updated October 19, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
+Updated October 20, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
+
+## Current gameplay and screen-lock validation
+
+Runtime/editor f382596 now has matching PC/Moto representative menus on both native Android-created cave/Disc2 victory saves: party-panel swap/restore, status/member changes, skills, equipment and inventory lists, abilities, Gear pages, Display/Sound options and cancellation to the field. Disc2 equipment-preview cancellation, healing-item count/HP changes and Ether targeting/HP/EP changes match. These are unsaved session changes, not modifications to source saves. The three accepted PC references exit0 with source bytes unchanged; earlier mistimed Disc1 input scripts are preserved as incomplete, not passes.
+
+The Moto's146.241-second menu screen-lock/Dozing case keeps both processes and the same selection, advances the native clock by only3 seconds across lock/resume, and accepts single-step/released touch navigation and field return. Android audio-renderer suspend/resume appears in logs; audible audio focus/routes and other lifecycle cases remain separate. All48 saves/checksums and current5889-byte settings are preserved exactly. See AndroidGameplayValidation.md for private evidence paths, measured outcomes, coverage limits and the milestone exit audit. No broad core/GPU rerun is attributed to this input-only revision, and alpha readiness is still pending.
 
 ## Upstream 0.8.2 revalidation (October 19, 2026)
 
