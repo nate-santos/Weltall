@@ -1,6 +1,16 @@
 # Android port continuation
 
-## Current continuation: Disc 2 flight and destination entry pass
+## Current continuation: Android audio-focus correction
+
+Installed APK and Windows editor now use source `a928879`. A foreground-process OS focus probe on `44cb5a4` received an actual transient grant but reproduced gameplay continuing during interruption. The correction owns an Android AudioFocusRequest, checks grant/denial, pauses simulation and audio on loss, clears input and drops the resume frame. Transient/duck interruptions resume after gain; permanent loss requires an explicit resume action. A readable pause panel exposes that action; touch and controller entry points consume the first resume press.
+
+The corrected Moto integration report `out/testing/android-app/audio-focus-corrected-a928879/index.json` passes all three actual OS duck/transient/permanent cases, zero failures/warnings, 9.235 seconds of test duration. Tests observe the actual screen update count and audio-output pause state; permanent recovery currently exercises the native resume API. Visible pause panels were reviewed. Actual touch/controller resume, denied/delayed grants, route changes and Activity recreation remain pending. The earlier denied external helper is superseded by these granted in-process tests. Do not infer all lifecycle coverage or a broad core/GPU rerun.
+
+Both-disc APK: `out/android/packages/Development/20261020T120042Z-c688bb80/Weltall-arm64.apk`, 1,572,556,175 bytes, SHA-256 `65db51afc115985bd951d9378e6a53421bf996a1549d206b7bea509bb5656fb7`. Windows/Android compile and local packaging succeed; fresh embedded PAK integrity/both-disc listing, same signer, signature, zip alignment and all seven native-library 16 KiB alignment checks pass (`out/testing/apk/audio-focus-fix/inspection.json`). Update uses install-replace, preserving data. All49 saves/checksums and current5889-byte settings match (`audio-focus-corrected-retention`, `audio-focus-corrected-settings`); settings SHA remains `c3ae87855dd6b1dbf5b5efbadb8bf09c860634df5b98bbd6e8c04470241cb728`.
+
+Normal Card8No01 load and a short Home/resume retain processes31846/31892; Android reports a HOT return. The user hears water-like ambience in this room, so clear musical playback after this fix is still being checked using the existing Card1No11 ship/world-map checkpoint. No occupied save was written. Recheck the latest focus-guarded capture before input. Test command-line overrides have been removed; no build/test job remains active. Keep caches and duplicated disc storage unchanged. Continue M4/M5; alpha readiness remains unproven.
+
+## Previous continuation: Disc 2 flight and destination entry pass
 
 The user resumed development after the usage handoff. Runtime/APK remains `5ad5235`; editor-only diagnostics are now `db80b0d`. Card1/No11 loads normally, its ship departure reaches the genuine Disc 2 world map on Moto, and ordinary flight, left/right bank, throttle, simultaneous climb/dive touch input, reverse and released idle behavior respond. Square returns to the bridge on PC and Moto; Moto additionally passes Wait and subsequent Go ahead/relaunch. Select hides/restores the minimap. The user confirms world-map music sounds normal. This does not establish movie audio or audio interruption recovery.
 
