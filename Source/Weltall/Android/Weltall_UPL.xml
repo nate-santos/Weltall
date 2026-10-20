@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root xmlns:android="http://schemas.android.com/apk/res/android">
+    <init>
+        <setBoolIsEqual result="WeltallDevelopmentBuild" arg1="$S(Configuration)" arg2="Development" />
+    </init>
     <androidManifestUpdates>
         <addAttribute tag="application" name="android:fullBackupContent" value="@xml/weltall_backup_rules" />
         <addAttribute tag="application" name="android:dataExtractionRules" value="@xml/weltall_data_extraction_rules" />
@@ -222,6 +225,31 @@
     }
         ]]></insert>
     </gameActivityClassAdditions>
+    <gameActivityOnNewIntentAdditions>
+        <if condition="WeltallDevelopmentBuild">
+            <true>
+                <insert><![CDATA[
+        // One-use, local development probe. Only an app-private marker armed through run-as permits it.
+        if ("org.weltall.game.TEST_RECREATE_ACTIVITY".equals(newIntent.getAction())) {
+            java.io.File marker = new java.io.File(getCacheDir(), "weltall-recreate-once");
+            if (marker.isFile() && marker.delete()) {
+                android.util.Log.i("WeltallLifecycleProbe", "Recreate requested activity=" + System.identityHashCode(this));
+                getWindow().getDecorView().post(() -> recreate());
+            }
+        }
+                ]]></insert>
+            </true>
+        </if>
+    </gameActivityOnNewIntentAdditions>
+    <gameActivityOnCreateAdditions>
+        <if condition="WeltallDevelopmentBuild">
+            <true>
+                <insert><![CDATA[
+        android.util.Log.i("WeltallLifecycleProbe", "Created activity=" + System.identityHashCode(this));
+                ]]></insert>
+            </true>
+        </if>
+    </gameActivityOnCreateAdditions>
     <gameActivityOnActivityResultAdditions>
         <insert><![CDATA[
         if (requestCode == WELTALL_SAVE_IMPORT || requestCode == WELTALL_SAVE_EXPORT) {
