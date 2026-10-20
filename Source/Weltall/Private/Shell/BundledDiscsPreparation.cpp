@@ -41,6 +41,13 @@ namespace
 		uint64 Size = 0;
 	};
 
+	/** The worker's platform responses; tests supply bounded storage/cancellation without filling a device. */
+	struct FPreparationServices
+	{
+		TFunction<bool(const FString&, uint64&)> FreeSpace;
+		TFunction<bool(uint64)> Cancelled;
+	};
+
 	std::filesystem::path NativePath(const FString& Path)
 	{
 #if PLATFORM_WINDOWS
@@ -74,13 +81,14 @@ namespace
 	bool SafeRelative(const FString& Path)
 	{
 		if (Path.IsEmpty() || !FPaths::IsRelative(Path) || Path.Contains(TEXT("\\")) || Path.Contains(TEXT(":"))) return false;
+		for (const TCHAR Character : Path) if (Character < TEXT(' ')) return false;
 		TArray<FString> Parts;
 		Path.ParseIntoArray(Parts, TEXT("/"), false);
 		for (const FString& Part : Parts)
 		{
 			if (Part.IsEmpty() || Part == TEXT(".") || Part == TEXT("..")) return false;
 		}
-		return !Path.Contains(TEXT("\t")) && !Path.Contains(TEXT("\r")) && !Path.Contains(TEXT("\n"));
+		return true;
 	}
 
 	bool ParseManifest(const FString& Text, TArray<FBundledFile>& BundledFiles, uint64& Total)
@@ -134,9 +142,13 @@ namespace
 		return !Error;
 	}
 
-	bool Prepare(const TArray<FBundledFile>& BundledFiles, const FString& Destination, const FString& Version,
-		const TSharedRef<FBundledDiscsProgress, ESPMode::ThreadSafe>& Progress)
+	bool Prepare(const TArray<FBundledFile>& BundledFiles, const FString& SourceFolder, const FString& Destination, const FString& Version,
+		const TSharedRef<FBundledDiscsProgress, ESPMode::ThreadSafe>& Progress, const FPreparationServices& Services = {})
 	{
+		const auto Cancelled = [&]
+		{
+			return Progress->Cancelled.load() || (Services.Cancelled && Services.Cancelled(Progress->Done.load()));
+		};
 		std::error_code Error;
 		std::filesystem::create_directories(NativePath(Destination), Error);
 		if (Error) return Progress->Fail(TEXT("The phone could not create game storage."));
@@ -172,7 +184,9 @@ namespace
 			Required += File.Size;
 		}
 		uint64 TotalBytes = 0, FreeBytes = 0;
-		if (!FPlatformMisc::GetDiskTotalAndFreeSpace(Destination, TotalBytes, FreeBytes)
+		const bool bSpaceKnown = Services.FreeSpace ? Services.FreeSpace(Destination, FreeBytes)
+			: FPlatformMisc::GetDiskTotalAndFreeSpace(Destination, TotalBytes, FreeBytes);
+		if (!bSpaceKnown
 			|| FreeBytes < Required + 256ull * 1024 * 1024)
 		{
 			return Progress->Fail(TEXT("There is not enough free phone storage to prepare both discs. Free space and restart the app."));
@@ -182,12 +196,12 @@ namespace
 		Buffer.SetNumUninitialized(1024 * 1024);
 		for (const FBundledFile& File : Pending)
 		{
-			if (Progress->Cancelled.load()) return false;
+			if (Cancelled()) return false;
 			const FString Target = Destination / File.Relative;
 			const FString Partial = Target + TEXT(".partial");
 			std::filesystem::create_directories(NativePath(FPaths::GetPath(Target)), Error);
 			if (Error) return Progress->Fail(TEXT("The phone could not create game storage."));
-			TUniquePtr<IFileHandle> Source(PakFiles.OpenRead(*(BundleSource() / File.Relative)));
+			TUniquePtr<IFileHandle> Source(PakFiles.OpenRead(*(SourceFolder / File.Relative)));
 			std::ofstream Output(NativePath(Partial), std::ios::binary | std::ios::trunc);
 			if (!Source || Source->Size() < 0 || static_cast<uint64>(Source->Size()) != File.Size || !Output)
 			{
@@ -197,7 +211,7 @@ namespace
 			uint64 Remaining = File.Size;
 			while (Remaining)
 			{
-				if (Progress->Cancelled.load()) return false;
+				if (Cancelled()) return false;
 				const uint64 Count = FMath::Min<uint64>(Remaining, Buffer.Num());
 				if (!Source->Read(Buffer.GetData(), Count)) return Progress->Fail(TEXT("A bundled game file could not be read."));
 				Output.write(reinterpret_cast<const char*>(Buffer.GetData()), Count);
@@ -260,9 +274,10 @@ void FBundledDiscsPreparation::Begin()
 	}
 	const FString Destination = GamesFolder();
 	const FString Version = HashText(Text);
-	Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), Destination, Version, Shared = Progress.ToSharedRef()]()
+	const FString SourceFolder = BundleSource();
+	Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Destination, Version, Shared = Progress.ToSharedRef()]()
 	{
-		return Prepare(BundledFiles, Destination, Version, Shared);
+		return Prepare(BundledFiles, SourceFolder, Destination, Version, Shared);
 	});
 }
 
@@ -291,3 +306,7 @@ FText FBundledDiscsPreparation::Notice() const
 	const uint64 Percent = Progress->Total ? 100 * Progress->Done.load() / Progress->Total : 0;
 	return FText::FromString(FString::Printf(TEXT("Preparing both game discs: %llu%%\n\nThis happens on the first launch. Keep the app open."), Percent));
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+#include "BundledDiscsPreparationTests.inl"
+#endif
