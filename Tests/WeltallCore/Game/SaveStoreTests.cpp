@@ -2,6 +2,7 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -87,4 +88,49 @@ TEST_CASE("The save store refuses slots it does not have and saves that are dama
 		File.put('\x7F');
 	}
 	CHECK_FALSE(Store.Read(16));
+}
+
+TEST_CASE("An abandoned temporary save never hides the committed slot", "[Game][SaveFailure]")
+{
+	const FStoreFolder Folder("WeltallSaveAbandonedTemporaryTest");
+	FSaveStore Store(Folder.Path);
+	REQUIRE_FALSE(Store.Write(0, MakeSave(1)));
+	const std::filesystem::path Temporary = Folder.Path / "Card1/No01.sav.new";
+	{
+		std::ofstream File(Temporary, std::ios::binary);
+		File << "incomplete generated fixture";
+	}
+	const FSaveStore Reopened(Folder.Path);
+	const auto Committed = Reopened.Read(0);
+	REQUIRE(Committed);
+	REQUIRE(Committed->has_value());
+	CHECK(std::ranges::equal((**Committed).Data(), MakeSave(1).Data()));
+	CHECK(Reopened.LastSaved() == 0);
+	REQUIRE_FALSE(Store.Write(0, MakeSave(2)));
+	const auto Retried = Store.Read(0);
+	REQUIRE(Retried);
+	REQUIRE(Retried->has_value());
+	CHECK(std::ranges::equal((**Retried).Data(), MakeSave(2).Data()));
+	CHECK_FALSE(std::filesystem::exists(Temporary));
+}
+
+TEST_CASE("Failure to open a temporary save preserves the prior slot and last-save pointer", "[Game][SaveFailure]")
+{
+	const FStoreFolder Folder("WeltallSaveTemporaryOpenFailureTest");
+	FSaveStore Store(Folder.Path);
+	REQUIRE_FALSE(Store.Write(0, MakeSave(1)));
+	REQUIRE_FALSE(Store.Write(119, MakeSave(2)));
+	const std::filesystem::path Temporary = Folder.Path / "Card1/No01.sav.new";
+	REQUIRE(std::filesystem::create_directory(Temporary));
+	CHECK(Store.Write(0, MakeSave(3)).has_value());
+	const FSaveStore Reopened(Folder.Path);
+	const auto Committed = Reopened.Read(0);
+	REQUIRE(Committed);
+	REQUIRE(Committed->has_value());
+	CHECK(std::ranges::equal((**Committed).Data(), MakeSave(1).Data()));
+	CHECK(Reopened.LastSaved() == 119);
+	const auto Other = Reopened.Read(119);
+	REQUIRE(Other);
+	REQUIRE(Other->has_value());
+	CHECK(std::ranges::equal((**Other).Data(), MakeSave(2).Data()));
 }

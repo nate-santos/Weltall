@@ -53,6 +53,15 @@ target_link_libraries(WeltallCoreTests PRIVATE WeltallCore Catch2)
 target_compile_options(WeltallCoreTests PRIVATE ${WELTALL_TEST_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
 target_compile_definitions(WeltallCoreTests PRIVATE WELTALL_GAMES_DIR="${WELTALL_GAMES_DIR}" WELTALL_STORY_DIR="${WELTALL_STORY_DIR}")
 
+# Standalone process-death probe: intercept libc boundaries without changing the production writer.
+# /proc and POSIX signals are required; the Android/Unreal app never links these wrappers.
+if(ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	add_executable(WeltallSaveInterruptionProbe "${CMAKE_CURRENT_SOURCE_DIR}/Tools/SaveInterruptionProbe.cpp")
+	target_link_libraries(WeltallSaveInterruptionProbe PRIVATE WeltallCore)
+	target_compile_options(WeltallSaveInterruptionProbe PRIVATE ${WELTALL_LANGUAGE_OPTIONS} ${WELTALL_WARNINGS})
+	target_link_options(WeltallSaveInterruptionProbe PRIVATE "-Wl,--wrap=fwrite" "-Wl,--wrap=fclose" "-Wl,--wrap=rename")
+endif()
+
 enable_testing()
 include("${CATCH2_DIR}/Catch.cmake")
 if(NOT CMAKE_CROSSCOMPILING)
