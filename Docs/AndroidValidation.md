@@ -1,6 +1,6 @@
 # Android port validation
 
-Updated October 18, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
+Updated October 19, 2026. Target device: Moto G Stylus 2025, Android 16, ARM64. Source branch: `android-port`. Reports, binaries, disc copies and captures are local files under ignored `out/`; this document records counts and coverage only.
 
 ## Upstream 0.8.2 revalidation (October 19, 2026)
 
@@ -8,7 +8,11 @@ Installed runtime `0275208` includes upstream `687b2ff`, Android integration and
 
 The final both-disc APK is 1,572,463,499 bytes, SHA-256 `f7aa09880cdceed8127ae1090a26a1804bd3b6f841da5ba2a85c4bc6dfd46b32`. Signature, ZIP validation, all seven ARM64 ELF load alignments at 16 KiB, embedded-pak integrity and both BIN/CUE pairs pass. App update and subsequent graphics tests preserve all 48 saves and current preferences byte-for-byte. Normal title/load/disc-2 confirmation restores the native Disc 2 victory save to its field scene.
 
-Complete corrected Windows and Moto core suites are running; their final counts are pending. The initial Windows full run's sole failed case was the new regression test using the digital-only consumer; its corrected Battling input check passes both synthetic suites. The first PC GPU run exposed the real CRT issue despite exit0; unchanged strict assertions pass after integer modulo. The three optional Perfect Works fixture tests are classified as Content so the isolated suite uploads/requires no mod files. See AndroidHandoff.md for exact local reports and running jobs. Earlier baseline results below refer to the pre-merge runtime.
+Complete corrected Windows and Moto core suites each finish with 1,483 cases: 1,468 passed, 15 skipped, zero failures; 8,541,954 assertions pass on each. The Moto run takes 1,415.031 seconds. Skip messages match: ten unavailable optional-undub cases and five unavailable Perfect Works 0.11.4 cases; no supplied-USA-disc case is skipped. Windows evidence is `out/testing/upstream-082-windows-clean-full.log`; Moto evidence is `out/testing/android/20261019T233258Z-3913d81c/report.catch.xml`. The runner is corrected to exclude skip markers from its assertion total; the original device summary includes those 15 markers, so use the unchanged native XML count above. All 44 Python packaging/runner/guard checks pass.
+
+Both forced landscape surfaces pass game/Controls/Back checks with original rotation restored. Short background/resume retains both app processes and accepts subsequent D-pad/Confirm input. Native File/Load switches normally from the Disc2 victory save to Card6No12's Disc1 lobby; Hammer dialogue/choices advance without changing save data. All 48 saves retain their hashes/checksums, and final user settings are byte-identical. These are bounded smoke checks; long suspension/audio focus, original story disc handoff and wider gameplay still require acceptance. The user deferred updated Stadia stick/button testing until later.
+
+The initial Windows full run's sole failed case was the new regression test using the digital-only consumer; its corrected Battling input check now passes the complete suites. The first PC GPU run exposed the real CRT issue despite exit0; unchanged strict assertions pass after integer modulo. The three optional Perfect Works fixture tests are classified as Content so the isolated suite uploads/requires no mod files. See AndroidHandoff.md for exact local reports and continuation details. No build/test/reference job remains active. Earlier baseline results below refer to the pre-merge runtime.
 
 ## Earlier baseline checks
 

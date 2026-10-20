@@ -238,7 +238,7 @@ def catch_counts(path):
         raise ValueError("the native Catch2 run selected no test cases")
     return {"tests": total, "passed": values["successes"], "failures": values["failures"],
             "expected_failures": values["expectedFailures"], "skipped": values["skips"],
-            "assertions": sum(int(assertions.get(name, "0")) for name in ("successes", "failures", "expectedFailures", "skips"))}
+            "assertions": sum(int(assertions.get(name, "0")) for name in ("successes", "failures", "expectedFailures"))}
 
 
 def default_adb():

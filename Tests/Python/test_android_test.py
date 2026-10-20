@@ -68,12 +68,12 @@ class AndroidRunnerTests(unittest.TestCase):
         self.assertTrue(any(token.startswith("junit::out=") for token in tokens))
         self.assertTrue(any(token.startswith("xml::out=") for token in tokens))
 
-    def test_native_catch_summary_counts_cases_separately_from_assertions(self):
+    def test_native_catch_summary_counts_cases_without_treating_skip_markers_as_assertions(self):
         report = self.root / "report.catch.xml"
         report.write_text('<Catch2TestRun><OverallResults successes="27" failures="1" expectedFailures="0" skips="1"/>'
                           '<OverallResultsCases successes="2" failures="1" expectedFailures="0" skips="1"/></Catch2TestRun>')
         self.assertEqual(runner.catch_counts(report), {"tests": 4, "passed": 2, "failures": 1,
-                         "expected_failures": 0, "skipped": 1, "assertions": 29})
+                         "expected_failures": 0, "skipped": 1, "assertions": 28})
 
     def test_verified_remote_files_are_reused_without_push(self):
         source = self.root / "synthetic"
