@@ -4,7 +4,13 @@ This is the acceptance record for milestones 1–5 of [AndroidPortPlan.md](Andro
 
 Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pairs. Compare PC and Android using the same source revision, settings and save inputs. Keep saves, logs, captures, extracted data and detailed story-sweep output under ignored `out/`; this tracked document contains authored procedure and outcome summaries only.
 
-## Latest continuation: actual Android audio interruptions
+## Latest continuation: interruption input recovery and physical Bluetooth routes
+
+Runtime/editor `f8bf63c` passes all six actual OS focus integration cases, zero warnings/failures/unrun cases,19.475 seconds of tests. The actual widget supplies held Down before loss; focus loss clears it, taps during transient loss cannot steal focus, and no held/queued input reaches gameplay afterward. Permanent recovery passes through the visible panel handler, touch-control handler, controller InputKey handler and native API, consuming the resume press. Report: `out/testing/android-app/audio-focus-input-f8bf63c/index.json`. These handler calls do not establish new physical Stadia coverage.
+
+Fresh both-disc APK integrity/signature/alignment checks pass; signed update retains all49 saves/current settings. Normal Card1No11 Load and departure restore genuine Disc2 world-map gameplay. The user confirms normal music through Bluetooth headphones, continued normal speaker music after disconnection and normal headphone audio/game response after reconnection. The same started/unmuted audio player/session and native processes survive, with output device IDs161→3→178. Final retention/settings checks remain identical (`audio-input-routes-final-*`). This establishes one physical Bluetooth/speaker route round trip, with broader route types, phone calls, denied/delayed focus and Activity recreation still pending. No full core/GPU rerun is inferred from these narrow changes.
+
+## Previous continuation: actual Android audio interruptions
 
 Source `44cb5a4` reproduces continued simulation after a real granted transient OS audio-focus request. Corrected runtime/editor `a928879` passes three actual OS interruption cases (duck, transient, permanent), zero failures/warnings: actual game-screen updates and audio output pause during loss, transient/duck regain resumes, and permanent loss waits for explicit native resume. Pause-panel rendering is reviewed. Evidence: `out/testing/android-app/audio-focus-corrected-a928879/index.json`; baseline failure is retained separately. This is not physical touch/controller resume coverage, a denied/delayed grant test, route-change/recreation acceptance or a broad suite rerun.
 
