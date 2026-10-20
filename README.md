@@ -3,8 +3,17 @@
 Weltall is a native port of *Xenogears* (PlayStation, 1998), rebuilt in Unreal Engine 5. The goal is to
 make the game feel like a modern PC release while keeping the original gameplay intact.
 
+This fork extends [Roman215's Weltall](https://github.com/Roman215/Weltall) with an **experimental
+Android port** for ARM64 phones, including configurable on-screen controls and hardware controller
+support. It stays in landscape and rotates between both landscape directions. Android testing is
+in progress on a Moto G Stylus 2025 with a Bluetooth Stadia controller; complete both-disc playthrough
+and controller disconnect/resume validation remain unfinished. See the
+[Android validation record](Docs/AndroidGameplayValidation.md) for current coverage.
+
 You'll need your own copy of the USA release or a supported English undub. Weltall doesn't include
-any game data. Put your disc images in the `Games` folder and the game will find them automatically.
+any game data in this repository. For desktop builds, put your disc images in the `Games` folder and
+the game will find them automatically. The Android build instructions below describe how to bundle
+your own local copies of both USA discs into a private APK.
 BIN/CUE and CHD preserve movie audio; ISO/IMG also work, but the movies will be silent. Convert PBP,
 ECM or other formats to BIN/CUE first. You can add Disc 2 while the game is running when it asks for
 it. You can also start with only Disc 2, as on the PlayStation, to load your Disc 2 saves.
@@ -102,6 +111,10 @@ and field scenes where party members are speaking or placed around the map use t
 You can rebind every control on the Controls page. Wherever the game mentions a PlayStation button,
 it shows the key or controller button you've assigned to it.
 
+On Android, tap **Controls** to adjust the on-screen buttons' idle and pressed opacity, size and
+positions, or reserve side areas so they cover less of the game. Touch controls can be used alongside
+a controller. The controller bindings in the table above also apply to Android.
+
 ### Saves and settings
 
 On Windows, settings and saves are in `%LOCALAPPDATA%\Weltall`. On Linux, settings are in
@@ -175,6 +188,76 @@ player downloads and release notes, using the GitHub CLI. Publish the draft from
 
 Packages leave out the `disc2` pack and play the original Disc 2 without asking you to choose a mode.
 Build with `--expansion` to include the examples; those archives are marked in the filename.
+
+### Building the experimental Android port
+
+The tested build host is Windows with Git, Python 3.10 or newer, Visual Studio 2022 C++ build tools,
+the Windows SDK and .NET Framework 4.8 SDK. Use an **Unreal Engine 5.8 source build** with its Android
+dependencies installed. This branch has been built with UE 5.8.4, Android SDK 36/build tools 36.0.0,
+NDK r27c and JDK 21. Android packaging uses `Scripts/android_package.py`, separately from the desktop
+packager above. See [AndroidBuild.md](Docs/AndroidBuild.md) for additional setup and test details.
+
+1. Check out the `android-port` branch and run the following commands from the repository root.
+   Commit any source changes you want to build: the packager exports committed `HEAD`, not uncommitted
+   edits. You can select another commit or branch with `--revision`.
+2. Set your tool locations in environment variables or create an ignored `local.env` in the repository
+   root. Replace these example paths with your actual installations; do not put quotes around values
+   in this file. Existing environment variables take precedence.
+
+   ```text
+   UE_ROOT=C:/dev/UnrealEngine-5.8
+   JAVA_HOME=C:/Android/jdk-21
+   ANDROID_HOME=C:/Android/sdk
+   ANDROID_SDK_ROOT=C:/Android/sdk
+   NDKROOT=C:/Android/sdk/ndk/27.2.12479018
+   ```
+
+   ```sh
+   python Scripts/android_package.py --check-toolchain
+   ```
+
+   This checks the engine installation; Unreal performs the Android SDK/toolchain checks during the
+   build. Complete its Android dependency setup and accept the SDK licenses before packaging.
+3. Put both USA discs' **BIN/CUE files** in a directory outside the checkout, such as
+   `D:/Game Discs/Xenogears` or `../bin`. The selected directory must contain exactly two CUE sheets,
+   with every referenced BIN track inside that directory. Subfolders are supported. Keep filenames
+   consistent with the CUE references, including case. This Android bundling command expects BIN/CUE;
+   the desktop runtime's other supported formats do not apply to this step.
+
+   Specify that directory with **`--include-discs`**. Quote paths containing spaces:
+
+   ```sh
+   python Scripts/android_package.py --include-discs "D:/Game Discs/Xenogears" --print-plan
+   python Scripts/android_package.py --include-discs "D:/Game Discs/Xenogears" --configuration Development
+   ```
+
+   For the sibling `bin` folder instead:
+
+   ```sh
+   python Scripts/android_package.py --include-discs ../bin --configuration Development
+   ```
+
+   `--print-plan` validates the input files and shows the output locations without starting a build.
+   The directory is a **build-time input on your computer**: the script bundles the discs into the APK,
+   and the phone prepares its private working copy at first launch. It does not access the computer's
+   directory while playing. Omitting `--include-discs` builds a runtime without bundled game data.
+4. Find the APK in the new `out/android/packages/Development/<build-id>/` directory; the script prints
+   its exact filename. Build logs are in `out/android/logs/`. Enable USB debugging on the phone, approve
+   the computer, and install with Android SDK platform-tools:
+
+   ```sh
+   adb devices
+   adb install -r "out/android/packages/Development/<build-id>/Weltall-arm64.apk"
+   ```
+
+   Replace `<build-id>` with the generated directory name. Open Weltall and let disc preparation finish.
+   For updates, keep the same signing key and use `install -r` to preserve app data; do not uninstall
+   the app to update it.
+
+The exported project, bundled discs, APKs, logs and test outputs stay in ignored `out/` directories.
+Disc images, saves and game-derived captures must stay out of Git and public build artifacts. Keep
+an APK containing your disc data local. A successful build does not establish Android gameplay
+readiness; follow [the validation matrix](Docs/AndroidGameplayValidation.md) when testing changes.
 
 ## Credits
 
