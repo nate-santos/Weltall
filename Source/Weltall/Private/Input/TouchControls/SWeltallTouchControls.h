@@ -36,6 +36,9 @@ public:
 	virtual bool ComputeVolatility() const override { return true; }
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FWeltallAudioFocusTestAccess;
+#endif
 	void RebuildLayout();
 	void KeepOptions();
 	Weltall::FTouchRect SettingsButton() const;

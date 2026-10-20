@@ -45,6 +45,9 @@ protected:
 	virtual void UpdateForceFeedback(IInputInterface* InputInterface, const int32 ControllerId) override;
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FWeltallAudioFocusTestAccess;
+#endif
 	/** The player's settings changed: the keys follow their bindings. */
 	void FollowBindings();
 	void ResetTouches();

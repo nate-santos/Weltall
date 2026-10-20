@@ -8,6 +8,10 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "Input/Events.h"
+#include "Input/TouchControls/SWeltallTouchControls.h"
+#include "Input/WeltallPlayerController.h"
+#include "InputKeyEventArgs.h"
 #include "Misc/AutomationTest.h"
 #include "Shell/GameWindowSubsystem.h"
 #include "Screens/GameScreenSubsystem.h"
@@ -21,6 +25,22 @@ public:
 	static bool HasOutput(UGameSoundSubsystem& Sound) { return Sound.Output != nullptr; }
 	static bool AudioPaused(UGameSoundSubsystem& Sound) { return Sound.bHeld && Sound.Output && Sound.Output->bIsPaused; }
 	static bool AudioPlaying(UGameSoundSubsystem& Sound) { return !Sound.bHeld && Sound.Output && !Sound.Output->bIsPaused; }
+	static TSharedPtr<SWeltallTouchControls> Touch(AWeltallPlayerController& Controller) { return Controller.TouchControls; }
+	static Weltall::FTouchPoint ControlPoint(SWeltallTouchControls& Touch, Weltall::ETouchControl Control)
+	{
+		const Weltall::FTouchRect& Rect = Touch.Layout.Controls[static_cast<std::size_t>(Control)];
+		Weltall::FTouchPoint Point = Rect.Center();
+		if (Control == Weltall::ETouchControl::DPad) Point.Y += Rect.Height * 0.3f;
+		return Point;
+	}
+	static Weltall::FTouchPoint ResumePoint(SWeltallTouchControls& Touch) { return Touch.AudioPausePanel().Center(); }
+	static bool Pointer(SWeltallTouchControls& Touch, Weltall::FTouchPoint Point, bool bPressed)
+	{
+		const FGeometry& Geometry = Touch.GetCachedGeometry();
+		const FVector2D Absolute = Geometry.LocalToAbsolute(FVector2D(Point.X, Point.Y));
+		const FPointerEvent Event(FInputDeviceId::CreateFromInternalId(0), 77, Absolute, Absolute, bPressed ? 1.0f : 0.0f, bPressed);
+		return (bPressed ? Touch.OnTouchStarted(Geometry, Event) : Touch.OnTouchEnded(Geometry, Event)).IsEventHandled();
+	}
 };
 
 namespace
@@ -95,21 +115,27 @@ namespace
 	{
 	public:
 		explicit FFocusCountingScreen(TSharedRef<IGameScreen> InPrevious) : Previous(MoveTemp(InPrevious)) {}
-		void Update(double Delta, Weltall::FPadState) override { ++Updates; Elapsed += Delta; }
+		void Update(double Delta, Weltall::FPadState Pad) override { ++Updates; Elapsed += Delta; SeenButtons |= Pad.Buttons; }
 		TSharedRef<const IScreenFrame> CaptureFrame() const override { return Previous->CaptureFrame(); }
 		TSharedRef<IGameScreen> Previous;
 		uint64 Updates = 0;
 		double Elapsed = 0.0;
+		uint16 SeenButtons = 0;
 	};
+
+	enum class EResumeInput { Native, Panel, Control, Hardware };
 
 	class FAudioFocusInterruptionCommand final : public IAutomationLatentCommand
 	{
 	public:
-		FAudioFocusInterruptionCommand(FAutomationTestBase& InTest, int32 InGain) : Test(InTest), Gain(InGain) {}
+		FAudioFocusInterruptionCommand(FAutomationTestBase& InTest, int32 InGain, EResumeInput InResume = EResumeInput::Native)
+			: Test(InTest), Gain(InGain), Resume(InResume) {}
 		~FAudioFocusInterruptionCommand()
 		{
 			Probe.Release();
 			if (Window.IsValid()) Window->ResumeAudioIfNeeded();
+			if (Touch) FWeltallAudioFocusTestAccess::Pointer(*Touch, HeldPoint, false);
+			if (Controller.IsValid()) Controller->ResetAllInput();
 			if (Screens.IsValid() && Counter) Screens->Show(Counter->Previous);
 		}
 		bool Update() override
@@ -128,11 +154,14 @@ namespace
 							Window = Game->GetSubsystem<UGameWindowSubsystem>();
 							Screens = Game->GetSubsystem<UGameScreenSubsystem>();
 							Sound = Game->GetSubsystem<UGameSoundSubsystem>();
+							Controller = Cast<AWeltallPlayerController>(Game->GetFirstLocalPlayerController());
 						}
 						if (Window.IsValid()) break;
 					}
 				}
-				if (!Window.IsValid() || Window->IsHeldInBackground() || !Screens.IsValid() || !Sound.IsValid()
+				if (Controller.IsValid()) Touch = FWeltallAudioFocusTestAccess::Touch(*Controller);
+				if (!Window.IsValid() || Window->IsHeldInBackground() || !Screens.IsValid() || !Sound.IsValid() || !Touch
+					|| Touch->GetCachedGeometry().GetLocalSize().X < 100.0f
 					|| !FWeltallAudioFocusTestAccess::Screen(*Screens).IsValid() || !FWeltallAudioFocusTestAccess::HasOutput(*Sound))
 				{
 					if (Now - Started < 15.0) return false;
@@ -141,11 +170,14 @@ namespace
 				}
 				Counter = MakeShared<FFocusCountingScreen>(FWeltallAudioFocusTestAccess::Screen(*Screens).ToSharedRef());
 				Screens->Show(Counter.ToSharedRef());
+				Controller->ResetAllInput();
+				HeldPoint = FWeltallAudioFocusTestAccess::ControlPoint(*Touch, Weltall::ETouchControl::DPad);
+				Test.TestTrue(TEXT("The real touch widget accepts a held Down before interruption"), FWeltallAudioFocusTestAccess::Pointer(*Touch, HeldPoint, true));
 				Started = Now;
 				Phase = 1;
 				return false;
 			}
-			if (!Window.IsValid() || !Sound.IsValid() || !Screens.IsValid())
+			if (!Window.IsValid() || !Sound.IsValid() || !Screens.IsValid() || !Controller.IsValid())
 			{
 				Test.AddError(TEXT("The game window disappeared during the focus test"));
 				return true;
@@ -154,6 +186,7 @@ namespace
 			{
 				if (Now - Started < 0.25) return false;
 				Test.TestTrue(TEXT("The real screen subsystem advances the generated counter before interruption"), Counter->Updates > 0);
+				Test.TestTrue(TEXT("The held Down reaches the real screen update path"), (Counter->SeenButtons & Weltall::FPadState::Bit(Weltall::EPadButton::Down)) != 0);
 				const int32 Granted = Probe.Request(Gain);
 				Test.AddInfo(FString::Printf(TEXT("Actual foreground-process OS focus gain %d request returned %d (1 means granted)"), Gain, Granted));
 				if (!Test.TestEqual(TEXT("Android grants the separate focus client"), Granted, 1)) return true;
@@ -166,8 +199,18 @@ namespace
 				if (Now - Started < 0.5) return false;
 				Test.TestTrue(TEXT("The game holds simulation during the granted OS interruption"), Window->IsHeldInBackground());
 				Test.TestTrue(TEXT("The actual audio component is paused"), FWeltallAudioFocusTestAccess::AudioPaused(*Sound));
+				Test.TestEqual(TEXT("Focus loss clears the held touch through the real controller"), Controller->HeldPad().Buttons, static_cast<uint16>(0));
 				Test.TestEqual(TEXT("Only permanent loss offers explicit reclaim"), Window->CanResumeAudio(), Gain == 1);
 				if (Gain != 1) Test.TestFalse(TEXT("User input cannot steal transient focus back"), Window->ResumeAudioIfNeeded());
+				if (Gain != 1)
+				{
+					// A quick touch during the hold must neither steal focus nor become a delayed game action.
+					const Weltall::FTouchPoint Cross = FWeltallAudioFocusTestAccess::ControlPoint(*Touch, Weltall::ETouchControl::Cross);
+					Test.TestTrue(TEXT("The actual widget receives a touch during transient loss"), FWeltallAudioFocusTestAccess::Pointer(*Touch, Cross, true));
+					FWeltallAudioFocusTestAccess::Pointer(*Touch, Cross, false);
+					Test.TestTrue(TEXT("A touch does not steal transient OS focus"), Window->IsHeldInBackground());
+				}
+				Counter->SeenButtons = 0;
 				HeldUpdates = Counter->Updates;
 				HeldElapsed = Counter->Elapsed;
 				Phase = 3;
@@ -188,7 +231,22 @@ namespace
 				if (Now - Started < 0.5) return false;
 				Test.TestTrue(TEXT("Permanent loss stays paused until explicit user intent"), Window->IsHeldInBackground());
 				Test.TestEqual(TEXT("Permanent loss does not silently advance the game"), Counter->Updates, HeldUpdates);
-				Test.TestTrue(TEXT("An explicit resume action requests focus again"), Window->ResumeAudioIfNeeded());
+				bool bHandled = false;
+				if (Resume == EResumeInput::Native) bHandled = Window->ResumeAudioIfNeeded();
+				else if (Resume == EResumeInput::Hardware)
+				{
+					const FInputKeyEventArgs Press(nullptr, FInputDeviceId::CreateFromInternalId(0), EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, 1.0f, false, FPlatformTime::Cycles64());
+					bHandled = Controller->InputKey(Press);
+				}
+				else
+				{
+					const Weltall::FTouchPoint Point = Resume == EResumeInput::Panel ? FWeltallAudioFocusTestAccess::ResumePoint(*Touch)
+						: FWeltallAudioFocusTestAccess::ControlPoint(*Touch, Weltall::ETouchControl::Cross);
+					bHandled = FWeltallAudioFocusTestAccess::Pointer(*Touch, Point, true);
+					FWeltallAudioFocusTestAccess::Pointer(*Touch, Point, false);
+				}
+				Test.TestTrue(TEXT("The explicit resume input is handled by its production entry point"), bHandled);
+				Test.TestEqual(TEXT("The resume input is consumed instead of becoming a game action"), Controller->HeldPad().Buttons, static_cast<uint16>(0));
 				Started = Now;
 				Phase = 5;
 				return false;
@@ -197,6 +255,7 @@ namespace
 			Test.TestFalse(TEXT("The game resumes after focus is restored"), Window->IsHeldInBackground());
 			Test.TestTrue(TEXT("Screen updates resume"), Counter->Updates > HeldUpdates);
 			Test.TestTrue(TEXT("The actual audio component resumes"), FWeltallAudioFocusTestAccess::AudioPlaying(*Sound));
+			Test.TestEqual(TEXT("No stale held or queued button reaches gameplay after regain"), Counter->SeenButtons, static_cast<uint16>(0));
 			Test.TestTrue(TEXT("Resume does not simulate time spent interrupted"), Counter->Elapsed - HeldElapsed <= Now - Started + 0.15);
 			return true;
 		}
@@ -207,11 +266,15 @@ namespace
 		TWeakObjectPtr<UGameScreenSubsystem> Screens;
 		TWeakObjectPtr<UGameSoundSubsystem> Sound;
 		TSharedPtr<FFocusCountingScreen> Counter;
+		TWeakObjectPtr<AWeltallPlayerController> Controller;
+		TSharedPtr<SWeltallTouchControls> Touch;
+		Weltall::FTouchPoint HeldPoint;
 		uint64 HeldUpdates = 0;
 		double HeldElapsed = 0.0;
 		double Started = FPlatformTime::Seconds();
 		int32 Phase = 0;
 		int32 Gain = 2;
+		EResumeInput Resume = EResumeInput::Native;
 	};
 }
 
@@ -237,6 +300,30 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidAudioPermanentTest, "Weltall.Android.Au
 bool FAndroidAudioPermanentTest::RunTest(const FString&)
 {
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FAudioFocusInterruptionCommand>(*this, 1));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidAudioPanelResumeTest, "Weltall.Android.AudioFocus.PermanentLossPanelResume",
+	EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FAndroidAudioPanelResumeTest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FAudioFocusInterruptionCommand>(*this, 1, EResumeInput::Panel));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidAudioControlResumeTest, "Weltall.Android.AudioFocus.PermanentLossTouchControlResume",
+	EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FAndroidAudioControlResumeTest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FAudioFocusInterruptionCommand>(*this, 1, EResumeInput::Control));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidAudioHardwareResumeTest, "Weltall.Android.AudioFocus.PermanentLossControllerHandlerResume",
+	EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FAndroidAudioHardwareResumeTest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FAudioFocusInterruptionCommand>(*this, 1, EResumeInput::Hardware));
 	return true;
 }
 
