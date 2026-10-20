@@ -136,5 +136,15 @@ void UPadPortsSubsystem::DeviceConnectionChanged(EInputDeviceConnectionState Sta
 	if (State == EInputDeviceConnectionState::Disconnected)
 	{
 		Ports.DeviceDisconnected(Device);
+		const UButtonGlyphSubsystem* Glyphs = GetGameInstance()->GetSubsystem<UButtonGlyphSubsystem>();
+		if (Glyphs != nullptr && Glyphs->LastGamepadUsed() == Device)
+		{
+			// Android removes the device's cached state without sending its held
+			// keys/axes as releases to Enhanced Input.
+			if (APlayerController* Player = GetGameInstance()->GetFirstLocalPlayerController())
+			{
+				Player->FlushPressedKeys();
+			}
+		}
 	}
 }

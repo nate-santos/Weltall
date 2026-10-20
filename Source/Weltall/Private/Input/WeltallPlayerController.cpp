@@ -64,6 +64,19 @@ bool AWeltallPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	return Super::InputKey(Params);
 }
 
+void AWeltallPlayerController::FlushPressedKeys()
+{
+	Super::FlushPressedKeys();
+	if (UEnhancedInputLocalPlayerSubsystem* Input = InputSubsystem())
+	{
+		// A disconnected pad cannot send releases. Discard cached actions and their
+		// ignore-until-release flags so the next controller's first press also works.
+		FModifyContextOptions Options;
+		Options.bIgnoreAllPressedKeysUntilRelease = false;
+		Input->RequestRebuildControlMappings(Options, EInputMappingRebuildType::RebuildWithFlush);
+	}
+}
+
 void AWeltallPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
@@ -127,8 +140,9 @@ void AWeltallPlayerController::BeginPlay()
 		];
 		Viewport->AddViewportWidgetContent(TouchOverlay.ToSharedRef(), 20);
 	}
-	EnteredBackground = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(this, &AWeltallPlayerController::ResetTouches);
-	Deactivated = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &AWeltallPlayerController::ResetTouches);
+	EnteredBackground = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(this, &AWeltallPlayerController::ResetAllInput);
+	Deactivated = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &AWeltallPlayerController::ResetAllInput);
+	EnteredForeground = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(this, &AWeltallPlayerController::ResetAllInput);
 	OrientationChanged = FCoreDelegates::ApplicationReceivedScreenOrientationChangedNotificationDelegate.AddUObject(this, &AWeltallPlayerController::ScreenOrientationChanged);
 #endif
 	SetInputMode(FInputModeGameOnly());
@@ -136,9 +150,10 @@ void AWeltallPlayerController::BeginPlay()
 
 void AWeltallPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	ResetTouches();
+	ResetAllInput();
 	FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(EnteredBackground);
 	FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(Deactivated);
+	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(EnteredForeground);
 	FCoreDelegates::ApplicationReceivedScreenOrientationChangedNotificationDelegate.Remove(OrientationChanged);
 	if (TouchOverlay)
 	{
@@ -177,6 +192,12 @@ void AWeltallPlayerController::FollowBindings()
 	{
 		Input->RequestRebuildControlMappings();
 	}
+}
+
+void AWeltallPlayerController::ResetAllInput()
+{
+	FlushPressedKeys();
+	ResetTouches();
 }
 
 void AWeltallPlayerController::ResetTouches()

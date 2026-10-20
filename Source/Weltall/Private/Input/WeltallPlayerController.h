@@ -30,6 +30,7 @@ public:
 	/** The Android controls settings/edit panel holds simulation and audio while open. */
 	bool IsTouchMenuOpen() const;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
+	virtual void FlushPressedKeys() override;
 	virtual void PlayerTick(float DeltaTime) override;
 
 	/** What the player did to the field's view in the last DeltaSeconds. */
@@ -44,6 +45,7 @@ protected:
 private:
 	/** The player's settings changed: the keys follow their bindings. */
 	void FollowBindings();
+	void ResetAllInput();
 	void ResetTouches();
 	void ScreenOrientationChanged(int32 Orientation);
 	UEnhancedInputLocalPlayerSubsystem* InputSubsystem() const;
@@ -54,6 +56,7 @@ private:
 	FDelegateHandle SettingsChanged;
 	FDelegateHandle EnteredBackground;
 	FDelegateHandle Deactivated;
+	FDelegateHandle EnteredForeground;
 	FDelegateHandle OrientationChanged;
 	TSharedPtr<SWeltallTouchControls> TouchControls;
 	TSharedPtr<SWidget> TouchOverlay;
