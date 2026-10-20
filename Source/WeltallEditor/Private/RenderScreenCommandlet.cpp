@@ -7,6 +7,7 @@
 #include "Game/GameLoop.h"
 #include "Game/GameSession.h"
 #include "Game/PlayerSettings.h"
+#include "Game/WorldMapProgram.h"
 #include "GlobalShader.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
@@ -71,6 +72,15 @@ namespace
 			const Weltall::FBattleContext& Context = Battle->Runtime().Context();
 			UE_LOG(LogRenderScreen, Display, TEXT("GameTrace battle actor=%d menu=%d end=%d waits=%d,%d,%d"),
 				Context.Party.Actor, Context.Party.MenuState, Context.End, Context.Waits[0], Context.Waits[1], Context.Waits[2]);
+		}
+		if (const Weltall::FWorldMapProgram* World = Loop->WorldMap())
+		{
+			const Weltall::FWorldMapContext& Context = World->Runtime().Context();
+			const Weltall::FWorldMapVector& Leader = Context.Tasks[Weltall::FWorldMapContext::LeaderSlot].Position;
+			const Weltall::FWorldMapVector& Vehicle = Context.Tasks[Weltall::FWorldMapContext::VehicleSlot].Position;
+			UE_LOG(LogRenderScreen, Display, TEXT("GameTrace world travel=%d leader=%d,%d,%d vehicle=%d,%d,%d yaw=%d roll=%d place=%d notice=%d"),
+				Context.TravelMode, Leader.X >> 12, Leader.Y >> 12, Leader.Z >> 12, Vehicle.X >> 12, Vehicle.Y >> 12, Vehicle.Z >> 12,
+				Context.CameraYaw, Context.CameraRoll, Context.Place, Context.Notice);
 		}
 	}
 
