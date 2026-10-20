@@ -1,6 +1,8 @@
 #include "Shell/GameWindowSubsystem.h"
 
 #include "Audio/GameSoundSubsystem.h"
+#include "Input/WeltallPlayerController.h"
+#include "Shell/AndroidAudioFocus.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -120,6 +122,7 @@ void UGameWindowSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	DeactivatedHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationDeactivated);
 	ReactivatedHandle = FCoreDelegates::ApplicationHasReactivatedDelegate.AddUObject(this, &UGameWindowSubsystem::ApplicationReactivated);
 	FollowMobileScreenAwake();
+	FollowMobileAudioActive();
 #endif
 	Follow();
 }
@@ -127,6 +130,7 @@ void UGameWindowSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UGameWindowSubsystem::Deinitialize()
 {
 #if PLATFORM_ANDROID
+	SetAndroidAudioActive(false);
 	FPlatformApplicationMisc::ControlScreensaver(FPlatformApplicationMisc::EScreenSaverAction::Enable);
 #endif
 	FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundedHandle);
@@ -176,7 +180,7 @@ bool UGameWindowSubsystem::IsHeldInBackground() const
 {
 #if PLATFORM_ANDROID
 	// A phone must stop simulation/audio when suspended, regardless of desktop preferences.
-	return !bApplicationActive || !bApplicationForeground;
+	return !bApplicationActive || !bApplicationForeground || !bAudioFocusGranted;
 #else
 	// A run nobody attends has no window to be in use.
 	return HasOwnWindow() && !FApp::IsUnattended() && GetGameInstance()->GetSubsystem<UPlayerSettingsSubsystem>()->Settings().Display.bPauseInBackground
@@ -191,6 +195,71 @@ bool UGameWindowSubsystem::ConsumeResumeFrame()
 	return bDrop;
 }
 
+void UGameWindowSubsystem::UpdateMobileAudioFocus()
+{
+#if PLATFORM_ANDROID
+	const FWeltallAudioFocusSnapshot Focus = ReadAndroidAudioFocus();
+	const bool bGranted = Focus.State == EWeltallAudioFocus::Granted;
+	AudioFocusState = static_cast<uint8>(Focus.State);
+	if (Focus.Losses != AudioFocusLosses || bGranted != bAudioFocusGranted)
+	{
+		AudioFocusLosses = Focus.Losses;
+		bAudioFocusGranted = bGranted;
+		// A loss followed by gain between display ticks must still discard held input and elapsed time.
+		HoldMobileAudio();
+		if (AWeltallPlayerController* Controller = Cast<AWeltallPlayerController>(GetGameInstance()->GetFirstLocalPlayerController()))
+		{
+			Controller->ResetAllInput();
+		}
+	}
+#endif
+}
+
+bool UGameWindowSubsystem::IsHeldForAudio() const
+{
+#if PLATFORM_ANDROID
+	return bApplicationActive && bApplicationForeground && !bAudioFocusGranted;
+#else
+	return false;
+#endif
+}
+
+bool UGameWindowSubsystem::CanResumeAudio() const
+{
+#if PLATFORM_ANDROID
+	return IsHeldForAudio() && (AudioFocusState == static_cast<uint8>(EWeltallAudioFocus::PermanentLoss)
+		|| AudioFocusState == static_cast<uint8>(EWeltallAudioFocus::Denied));
+#else
+	return false;
+#endif
+}
+
+bool UGameWindowSubsystem::ResumeAudioIfNeeded()
+{
+#if PLATFORM_ANDROID
+	if (CanResumeAudio())
+	{
+		ResumeAndroidAudio();
+		return true;
+	}
+#endif
+	return false;
+}
+
+void UGameWindowSubsystem::FollowMobileAudioActive()
+{
+#if PLATFORM_ANDROID
+	const bool bActive = bApplicationActive && bApplicationForeground;
+	if (bActive != bAudioActiveRequested)
+	{
+		bAudioActiveRequested = bActive;
+		bAudioFocusGranted = false;
+		HoldMobileAudio();
+		SetAndroidAudioActive(bActive);
+	}
+#endif
+}
+
 void UGameWindowSubsystem::HoldMobileAudio()
 {
 	if (UGameSoundSubsystem* Sound = GetGameInstance()->GetSubsystem<UGameSoundSubsystem>())
@@ -203,6 +272,7 @@ void UGameWindowSubsystem::HoldMobileAudio()
 void UGameWindowSubsystem::ApplicationBackgrounded()
 {
 	bApplicationForeground = false;
+	FollowMobileAudioActive();
 	FollowMobileScreenAwake();
 	HoldMobileAudio();
 }
@@ -210,6 +280,7 @@ void UGameWindowSubsystem::ApplicationBackgrounded()
 void UGameWindowSubsystem::ApplicationForegrounded()
 {
 	bApplicationForeground = true;
+	FollowMobileAudioActive();
 	FollowMobileScreenAwake();
 	bResumeFrame = true;
 }
@@ -217,6 +288,7 @@ void UGameWindowSubsystem::ApplicationForegrounded()
 void UGameWindowSubsystem::ApplicationDeactivated()
 {
 	bApplicationActive = false;
+	FollowMobileAudioActive();
 	FollowMobileScreenAwake();
 	HoldMobileAudio();
 }
@@ -224,6 +296,7 @@ void UGameWindowSubsystem::ApplicationDeactivated()
 void UGameWindowSubsystem::ApplicationReactivated()
 {
 	bApplicationActive = true;
+	FollowMobileAudioActive();
 	FollowMobileScreenAwake();
 	bResumeFrame = true;
 }

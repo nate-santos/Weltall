@@ -29,6 +29,8 @@ public:
 	bool HasTouchControls() const;
 	/** The Android controls settings/edit panel holds simulation and audio while open. */
 	bool IsTouchMenuOpen() const;
+	/** Drops input that cannot safely cross an Android focus or lifecycle interruption. */
+	void ResetAllInput();
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
 	virtual void FlushPressedKeys() override;
 	virtual void PlayerTick(float DeltaTime) override;
@@ -45,7 +47,6 @@ protected:
 private:
 	/** The player's settings changed: the keys follow their bindings. */
 	void FollowBindings();
-	void ResetAllInput();
 	void ResetTouches();
 	void ScreenOrientationChanged(int32 Orientation);
 	UEnhancedInputLocalPlayerSubsystem* InputSubsystem() const;

@@ -50,6 +50,9 @@ public:
 	virtual TStatId GetStatId() const override;
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FWeltallAudioFocusTestAccess;
+#endif
 	void Stop();
 
 	std::unique_ptr<Weltall::FGameSoundSession> GameSound;

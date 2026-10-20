@@ -21,6 +21,91 @@
     private byte[] weltallSaveBytes = null;
     private boolean weltallSaveExporting = false;
 
+    // Audio states: inactive, granted, transient loss, permanent loss, waiting, denied.
+    // All requests run on the UI thread; native code reads one synchronized snapshot.
+    private final Object weltallAudioLock = new Object();
+    private android.media.AudioFocusRequest weltallAudioRequest = null;
+    private boolean weltallAudioActive = false;
+    private int weltallAudioState = 0;
+    private long weltallAudioGeneration = 0;
+    private long weltallAudioLosses = 0;
+
+    private void weltallRequestAudioFocus() {
+        final long generation = ++weltallAudioGeneration;
+        weltallAudioState = 4;
+        try {
+            android.media.AudioManager audio = (android.media.AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            if (weltallAudioRequest != null) audio.abandonAudioFocusRequest(weltallAudioRequest);
+            weltallAudioRequest = new android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_GAME)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setAcceptsDelayedFocusGain(true)
+                .setWillPauseWhenDucked(true)
+                .setOnAudioFocusChangeListener(change -> {
+                    synchronized (weltallAudioLock) {
+                        if (!weltallAudioActive || generation != weltallAudioGeneration) return;
+                        if (change == android.media.AudioManager.AUDIOFOCUS_GAIN) {
+                            weltallAudioState = 1;
+                        } else if (change < 0) {
+                            ++weltallAudioLosses;
+                            weltallAudioState = change == android.media.AudioManager.AUDIOFOCUS_LOSS ? 3 : 2;
+                        }
+                    }
+                }, new android.os.Handler(getMainLooper()))
+                .build();
+            int result = audio.requestAudioFocus(weltallAudioRequest);
+            weltallAudioState = result == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED ? 1
+                : result == android.media.AudioManager.AUDIOFOCUS_REQUEST_DELAYED ? 4 : 5;
+        } catch (RuntimeException error) {
+            weltallAudioState = 5;
+        }
+    }
+
+    public void AndroidThunkJava_WeltallSetAudioActive(final boolean active) {
+        final long generation;
+        synchronized (weltallAudioLock) {
+            if (weltallAudioActive == active) return;
+            weltallAudioActive = active;
+            generation = ++weltallAudioGeneration;
+            ++weltallAudioLosses;
+            weltallAudioState = active ? 4 : 0;
+        }
+        runOnUiThread(() -> {
+            synchronized (weltallAudioLock) {
+                if (generation != weltallAudioGeneration) return;
+                if (active) {
+                    weltallRequestAudioFocus();
+                } else {
+                    try {
+                        if (weltallAudioRequest != null) {
+                            android.media.AudioManager audio = (android.media.AudioManager)getSystemService(Context.AUDIO_SERVICE);
+                            audio.abandonAudioFocusRequest(weltallAudioRequest);
+                        }
+                    } catch (RuntimeException error) {
+                        // The activity is going away; its native game remains held regardless.
+                    }
+                    weltallAudioRequest = null;
+                }
+            }
+        });
+    }
+
+    public long AndroidThunkJava_WeltallAudioFocusSnapshot() {
+        synchronized (weltallAudioLock) {
+            return (weltallAudioLosses << 32) | weltallAudioState;
+        }
+    }
+
+    public void AndroidThunkJava_WeltallResumeAudio() {
+        runOnUiThread(() -> {
+            synchronized (weltallAudioLock) {
+                // A user may reclaim permanent/denied focus; a transient interruption must finish first.
+                if (weltallAudioActive && (weltallAudioState == 3 || weltallAudioState == 5)) weltallRequestAudioFocus();
+            }
+        });
+    }
+
     private void weltallSaveComplete(long generation, int status, byte[] bytes) {
         synchronized (weltallSaveLock) {
             if (generation != weltallSaveGeneration || weltallSaveStatus != 1) return;
@@ -147,6 +232,7 @@
     <gameActivityOnDestroyAdditions>
         <insert><![CDATA[
         AndroidThunkJava_WeltallCancelSaveDocument();
+        AndroidThunkJava_WeltallSetAudioActive(false);
         ]]></insert>
     </gameActivityOnDestroyAdditions>
 </root>

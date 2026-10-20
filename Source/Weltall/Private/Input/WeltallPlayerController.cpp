@@ -14,6 +14,7 @@
 #include "InputKeyEventArgs.h"
 #include "Misc/CoreDelegates.h"
 #include "Shell/PlayerSettingsSubsystem.h"
+#include "Shell/GameWindowSubsystem.h"
 #include "Widgets/Layout/SSafeZone.h"
 
 Weltall::FPadState AWeltallPlayerController::HeldPad() const
@@ -36,6 +37,16 @@ bool AWeltallPlayerController::HasTouchControls() const
 bool AWeltallPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
 #if PLATFORM_ANDROID
+	const bool bResumeButton = Params.Key.IsGamepadKey() || Params.Key == EKeys::Android_Back
+		|| Params.Key == EKeys::Escape || Params.Key == EKeys::Enter || Params.Key == EKeys::SpaceBar;
+	if (Params.Event == IE_Pressed && bResumeButton)
+	{
+		if (UGameWindowSubsystem* Window = GetGameInstance()->GetSubsystem<UGameWindowSubsystem>(); Window && Window->ResumeAudioIfNeeded())
+		{
+			ResetAllInput();
+			return true;
+		}
+	}
 	if (Params.Key == EKeys::Android_Back)
 	{
 		if (Params.Event == IE_Pressed)
@@ -116,6 +127,24 @@ void AWeltallPlayerController::BeginPlay()
 		[
 			SAssignNew(TouchControls, SWeltallTouchControls)
 			.Options(Settings->Settings().Touch)
+			.AudioPaused_Lambda([Weak = TWeakObjectPtr<UGameInstance>(GetGameInstance())]()
+			{
+				UGameInstance* Game = Weak.Get();
+				UGameWindowSubsystem* Window = Game ? Game->GetSubsystem<UGameWindowSubsystem>() : nullptr;
+				return Window && Window->IsHeldForAudio();
+			})
+			.CanResumeAudio_Lambda([Weak = TWeakObjectPtr<UGameInstance>(GetGameInstance())]()
+			{
+				UGameInstance* Game = Weak.Get();
+				UGameWindowSubsystem* Window = Game ? Game->GetSubsystem<UGameWindowSubsystem>() : nullptr;
+				return Window && Window->CanResumeAudio();
+			})
+			.OnResumeAudio_Lambda([Weak = TWeakObjectPtr<UGameInstance>(GetGameInstance())]()
+			{
+				UGameInstance* Game = Weak.Get();
+				UGameWindowSubsystem* Window = Game ? Game->GetSubsystem<UGameWindowSubsystem>() : nullptr;
+				return Window && Window->ResumeAudioIfNeeded();
+			})
 			.OnOptionsChanged_Lambda([Weak = TWeakObjectPtr<UPlayerSettingsSubsystem>(Settings)](const Weltall::FTouchOptions& Options)
 			{
 				if (UPlayerSettingsSubsystem* Kept = Weak.Get())

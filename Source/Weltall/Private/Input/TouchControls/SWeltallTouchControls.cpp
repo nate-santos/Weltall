@@ -110,6 +110,9 @@ void SWeltallTouchControls::Construct(const FArguments& Arguments)
 	Options = Arguments._Options;
 	OnOptionsChanged = Arguments._OnOptionsChanged;
 	OnCancelBinding = Arguments._OnCancelBinding;
+	AudioPaused = Arguments._AudioPaused;
+	CanResumeAudio = Arguments._CanResumeAudio;
+	OnResumeAudio = Arguments._OnResumeAudio;
 }
 
 void SWeltallTouchControls::ApplyOptions(const Weltall::FTouchOptions& InOptions)
@@ -178,6 +181,13 @@ Weltall::FTouchRect SWeltallTouchControls::SettingsPanel() const
 	return {(static_cast<float>(Size.X) - Width) * 0.5f, (static_cast<float>(Size.Y) - Height) * 0.5f, Width, Height};
 }
 
+Weltall::FTouchRect SWeltallTouchControls::AudioPausePanel() const
+{
+	const float Width = FMath::Min(static_cast<float>(Size.X) * 0.55f, static_cast<float>(Size.Y) * 0.8f);
+	const float Height = static_cast<float>(Size.Y) * 0.16f;
+	return {(static_cast<float>(Size.X) - Width) * 0.5f, static_cast<float>(Size.Y) * 0.22f, Width, Height};
+}
+
 int32 SWeltallTouchControls::OnPaint(const FPaintArgs&, const FGeometry& Geometry, const FSlateRect&,
 	FSlateWindowElementList& Elements, int32 Layer, const FWidgetStyle& Style, bool) const
 {
@@ -222,7 +232,16 @@ int32 SWeltallTouchControls::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 			}
 		}
 	}
-	return Layer + 5;
+	if (AudioPaused.Get(false))
+	{
+		const FTouchRect Panel = AudioPausePanel();
+		Fill(Elements, Layer + 6, Geometry, Panel, FLinearColor(0.015f, 0.02f, 0.03f, 0.94f));
+		Text(Elements, Layer + 7, Geometry, TEXT("Paused for audio"),
+			{Panel.Center().X, Panel.Y + Panel.Height * 0.34f}, FLinearColor::White, FMath::Max(12, FMath::RoundToInt(Panel.Height * 0.22f)));
+		Text(Elements, Layer + 7, Geometry, CanResumeAudio.Get(false) ? TEXT("Tap to resume") : TEXT("Waiting for the interruption to finish"),
+			{Panel.Center().X, Panel.Y + Panel.Height * 0.7f}, FLinearColor::White, FMath::Max(10, FMath::RoundToInt(Panel.Height * 0.15f)));
+	}
+	return Layer + 7;
 }
 
 void SWeltallTouchControls::KeepOptions()
@@ -258,6 +277,17 @@ bool SWeltallTouchControls::ChangeSetting(Weltall::FTouchPoint Point)
 FReply SWeltallTouchControls::OnTouchStarted(const FGeometry& Geometry, const FPointerEvent& Event)
 {
 	const Weltall::FTouchPoint Point = LocalPoint(Geometry, Event);
+	if (AudioPaused.Get(false))
+	{
+		const bool bPanel = AudioPausePanel().Contains(Point);
+		if (CanResumeAudio.Get(false) && (bPanel || SettingsButton().Contains(Point) || Layout.Hit(Point).has_value())
+			&& OnResumeAudio.IsBound() && OnResumeAudio.Execute())
+		{
+			ResetTouches();
+			return FReply::Handled();
+		}
+		if (bPanel) return FReply::Handled();
+	}
 	if (SettingsButton().Contains(Point))
 	{
 		ResetTouches();

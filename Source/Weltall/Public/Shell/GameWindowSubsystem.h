@@ -30,6 +30,13 @@ public:
 	/** Drops the first mobile frame after resuming instead of simulating time spent suspended. */
 	bool ConsumeResumeFrame();
 
+	/** Reads Android's actual focus state before deciding whether another game tick may run. */
+	void UpdateMobileAudioFocus();
+	bool IsHeldForAudio() const;
+	bool CanResumeAudio() const;
+	/** A fresh user action may reclaim permanent/denied focus; consumes that action. */
+	bool ResumeAudioIfNeeded();
+
 	/** The window's icon becomes the game's own, read from the player's disc (Windows; elsewhere the window keeps its own). */
 	void ShowGameIcon(const Weltall::FIso9660& Disc);
 
@@ -45,6 +52,7 @@ private:
 	void ApplicationReactivated();
 	void HoldMobileAudio();
 	void FollowMobileScreenAwake();
+	void FollowMobileAudioActive();
 
 	FDelegateHandle SettingsChanged;
 	FDelegateHandle BackgroundedHandle;
@@ -54,6 +62,10 @@ private:
 	bool bApplicationForeground = true;
 	bool bApplicationActive = true;
 	bool bResumeFrame = false;
+	bool bAudioActiveRequested = false;
+	bool bAudioFocusGranted = false;
+	uint8 AudioFocusState = 0;
+	uint32 AudioFocusLosses = 0;
 	Weltall::FDisplaySize Followed;
 	bool bFollowedFullScreen = false;
 };

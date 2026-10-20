@@ -68,6 +68,7 @@ void UGameScreenSubsystem::Tick(float DeltaTime)
 {
 	// In the background, when the settings say so, the whole game stands still: no frame runs, no time passes, no sound is made.
 	UGameWindowSubsystem* Window = GetGameInstance()->GetSubsystem<UGameWindowSubsystem>();
+	if (Window != nullptr) Window->UpdateMobileAudioFocus();
 	AWeltallPlayerController* Controller = Cast<AWeltallPlayerController>(GetGameInstance()->GetFirstLocalPlayerController());
 	const bool bHeld = (Window != nullptr && Window->IsHeldInBackground()) || (Controller != nullptr && Controller->IsTouchMenuOpen());
 	// Keep audio paused too while discarding a delta that may include time spent suspended.

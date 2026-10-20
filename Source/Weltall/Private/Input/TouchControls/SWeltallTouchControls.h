@@ -12,6 +12,9 @@ public:
 		SLATE_ARGUMENT(Weltall::FTouchOptions, Options)
 		SLATE_EVENT(TDelegate<void(const Weltall::FTouchOptions&)>, OnOptionsChanged)
 		SLATE_EVENT(TDelegate<bool()>, OnCancelBinding)
+		SLATE_ATTRIBUTE(bool, AudioPaused)
+		SLATE_ATTRIBUTE(bool, CanResumeAudio)
+		SLATE_EVENT(TDelegate<bool()>, OnResumeAudio)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& Arguments);
@@ -37,12 +40,16 @@ private:
 	void KeepOptions();
 	Weltall::FTouchRect SettingsButton() const;
 	Weltall::FTouchRect SettingsPanel() const;
+	Weltall::FTouchRect AudioPausePanel() const;
 	bool ChangeSetting(Weltall::FTouchPoint Point);
 	Weltall::FTouchOptions Options;
 	Weltall::FTouchLayout Layout;
 	Weltall::FTouchPad Pad;
 	TDelegate<void(const Weltall::FTouchOptions&)> OnOptionsChanged;
 	TDelegate<bool()> OnCancelBinding;
+	TAttribute<bool> AudioPaused;
+	TAttribute<bool> CanResumeAudio;
+	TDelegate<bool()> OnResumeAudio;
 	FVector2D Size = FVector2D::ZeroVector;
 	FVector2D Origin = FVector2D::ZeroVector;
 	bool bSettingsOpen = false;
