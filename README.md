@@ -213,10 +213,13 @@ packager above. See [AndroidBuild.md](Docs/AndroidBuild.md) for additional setup
    ```
 
    ```sh
+   python Scripts/android_engine_fix.py --apply
    python Scripts/android_package.py --check-toolchain
    ```
 
-   This checks the engine installation; Unreal performs the Android SDK/toolchain checks during the
+   The first command corrects UE 5.8's Android volume-callback clock in your source engine installation;
+   see the [build guide](Docs/AndroidBuild.md#prerequisites) for details. The second checks the engine installation;
+   Unreal performs the Android SDK/toolchain checks during the
    build. Complete its Android dependency setup and accept the SDK licenses before packaging.
 3. Put both USA discs' **BIN/CUE files** in a directory outside the checkout, such as
    `D:/Game Discs/Xenogears` or `../bin`. The selected directory must contain exactly two CUE sheets,

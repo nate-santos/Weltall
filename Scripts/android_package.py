@@ -31,6 +31,8 @@ import tarfile
 import tempfile
 import uuid
 
+from android_engine_fix import needs_volume_time_fix
+
 
 REPO = Path(__file__).resolve().parent.parent
 OUTPUT = REPO / "out" / "android"
@@ -257,6 +259,9 @@ def toolchain_problems(ue_root):
         values = json.loads(version.read_text(encoding="utf-8-sig"))
         if (values.get("MajorVersion"), values.get("MinorVersion")) != (5, 8):
             problems.append("UE_ROOT must point to UE 5.8 for this project")
+    if needs_volume_time_fix(ue_root):
+        problems.append("UE Android volume callback needs the thread-safe clock correction: "
+                        "run python Scripts/android_engine_fix.py --apply, then rebuild")
     return problems
 
 
