@@ -14,6 +14,10 @@ Both forced landscape surfaces pass game/Controls/Back checks with original rota
 
 The initial Windows full run's sole failed case was the new regression test using the digital-only consumer; its corrected Battling input check now passes the complete suites. The first PC GPU run exposed the real CRT issue despite exit0; unchanged strict assertions pass after integer modulo. The three optional Perfect Works fixture tests are classified as Content so the isolated suite uploads/requires no mod files. See AndroidHandoff.md for exact local reports and continuation details. No build/test/reference job remains active. Earlier baseline results below refer to the pre-merge runtime.
 
+## Controller follow-up at usage handoff
+
+Stadia physical checks on0275208 pass basic face buttons, D-pad, both sticks/camera/reset, release behavior and controller movement combined with touch jump, confirmed by the user and private input/frame captures. Shoulder/trigger/thumb-click signals arrive. Held-direction power-off backgrounds the game without killing either process, but resumed untouched menus retain a direction after device removal: cleanup fails. Proposed fixf382596 is pushed and builds/links for Windows editor and Android. Both-disc APK `20261020T003129Z-4a380075/Weltall-arm64.apk` passes signature, zipalign16KiB, seven native ELF alignments, fresh actual embedded-PAK integrity and both-disc listing. It remains uninstalled; physical retest and reconnect-first-input acceptance are pending. No prior full core/GPU pass is relabelled as a test of this new input code. All48 saves remain unchanged. Current settings add32 upstream0.8.2 defaults with all old values preserved; final retention passes against the newer5889-byte baseline. AndroidHandoff.md gives the exact APK/hash and resume steps.
+
 ## Earlier baseline checks
 
 | Check | Result | What it establishes |
