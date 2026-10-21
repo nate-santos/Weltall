@@ -212,6 +212,9 @@ public:
 				Game->GetSubsystem<UPlayerSettingsSubsystem>()->Settings(), Discs->Library().PlayableDisc(2));
 			if (!Test.TestTrue(TEXT("The real game powers on with both discs"), static_cast<bool>(Powered))) return true;
 			(*Powered)->SetSaves(Store.get());
+			// Match RenderScreen/normal play's menu, without writing player preferences or quitting the test.
+			(*Powered)->SetSettingsKept([Shown = &(*Powered).Get()](const Weltall::FPlayerSettings& Kept) { Shown->ApplySettings(Kept); });
+			(*Powered)->SetQuit([]() { UE_LOG(LogGameplayReference, Display, TEXT("The title's Exit was requested during the reference.")); });
 			(*Powered)->SetDiscSought([Discs](Weltall::EDiscRelease Release) { return Discs->Find(Release); });
 			Screen = MakeShared<FScriptedScreen>(Root, std::move(Store), *Powered);
 			if (!Test.TestTrue(TEXT("The shared input, reader and route parse"), Screen->Configure(Params))) return true;
