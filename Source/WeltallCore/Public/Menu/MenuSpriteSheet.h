@@ -5,6 +5,7 @@
 #include "Menu/MenuPrimitive.h"
 
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace Weltall
@@ -27,7 +28,32 @@ namespace Weltall
 		int16 ImageY = 0;
 		bool bFlipX = false;
 		bool bFlipY = false;
+		/** A picture of the sheet's own (FMenuSpriteSheet::Picture) in place of VRAM's texels: its number, -1 for none. */
+		int16 Picture = -1;
 	};
+
+	/**
+	 * A picture a sheet holds of its own, not in VRAM (the port's "Options" typed in the message font where the sheet's
+	 * lettering is not the USA release's): 15-bit texels as the GPU takes them, 0 transparent, one a menu pixel. The
+	 * display draws it into VRAM of its own (FMenuButtonIcons), Key telling one picture from another.
+	 */
+	struct FMenuSheetPicture
+	{
+		int32 Width = 0;
+		int32 Height = 0;
+		std::vector<uint16> Texels;
+		uint64 Key = 0;
+	};
+
+	class FMesFont;
+
+	/**
+	 * Word in Font's glyphs (FMesFont::Cell) set as the labels' lettering is, as a sheet's picture: each glyph from its
+	 * first inked column on the last one before it, the two outlines sharing a column (a body pixel kept over the other's
+	 * outline); a space the font's advance. The cells' values 1 to 3 (body, outline, both) in those entries of Colours,
+	 * 0 transparent. A character the font's English set lacks is a space.
+	 */
+	WELTALLCORE_API FMenuSheetPicture MenuLetteredWord(const FMesFont& Font, std::span<const uint16> Colours, std::string_view Word);
 
 	/** What a frame's first part tells of its texture, as the kernel's sprite sheets report it. */
 	struct FMenuSpriteTexture
@@ -71,6 +97,12 @@ namespace Weltall
 		/** Frame Number made of Parts, the sheet growing with empty frames to reach it. */
 		WELTALLCORE_API void SetFrame(int32 Number, std::vector<FMenuSpritePart> Parts);
 
+		/** Keeps Picture as the sheet's own, its Key made from its texels; returns its number for a part's Picture. */
+		WELTALLCORE_API int16 AddPicture(FMenuSheetPicture Picture);
+
+		/** The sheet's own picture Number; null for none. */
+		WELTALLCORE_API const FMenuSheetPicture* Picture(int32 Number) const;
+
 		/**
 		 * The frame's parts as the kernel draws them: one raw textured quad each, at (X, Y) plus the
 		 * part's offset, offsets and sizes scaled by Scale (4096 = 1.0, rounded toward zero), a flipped
@@ -87,6 +119,7 @@ namespace Weltall
 
 	private:
 		std::vector<std::vector<FMenuSpritePart>> Frames;
+		std::vector<FMenuSheetPicture> Pictures;
 	};
 
 	struct FTextureRegion;

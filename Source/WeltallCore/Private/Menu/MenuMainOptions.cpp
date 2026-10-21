@@ -197,9 +197,9 @@ namespace Weltall
 		}
 		const ESettingsPage Page = SettingsPage();
 		State.Title = std::string(FSettingsPages::Title(Page));
-		for (int32 Row = 0; Row < FSettingsPages::RowCount(Page, State.Display); ++Row)
+		for (int32 Row = 0; Row < FSettingsPages::RowCount(Page, State.Context); ++Row)
 		{
-			State.Rows.push_back(FSettingsPages::Row(Page, Row, State.Settings, State.bCustomPicked, State.Display));
+			State.Rows.push_back(FSettingsPages::Row(Page, Row, State.Settings, State.bCustomPicked, State.Context));
 		}
 		if (ShowsSecondDiscRow())
 		{
@@ -220,7 +220,7 @@ namespace Weltall
 
 	bool FMenuMain::OnSecondDiscRow() const
 	{
-		return ShowsSecondDiscRow() && OptionsState.Row == FSettingsPages::RowCount(ESettingsPage::Fixes, OptionsState.Display);
+		return ShowsSecondDiscRow() && OptionsState.Row == FSettingsPages::RowCount(ESettingsPage::Fixes, OptionsState.Context);
 	}
 
 	FSettingsRow FMenuMain::SecondDiscRow() const
@@ -276,7 +276,7 @@ namespace Weltall
 	{
 		OptionsState = {};
 		OptionsState.Settings = Services.Settings->Settings();
-		OptionsState.Display = Services.Settings->DisplayModes();
+		OptionsState.Context = {Services.Settings->DisplayModes(), Services.Settings->SoundSources()};
 		if (Services.Saves != nullptr)
 		{
 			OptionsState.SavePages = std::make_unique<FMenuSavePages>(*Services.Saves, Resources);
@@ -468,7 +468,7 @@ namespace Weltall
 		{
 			return StepModdingRow();
 		}
-		if (OnSecondDiscRow() || !FSettingsPages::Step(SettingsPage(), State.Row, Direction, State.Settings, State.bCustomPicked, State.Display))
+		if (OnSecondDiscRow() || !FSettingsPages::Step(SettingsPage(), State.Row, Direction, State.Settings, State.bCustomPicked, State.Context))
 		{
 			return false;
 		}
@@ -530,7 +530,7 @@ namespace Weltall
 		{
 			return ActivateModdingRow();
 		}
-		const ESettingsAction Action = FSettingsPages::Activate(SettingsPage(), State.Row, State.Settings, State.bCustomPicked, State.Display);
+		const ESettingsAction Action = FSettingsPages::Activate(SettingsPage(), State.Row, State.Settings, State.bCustomPicked, State.Context);
 		switch (Action)
 		{
 		case ESettingsAction::OpenCustom:

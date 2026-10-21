@@ -56,9 +56,14 @@ namespace Weltall
 		uint16 AnimationWord() const { return Main.Word(Main.Tables().Animations); }
 		int32 Extension() const { return AnimationWord() >> 6 & 0x3F; }
 		int32 DropsGears() const { return AnimationWord() >> 12 & 3; }
+		/** Its sound bank is a character's recorded voice: a party attack file's, which the voice track's disc gives. */
+		bool HoldsVoices() const { return bVoices; }
 
 	private:
+		friend class FBattleSpriteFiles;
+
 		FSpriteFile Main;
+		bool bVoices = false;
 		std::vector<FBattleSpriteSection> FurtherSections;
 		std::vector<std::optional<FSpriteFile>> SectionSprites;
 	};

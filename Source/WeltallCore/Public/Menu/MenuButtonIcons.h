@@ -17,6 +17,7 @@
 namespace Weltall
 {
 	class FMenuSpriteSheet;
+	struct FMenuSheetPicture;
 
 	/** A picture of a button a menu frame drew, as the draw list holds it: its primitive, its role (FMenuPrimitive::ButtonRole) and its shape. */
 	struct FMenuDrawnIcon
@@ -159,10 +160,17 @@ namespace Weltall
 			int32 V = 0;
 			int32 Width = 0;
 			int32 Height = 0;
+			/** A sheet's own picture (FMenuSheetPicture) rather than a button's, known by its key. */
+			bool bSheetPicture = false;
+			uint64 PictureKey = 0;
 		};
 
 		/** The picture's place, drawn into the pictures' VRAM the first time; null once the pages are full. */
 		const FPlaced* Place(EButtonIconSet Set, std::string_view Icon, EMenuIconSlot Slot);
+		/** The same for a sheet's own picture. */
+		const FPlaced* PlacePicture(const FMenuSheetPicture& Own);
+		/** Picture put on the pages' shelves and uploaded; null once the pages are full. */
+		FPlaced* Shelve(FMenuIconPicture Picture);
 
 		FVram PictureVram;
 		std::vector<FPlaced> Placed;

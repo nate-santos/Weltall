@@ -18,6 +18,14 @@ namespace Weltall
 	/** A sequence the driver has loaded: a song, with its tracks' state. */
 	struct FSoundSequence;
 
+	/** What a voice plays, as the player's volumes tell them apart: a song, a sound effect, or a recorded voice. */
+	enum class ESoundKind : uint8
+	{
+		Music,
+		Effect,
+		Voice,
+	};
+
 	/** Where the driver departs from the original: fixes for its broken effects, each one a setting. */
 	struct FSoundDriverOptions
 	{
@@ -58,8 +66,8 @@ namespace Weltall
 
 		/** One tick of the driver's timer. */
 		WELTALLCORE_API void Interrupt();
-		/** Mixes replacement music after the SPU, under the same lock and interrupt timing. */
-		WELTALLCORE_API void MixReplacementMusic(std::span<int16> Stereo);
+		/** Mixes replacement music after the SPU, under the same lock and interrupt timing, at Gain (8000h as made). */
+		WELTALLCORE_API void MixReplacementMusic(std::span<int16> Stereo, int32 Gain = 0x8000);
 
 		/**
 		 * Reserves sound RAM for a bank and uploads its samples: with SpuAddress -1 anywhere, otherwise
@@ -67,6 +75,8 @@ namespace Weltall
 		 * value only asks for the bank's own address). Null when there is no room.
 		 */
 		WELTALLCORE_API const FSoundBank* LoadBank(const FSoundBankFile& File, int32 SpuAddress = 0);
+		/** As LoadBank, for a bank of recorded voices: an effect's notes from it are voices to the player's volumes. */
+		WELTALLCORE_API const FSoundBank* LoadVoiceBank(const FSoundBankFile& File, int32 SpuAddress = 0);
 		/** As LoadBank, but refused when a bank with the same id is loaded (how the field loads its music). */
 		WELTALLCORE_API const FSoundBank* LoadNewBank(const FSoundBankFile& File, int32 SpuAddress = 0);
 		WELTALLCORE_API void UnloadBank(const FSoundBank& Bank);
@@ -144,6 +154,9 @@ namespace Weltall
 		 * feedback (0-127, for the echo and delay types). A new type clears its work area in sound RAM.
 		 */
 		WELTALLCORE_API void SetReverb(int32 Type, int32 Depth, int32 Delay, int32 Feedback);
+
+		/** What SPU voice Voice (0-23) plays: a song's track, or an effect's from a bank of voices or not, as of its last note. */
+		WELTALLCORE_API ESoundKind VoiceKind(int32 Voice) const;
 
 		/** Freezes every voice where it is; the interrupt does nothing until Resume. */
 		WELTALLCORE_API void Pause();

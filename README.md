@@ -20,8 +20,16 @@ it. You can also start with only Disc 2, as on the PlayStation, to load your Dis
 
 The undub plays with English text and Japanese voices, and its subtitles appear in the movies. If you
 have both versions, choose which voices you hear under **Options → Sound → Voices**. **Options → Sound →
-Subtitles** can also show the undub's subtitles with the English voices, or turn them off. Japanese
-retail discs aren't playable, but you can dump their files (see [the modding guide](Docs/Modding.md)).
+Subtitles** can also show the subtitles with the English voices, or turn them off. If you have Perfect
+Works Build too, **Subtitles from** picks the undub's subtitles or the mod's. The Sound page shows what it
+found, and says what you need for anything that's missing. Japanese retail discs aren't playable, but
+you can dump their files (see [the modding guide](Docs/Modding.md)).
+
+Fan translations that only change the game's text, pictures and movies also play, such as the Spanish
+translation by Romhack Hispano. Patch your USA discs and put the patched images in `Games`. If the
+originals are there too, the patched ones play. Weltall's own screens, such as Options, stay in English.
+Translations that also change the game's program, such as the French one by Atelier Traduction, aren't
+supported yet.
 
 **Upstream desktop status:** Both discs are playable, including field exploration, character and Gear
 battles, the world map, menus, the Battling arena and movies. Gameplay behavior has been checked
@@ -39,6 +47,7 @@ to include in a bug report.
 - **Per-pixel depth sorting** to fix characters, Gears and scenery clipping or flickering over each other.
 - **Graphics options** for sharper or smoother scenery and sprites, anti-aliasing, upscaled movies and a CRT filter.
 - **Softer battle flashes**, or none at all, for the bright screen flashes from attacks and Ether.
+- **Separate volumes** for the music, sound effects, battle voices and movies, plus a master volume.
 - **3D Gears** on the field and world map, using their battle models, plus full-size party sprites in Gear areas.
 - **Battle speeds of 2x and 4x**, and faster text up to instant. Timed dialogue still leaves you time to read it.
 - **Balance options** to earn up to four times the experience and gold, and to have fewer random battles, more of
@@ -46,8 +55,8 @@ to include in a bug report.
 - **Chapter titles** displayed when each chapter begins.
 - **Custom party order**, so any character can lead the party (see below).
 - **Always run**, and doors that open when you walk into them.
-- **Keyboard, mouse and controller support**, with rebinding and controller hot-plugging. Button prompts match
-  your current bindings.
+- **Keyboard, mouse and controller support**: Xbox and PlayStation controllers and most other gamepads, with
+  rebinding and controller hot-plugging. Button prompts match your current bindings.
 - **Save options** to load from the menu anywhere, import PlayStation memory-card or emulator saves, and export
   memory-card images.
 - **Fixes for bugs in the original game**.
@@ -108,8 +117,8 @@ and field scenes where party members are speaking or placed around the map use t
 | Zoom | Mouse wheel | Right stick up and down |
 | Reset the view | Middle mouse button | Right stick click |
 
-You can rebind every control on the Controls page. Wherever the game mentions a PlayStation button,
-it shows the key or controller button you've assigned to it.
+On a PlayStation controller, A is ×, B is ○, X is □ and Y is △. You can rebind every control on the Controls
+page. Wherever the game mentions a PlayStation button, it shows the key or controller button you've assigned to it.
 
 On Android, tap **Controls** to adjust the on-screen buttons' idle and pressed opacity, size and
 positions, or reserve side areas so they cover less of the game. Touch controls can be used alongside
@@ -182,7 +191,7 @@ builds share the same settings and saves in your user folders.
 `python Scripts/package.py --archive Shipping` also creates a release zip in `out/releases`, without
 disc images, and a separate debug symbols archive.
 
-`python Scripts/release.py 0.8.2` builds both Shipping packages from a pushed commit whose
+`python Scripts/release.py 0.8.3` builds both Shipping packages from a pushed commit whose
 `ProjectVersion` matches that version. It creates the archives and a GitHub draft release with the
 player downloads and release notes, using the GitHub CLI. Publish the draft from the release page.
 

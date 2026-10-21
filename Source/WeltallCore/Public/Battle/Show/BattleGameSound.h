@@ -53,6 +53,7 @@ namespace Weltall
 		WELTALLCORE_API void UnloadGearBattleBank() override;
 		WELTALLCORE_API void UnloadBattleBank() override;
 		WELTALLCORE_API void LoadBattleBank(std::span<const uint8> Wds) override;
+		WELTALLCORE_API void LoadBattleVoiceBank(std::span<const uint8> Wds) override;
 		WELTALLCORE_API void LoadGearBattleBank(std::span<const uint8> Wds) override;
 		WELTALLCORE_API bool HasBank(uint16 Id) override;
 		WELTALLCORE_API void PauseSound() override;
@@ -66,8 +67,8 @@ namespace Weltall
 			std::unique_ptr<FSoundEffectFile> File;
 		};
 
-		/** The bank a `wds` file holds loaded where it asks to be; none (and the error kept) when it cannot be. */
-		const FSoundBank* Load(std::span<const uint8> Wds);
+		/** The bank a `wds` file holds loaded where it asks to be, as recorded voices or not; none (and the error kept) when it cannot be. */
+		const FSoundBank* Load(std::span<const uint8> Wds, bool bVoices);
 		void Fail(FError Error);
 
 		FGameSoundSystem& Sound;

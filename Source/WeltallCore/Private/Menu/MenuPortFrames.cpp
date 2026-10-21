@@ -1,8 +1,14 @@
 #include "Menu/MenuPortFrames.h"
 
+#include "Foundation/Sha1.h"
 #include "Menu/MenuResources.h"
 #include "Menu/MenuSpriteSheet.h"
+#include "Text/MesFont.h"
 
+#include <algorithm>
+#include <array>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 namespace Weltall
@@ -31,6 +37,22 @@ namespace Weltall
 		constexpr int32 OrbStepY = -16;
 		constexpr int32 OptionsX = -145;
 		constexpr int32 OptionsY = -71;
+		/** The USA release's letters of "Options" (OptionsWord's parts' 4-bit texels, a byte each, row by row), by SHA-1. */
+		constexpr std::string_view UsaOptionsLetters = "06e75f48f49d0011a603286a0a78788cc98e3b09";
+		/** A translation's own label that names an options screen, known by its texels (PartTexels) by SHA-1. */
+		struct FTranslatedLabel
+		{
+			int32 Frame = 0;
+			std::string_view Letters;
+		};
+
+		/** The Spanish translation's Gear screen's "Opcion" (its Gear Option), on both discs. */
+		constexpr FTranslatedLabel TranslatedOptionsLabels[] = {
+			{GearOptionLabel, "346c1adf2c8674c76ebea0256d444249ba09f52b"},
+		};
+		/** The typed word's cell from the O's place: its outline a pixel up and left of the body. */
+		constexpr int32 TypedWordX = -1;
+		constexpr int32 TypedWordY = -1;
 		/** The title's File row (its Continue's) and its Load, the third command up the inner arc from its first place. */
 		constexpr std::size_t TitleFileRow = 8;
 		constexpr std::size_t TitleLoad = 2;
@@ -57,6 +79,95 @@ namespace Weltall
 			S.Width = LetterSWidth;
 			return {Placed(GearOption[2], X, Y), Placed(GearOption[0], X + PAfterO, Y + PDrop), Placed(GearOption[1], X + TionAfterO, Y),
 				Placed(S, X + SAfterO, Y)};
+		}
+
+		/** VRAM's unit at (X, Y) as the archive leaves it, the image last over it; none where it lies in none. */
+		std::optional<uint16> ArchiveUnit(std::span<const FVramImage> Archive, int32 X, int32 Y)
+		{
+			const FVramImage* Holder = nullptr;
+			for (const FVramImage& Image : Archive)
+			{
+				const FVramRect& Rect = Image.Rect;
+				if (X >= Rect.X && X < Rect.X + Rect.Width && Y >= Rect.Y && Y < Rect.Y + Rect.Height)
+				{
+					Holder = &Image;
+				}
+			}
+			if (Holder == nullptr)
+			{
+				return std::nullopt;
+			}
+			return Holder->Units[static_cast<std::size_t>((Y - Holder->Rect.Y) * Holder->Rect.Width + X - Holder->Rect.X)];
+		}
+
+		/** Parts' 4-bit texels, a byte each, row by row; empty where one lies outside the archive's images. */
+		std::vector<uint8> PartTexels(std::span<const FMenuSpritePart> Parts, std::span<const FVramImage> Archive)
+		{
+			std::vector<uint8> Texels;
+			for (const FMenuSpritePart& Part : Parts)
+			{
+				if (Part.Depth != 0)
+				{
+					return {};
+				}
+				const int32 PageX = Part.ImageX & 0xFFC0;
+				const int32 PageY = Part.ImageY & 0xFF00;
+				for (int32 Row = 0; Row < Part.Height; ++Row)
+				{
+					for (int32 Column = 0; Column < Part.Width; ++Column)
+					{
+						const int32 U = Part.U + Column;
+						const std::optional<uint16> Unit = ArchiveUnit(Archive, PageX + U / 4, PageY + Part.V + Row);
+						if (!Unit)
+						{
+							return {};
+						}
+						Texels.push_back(static_cast<uint8>(*Unit >> (4 * (U % 4)) & 0xF));
+					}
+				}
+			}
+			return Texels;
+		}
+
+		/** A 15-bit colour's brightness, its three channels summed. */
+		int32 Brightness(uint16 Colour)
+		{
+			return (Colour & 31) + (Colour >> 5 & 31) + (Colour >> 10 & 31);
+		}
+
+		/**
+		 * The colours a typed word takes to look the labels' lettering (FMenuSheetPicture's values 1 to 3): its body the
+		 * brightest of the labels' CLUT, its outline the darkest drawn one; white on black where the CLUT is not there.
+		 */
+		std::array<uint16, 4> LetteringColours(const FMenuSpriteSheet& Sheet, std::span<const FVramImage> Archive)
+		{
+			uint16 Body = 0xFFFF;
+			uint16 Outline = 0x8000;
+			const std::span<const FMenuSpritePart> Status = Sheet.Frame(StatusLabel);
+			if (!Status.empty())
+			{
+				int32 Brightest = -1;
+				int32 Darkest = 1 << 16;
+				for (int32 Entry = 0; Entry < 16; ++Entry)
+				{
+					const std::optional<uint16> Colour = ArchiveUnit(Archive, Status.front().ClutX + Entry, Status.front().ClutY);
+					if (!Colour || *Colour == 0)
+					{
+						continue;
+					}
+					if (Brightness(*Colour) > Brightest)
+					{
+						Brightest = Brightness(*Colour);
+						Body = *Colour;
+					}
+					if (Brightness(*Colour) < Darkest)
+					{
+						Darkest = Brightness(*Colour);
+						Outline = *Colour;
+					}
+				}
+			}
+			return {0, Body, Outline, Body};
 		}
 
 		std::vector<FMenuSpritePart> Moved(std::span<const FMenuSpritePart> Parts, int32 X, int32 Y)
@@ -100,5 +211,55 @@ namespace Weltall
 		Sheet.SetFrame(MenuPortFrame::TopLoadOrb, Moved(Sheet.Frame(Load.Orb), StepX, StepY));
 		Sheet.SetFrame(MenuPortFrame::TopLoadOrb + SelectedOrbStep, Moved(Sheet.Frame(Load.Orb + SelectedOrbStep), StepX, StepY));
 		Sheet.SetFrame(MenuPortFrame::TopLoad, Moved(Sheet.Frame(Load.Label), StepX, StepY));
+	}
+
+	bool HasUsaOptionsLetters(const FMenuSpriteSheet& Sheet, std::span<const FVramImage> Archive)
+	{
+		const std::vector<uint8> Texels = PartTexels(OptionsWord(Sheet, 0, 0), Archive);
+		return !Texels.empty() && FSha1::ToHex(FSha1::Hash(Texels)) == UsaOptionsLetters;
+	}
+
+	bool UseTranslatedOptionsLabel(FMenuSpriteSheet& Sheet, const FMenuMainTables& Tables, std::span<const FVramImage> Archive)
+	{
+		for (const FTranslatedLabel& Known : TranslatedOptionsLabels)
+		{
+			const std::span<const FMenuSpritePart> Frame = Sheet.Frame(Known.Frame);
+			const std::vector<uint8> Texels = PartTexels(Frame, Archive);
+			if (Texels.empty() || FSha1::ToHex(FSha1::Hash(Texels)) != Known.Letters)
+			{
+				continue;
+			}
+			// Its top left where the O of "Options" stands.
+			const std::vector<FMenuSpritePart> Label(Frame.begin(), Frame.end());
+			int32 Left = Label.front().X;
+			int32 Top = Label.front().Y;
+			for (const FMenuSpritePart& Part : Label)
+			{
+				Left = std::min<int32>(Left, Part.X);
+				Top = std::min<int32>(Top, Part.Y);
+			}
+			const auto At = [&Label, Left, Top](int32 X, int32 Y) { return Moved(Label, X - Left, Y - Top); };
+			Sheet.SetFrame(MenuPortFrame::TitleOptions, At(TitleOptionsX, TitleOptionsY));
+			Sheet.SetFrame(MenuPortFrame::Options, At(OptionsX, OptionsY));
+			Sheet.SetFrame(MenuPortFrame::RaisedTitleOptions, At(TitleOptionsX + Tables.ArcX[1] - Tables.ArcX[0], TitleOptionsY + Tables.ArcY[1] - Tables.ArcY[0]));
+			return true;
+		}
+		return false;
+	}
+
+	void TypeMenuPortWords(FMenuSpriteSheet& Sheet, const FMenuMainTables& Tables, const FMesFont& Font, std::span<const FVramImage> Archive)
+	{
+		FMenuSheetPicture Word = MenuLetteredWord(Font, LetteringColours(Sheet, Archive), "Options");
+		FMenuSpritePart Part;
+		Part.Width = static_cast<int16>(Word.Width);
+		Part.Height = static_cast<int16>(Word.Height);
+		Part.Picture = Sheet.AddPicture(std::move(Word));
+		const auto At = [&Part](int32 X, int32 Y)
+		{
+			return std::vector<FMenuSpritePart>{Placed(Part, X + TypedWordX, Y + TypedWordY)};
+		};
+		Sheet.SetFrame(MenuPortFrame::TitleOptions, At(TitleOptionsX, TitleOptionsY));
+		Sheet.SetFrame(MenuPortFrame::Options, At(OptionsX, OptionsY));
+		Sheet.SetFrame(MenuPortFrame::RaisedTitleOptions, At(TitleOptionsX + Tables.ArcX[1] - Tables.ArcX[0], TitleOptionsY + Tables.ArcY[1] - Tables.ArcY[0]));
 	}
 }

@@ -37,10 +37,11 @@ struct FBattleFrameDraw
  * them with into view space, with the battle's projection (its 320 x 224 screen, the centre below the middle), each in the
  * part the frame's order puts it in. With a Blend (Weltall::BlendBattleFrames' of this frame), drawn between the frame
  * before and this one: each anchor's points moved, the cloths, the backdrop, the projection and the colours as the blend
- * has them; without, as it is. Reuses Draw's memory.
+ * has them; without, as it is. TexelKinds, following the VRAM the frame is drawn from, lets a semi-transparent polygon's pass
+ * with no texels to draw be left out. Reuses Draw's memory.
  */
 WELTALL_API void BuildBattleFrameDraw(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, const FFieldRenderOptions& Options,
-	FBattleFrameDraw& Draw);
+	FBattleFrameDraw& Draw, Weltall::FTexelKindCache* TexelKinds = nullptr);
 
 /**
  * Adds the passes that draw a battle frame into Area of Output: the scene on the widened screen, the fade over the whole

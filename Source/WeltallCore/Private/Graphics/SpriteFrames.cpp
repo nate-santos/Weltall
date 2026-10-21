@@ -39,6 +39,39 @@ namespace Weltall
 			X = 0x300 + 0x40 * static_cast<int32>(Index & 3);
 			Y = Index < 4 ? 0 : 256;
 		}
+
+		/**
+		 * The empty columns at the right of a streamed cell (Pixels: its rows of texel indices, 0 drawing nothing) that pad
+		 * its art to whole VRAM units: fewer than a unit's texels, in a cell of whole units whose art starts at its left
+		 * edge. 0 for a cell not cut that way.
+		 */
+		int32 CellPadding(const FSpriteFile& File, uint32 Pixels, int32 Width, int32 Height, bool bEightBit)
+		{
+			const int32 PerUnit = bEightBit ? 2 : 4;
+			const int32 RowBytes = bEightBit ? Width : Width / 2;
+			const auto IsEmpty = [&](int32 Column)
+			{
+				for (int32 Row = 0; Row < Height; ++Row)
+				{
+					const uint8 Byte = File.Byte(Pixels + static_cast<uint32>(Row * RowBytes + (bEightBit ? Column : Column / 2)));
+					if ((bEightBit ? Byte : Byte >> (Column & 1) * 4 & 0xF) != 0)
+					{
+						return false;
+					}
+				}
+				return true;
+			};
+			if (Width == 0 || Width % PerUnit != 0 || IsEmpty(0))
+			{
+				return 0;
+			}
+			int32 Empty = 0;
+			while (Empty < PerUnit && IsEmpty(Width - 1 - Empty))
+			{
+				++Empty;
+			}
+			return Empty < PerUnit ? Empty : 0;
+		}
 	}
 
 	/** A frame's placement stream as the builders and the anchor reader walk it. */
@@ -243,6 +276,10 @@ namespace Weltall
 			Part.Clut = Clut(Resource.ClutX + (Attributes & 0xF) * 16, Resource.ClutY);
 			QueueUpload({static_cast<int16>(AreaX + PlaceX), static_cast<int16>(AreaY + PlaceY), static_cast<int16>(bEightBit ? Width >> 1 : Width >> 2), Part.Height}, &File, Cell + 4, true);
 			Walker.Position(bWide, &Part);
+			if (bMirroredPartsPlacedByArt && (Part.Flags & FlipHorizontallyFlag) != 0 && Part.GrowWidth == 0)
+			{
+				Part.X = static_cast<int16>(Part.X - CellPadding(File, Cell + 4, Width, Part.Height, bEightBit));
+			}
 		}
 		Sprite.BuildFlags = (Sprite.BuildFlags & ~SpriteBuildFlags::PartCountMask) | static_cast<uint32>(Built) << SpriteBuildFlags::PartCountShift;
 		QueueUpload({static_cast<int16>(AreaX), static_cast<int16>(AreaY), File.Byte(At + 4), File.Byte(At + 5)}, nullptr, 0);

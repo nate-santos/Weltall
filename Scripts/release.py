@@ -34,62 +34,30 @@ You'll need your own copy of the USA release or a supported English undub. No ga
 
 ## What's new
 
-### Display and sound
-
-- Added a CRT filter under Options → Display. Monitor looks like a studio monitor, flat with sharp scanlines. TV
-  looks like a home television, with curved glass and a softer picture. Press Confirm on the row to adjust each part
-  of the look yourself, from the scanlines to the curve of the glass. It's off by default.
-- Added a Battle flashes option under Options → Display. Softer dims the bright screen flashes from attacks and Ether
-  to a quarter of their brightness, and Off removes them. It's set to Original by default.
-- The undub's subtitles now show in its movies with the Japanese voices. The new Subtitles option under
-  Options → Sound can also show them with the English voices, as long as the undub discs are in `Games`, or turn
-  them off.
-- Weltall's version now shows under the logo on the title screen.
-
-### Gameplay
-
-- Added a Modding page to Options. Its Balance options let you get up to four times the experience and gold from
-  battles, and make random battles rarer, more frequent or stop them altogether. Everything stays as in the original
-  game until you change it. The Assets page now opens from here.
-- You can now start the game with only Disc 2 in `Games` to load your Disc 2 saves, as on the PlayStation. New Game
-  and Disc 1 saves ask for Disc 1.
-- In the Battling arena, how far you push a controller's stick now sets how fast your Gear moves, as with an analog
-  controller on the PlayStation. The d-pad and keyboard still move at full speed.
-
-### Modding
-
-- You can now mod the game's text and font. Export text, on the Assets page, saves every message as text files and
-  the font as a picture. To change a message, copy it into a file of your own in `Assets/text` and edit it. To redraw
-  letters or add new ones, such as accented letters for a translation, edit a copy of the font in `Assets/font`.
-  Dialogue windows resize to fit your text.
-- Texture packs made for RetroArch's Beetle PSX HW core now work as they are, such as Perfect ART Works and the
-  Xenogears HD Portraits Project. Put the pack's folder in `Assets/textures` and turn on External assets. Replacements
-  named the way Weltall's texture export names them still work, and they take priority over a pack's pictures.
-- The battle screen's pictures, from the command ring to the HP digits, gauges and damage numbers, now have the same
-  names in every battle, so one replacement covers them everywhere. Before, their names changed from battle to
-  battle. Export textures saves them in `battle/hud`, and the results screen's pictures in `battle/result`.
-- You can now use the fan mod Perfect Works Build from your own copy. Unpack it into a `PerfectWorks` folder inside
-  `Mods`, next to `Games`, then choose which parts to use on the Modding page: its new script with its battle
-  dialogue, story mode, the rebalanced party, items and enemies, its Battling arena modes, music, portraits, Emeralda
-  cafe fix and title screen. This works with version 0.11.4 of the mod.
-
-The [modding guide](https://github.com/Roman215/Weltall/blob/main/Docs/Modding.md) explains each of these.
+- PlayStation controllers now work on Windows: the DualShock 4 and the DualSense, including the Edge, over USB or
+  Bluetooth, and the PlayStation Classic controller. Sony's wireless adapter for the DualShock 4 works too. With
+  them, button prompts show the PlayStation symbols, and the DualShock 4 and DualSense vibrate in the Battling arena.
+  Most other gamepads work too. If a button lands in the wrong place, rebind it on the Controls page. If your
+  controller isn't recognized, please report it.
+- Fan translations that only change the game's text, pictures and movies now play, such as the Spanish translation by
+  Romhack Hispano. Patch your USA discs and put the patched images in `Games`. If the originals are there too, the
+  patched ones play. Weltall's own screens, such as Options, stay in English. Translations that also change the
+  game's program, such as the French one by Atelier Traduction, aren't supported yet.
+- Added separate volumes under Options → Sound for the music, sound effects, battle voices and movies, plus a master
+  volume.
+- You can now use the movie subtitles from your own copy of Perfect Works Build, even with the mod turned off. If you
+  have the undub too, Subtitles from under Options → Sound picks which one you read. The Sound page now shows what
+  it found, and says what you need for anything that's missing.
 
 ### Fixes
 
-- Fixed El-Fenrir's sword missing in the Battling arena.
-- Fixed the picture freezing for about five seconds during Alkanshel's Mass Limit. The screen now ripples, smears and
-  fades to black as it should.
-- Fixed faint squares around the clouds in Shevat's sky.
-- Fixed the corners of the menu windows, such as the gold and play time boxes, sitting a pixel off their edges.
-- Fixed a lock of Billy's hair floating off his head when he shakes it, a mistake in the original game's sprite.
-- Fixed a freeze in Deus's first fight. His attack on one Gear could stop the game, depending on the camera.
-- Fixed Billy's ether guns always firing wind and fire. They now fire the element of the ammo loaded in them.
-- Fixed the shop's pointer covering the words Buy, Sell and Exit.
-- Fixed Member Change showing MP instead of EP.
-
-The last five fix mistakes in the original game. Like the other fixes on the Fixes page, they're on by default, and you
-can turn each one off there. The last four come from the Perfect Works Build team.
+- Fixed the camera shaking when you turn or zoom it slowly on the field.
+- Fixed pieces of character sprites, such as Fei's arm when he runs away from the camera, sitting a few pixels off.
+  This is a mistake in the original game's sprites, and the Sprite frames option on the Fixes page turns the fix off.
+- Fixed the rainy night scene near the start of the game using far more of the graphics card than it should.
+  Battles and the world map are lighter on the graphics card too.
+- Fixed the display's native resolution missing from the list, and the picture being stretched, when Windows display
+  scaling is above 100%. If you picked a window size while scaling was on, it will look smaller now, so pick it again.
 
 ## Playing
 

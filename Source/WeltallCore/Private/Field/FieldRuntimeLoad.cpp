@@ -110,9 +110,9 @@ namespace Weltall
 	{
 		Services.Options = Options;
 		FieldContext.Options = Options;
-		if (Services.PartySprites != nullptr)
+		if (ActorSprites)
 		{
-			Services.PartySprites->SetFramesAligned(Options.bSpriteFramesAligned);
+			ActorSprites->System().bMirroredPartsPlacedByArt = Options.bSpriteFramesAligned;
 		}
 	}
 
@@ -342,6 +342,7 @@ namespace Weltall
 		ActorSprites->System().Random = Services.Random;
 		ActorSprites->System().Arctangents = Services.Arctangents;
 		ActorSprites->System().SetRingPlace(Ring);
+		ActorSprites->System().bMirroredPartsPlacedByArt = Services.Options.bSpriteFramesAligned;
 		Context.Models = ActorSprites.get();
 		if (!DiscGearFiles)
 		{

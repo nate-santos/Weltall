@@ -48,8 +48,17 @@ namespace Weltall
 	class FMovieSubtitleTable
 	{
 	public:
-		/** The table in the executable, which the caller has identified as one of the supported undub's. */
+		/**
+		 * The table in the executable, which the caller has identified as one of the supported undub's, or as one with
+		 * its subtitle code (HasUndubCode).
+		 */
 		WELTALLCORE_API static FMovieSubtitleTable Read(const FPsxExecutable& Executable);
+
+		/**
+		 * The executable carries the supported undub's subtitle code, which reads its table as Read does: as Perfect
+		 * Works Build's executables do, with a table of their own.
+		 */
+		WELTALLCORE_API static bool HasUndubCode(const FPsxExecutable& Executable);
 
 		/** Movie Number's subtitles, or null for a movie without them. */
 		WELTALLCORE_API const FMovieSubtitleEntry* Find(int32 Movie) const;

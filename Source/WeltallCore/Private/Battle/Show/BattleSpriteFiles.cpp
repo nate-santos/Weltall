@@ -140,8 +140,13 @@ namespace Weltall
 
 	TResult<FBattleSpriteFile> FBattleSpriteFiles::ReadAttacks(int32 Character) const
 	{
-		return ParseFile(ReadWhole(*VoiceImage, *VoiceIndex, PartyDirectory, static_cast<int32>(Characters[static_cast<std::size_t>(Character)].Attacks)),
-			"character " + std::to_string(Character) + "'s attacks");
+		TResult<FBattleSpriteFile> File = ParseFile(ReadWhole(*VoiceImage, *VoiceIndex, PartyDirectory,
+			static_cast<int32>(Characters[static_cast<std::size_t>(Character)].Attacks)), "character " + std::to_string(Character) + "'s attacks");
+		if (File)
+		{
+			File->bVoices = true;
+		}
+		return File;
 	}
 
 	TResult<FBattleSpriteFile> FBattleSpriteFiles::ReadEffect(int32 Effect) const

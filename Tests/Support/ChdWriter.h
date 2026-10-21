@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Media/CdImage.h"
 
 #include <span>
 #include <string_view>
@@ -22,6 +23,9 @@ namespace Weltall::Testing
 
 	/** An ISO's sectors of 2048 bytes as the raw Mode 2 Form 1 sectors of a CD's BIN, their error codes left as zeros. */
 	std::vector<uint8> RawMode2Sectors(std::span<const uint8> Iso);
+
+	/** A raw sector of the header's mode and subheader holding the user data, its address and error codes left as zeros. */
+	std::vector<uint8> RawSector(const FCdSectorHeader& Header, std::span<const uint8> UserData);
 
 	/** Where the fields a test changes lie in a CHD's header. */
 	namespace ChdHeader

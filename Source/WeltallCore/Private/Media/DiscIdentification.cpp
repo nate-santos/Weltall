@@ -3,8 +3,10 @@
 #include "Foundation/Sha1.h"
 #include "Media/PsxExecutable.h"
 
+#include <algorithm>
 #include <array>
 #include <string_view>
+#include <vector>
 
 namespace Weltall
 {
@@ -31,6 +33,44 @@ namespace Weltall
 			FKnownDisc{{EDiscRelease::JapanDisc2, 2, "Xenogears (Japan) Disc 2"},
 				"SLPS_011.61", "15dae4421e0db5d864b5cada59dfcc786f323c9b"},
 		};
+
+		/**
+		 * The releases a patch of the game's data may rewrite: the SHA-1 of the executable with the parts such a patch
+		 * changes zeroed (CodeSha1), the rest being its code.
+		 */
+		constexpr std::array PatchableDiscs = {
+			FKnownDisc{{EDiscRelease::UsaDisc1, 1, "Xenogears (USA, patched) Disc 1", true},
+				"SLUS_006.64", "433428236a2ff61fe404ffd93cc04e275b0df673"},
+			FKnownDisc{{EDiscRelease::UsaDisc2, 2, "Xenogears (USA, patched) Disc 2", true},
+				"SLUS_006.69", "8abdb9f6c3f4ff167cfd82957dd27350cdbd13fd"},
+		};
+
+		/**
+		 * What a patch of the game's data rewrites in the executable: the file index, for the files it moves or
+		 * resizes, and the boot notice's packed picture, which runs to the end of the body.
+		 */
+		constexpr uint32 FileIndexAddress = 0x80010004;
+		constexpr uint32 FileIndexEnd = 0x80018004;
+		constexpr uint32 BootPictureAddress = 0x8004EABC;
+
+		/** The executable with those parts zeroed, hashed: empty where it is not a program of the game's shape. */
+		std::string CodeSha1(std::span<const uint8> Executable)
+		{
+			const TResult<FPsxExecutable> Parsed = FPsxExecutable::Parse(std::vector<uint8>(Executable.begin(), Executable.end()));
+			if (!Parsed || !Parsed->Contains(FileIndexAddress, FileIndexEnd - FileIndexAddress) || !Parsed->Contains(BootPictureAddress, 4))
+			{
+				return {};
+			}
+			std::vector<uint8> Code(Executable.begin(), Executable.end());
+			const uint32 Load = Parsed->LoadAddress();
+			const auto Clear = [&Code, Load](uint32 From, uint32 To)
+			{
+				std::fill(Code.begin() + FPsxExecutable::HeaderSize + (From - Load), Code.begin() + FPsxExecutable::HeaderSize + (To - Load), uint8{0});
+			};
+			Clear(FileIndexAddress, FileIndexEnd);
+			Clear(BootPictureAddress, Load + static_cast<uint32>(Parsed->Body().size()));
+			return FSha1::ToHex(FSha1::Hash(Code));
+		}
 	}
 
 	std::string_view DiscReleaseId(EDiscRelease Release)
@@ -70,33 +110,43 @@ namespace Weltall
 		{
 			return BootPath.Error();
 		}
-		bool bKnownDisc = false;
-		std::string Hash;
+		const bool bKnownName = std::any_of(KnownDiscs.begin(), KnownDiscs.end(), [&BootPath](const FKnownDisc& Known) { return Known.BootExecutable == *BootPath; });
+		if (!bKnownName)
+		{
+			return MakeError("not a supported disc (boot executable " + *BootPath + ")");
+		}
+		auto Executable = Disc.ReadFile(*BootPath);
+		if (!Executable)
+		{
+			return Executable.Error();
+		}
+		return IdentifyExecutable(*BootPath, *Executable);
+	}
+
+	TResult<FDiscIdentity> IdentifyExecutable(std::string_view BootPath, std::span<const uint8> Executable)
+	{
+		const std::string Hash = FSha1::ToHex(FSha1::Hash(Executable));
+		bool bKnownName = false;
 		for (const FKnownDisc& Known : KnownDiscs)
 		{
-			if (*BootPath != Known.BootExecutable)
-			{
-				continue;
-			}
-			if (Hash.empty())
-			{
-				auto Executable = Disc.ReadFile(*BootPath);
-				if (!Executable)
-				{
-					return Executable.Error();
-				}
-				Hash = FSha1::ToHex(FSha1::Hash(*Executable));
-			}
-			bKnownDisc = true;
-			if (Hash == Known.ExecutableSha1)
+			bKnownName = bKnownName || BootPath == Known.BootExecutable;
+			if (BootPath == Known.BootExecutable && Hash == Known.ExecutableSha1)
 			{
 				return Known.Identity;
 			}
 		}
-		if (bKnownDisc)
+		if (!bKnownName)
 		{
-			return MakeError(*BootPath + " is a supported disc, but this release of it is not (executable " + Hash + ")");
+			return MakeError("not a supported disc (boot executable " + std::string(BootPath) + ")");
 		}
-		return MakeError("not a supported disc (boot executable " + *BootPath + ")");
+		const std::string Code = CodeSha1(Executable);
+		for (const FKnownDisc& Patchable : PatchableDiscs)
+		{
+			if (BootPath == Patchable.BootExecutable && Code == Patchable.ExecutableSha1)
+			{
+				return Patchable.Identity;
+			}
+		}
+		return MakeError(std::string(BootPath) + " is a supported disc, but this release of it is not (executable " + Hash + ")");
 	}
 }

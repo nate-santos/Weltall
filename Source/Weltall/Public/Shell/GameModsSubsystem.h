@@ -5,6 +5,8 @@
 #include "Mods/GameMods.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
+#include <array>
+
 #include "GameModsSubsystem.generated.h"
 
 /**
@@ -26,6 +28,8 @@ public:
 
 	/** What the options screen shows of the mods. */
 	Weltall::FMenuMods MenuMods() const;
+	/** Perfect Works Build's movie subtitles of each disc, null where the mod gives none. */
+	std::array<const Weltall::FPerfectWorksSubtitles*, 2> PerfectWorksSubtitles() const;
 
 private:
 	Weltall::FFoundMods Found;

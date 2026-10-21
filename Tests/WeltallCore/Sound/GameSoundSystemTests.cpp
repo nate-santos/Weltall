@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdlib>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -138,4 +139,76 @@ TEST_CASE("The game thread's calls and the audio thread's samples take turns", "
 	Audio.join();
 	CHECK(Calls > 0);
 	CHECK(SeenAtOnce == Calls);
+}
+
+namespace
+{
+	/** What the player hears of one kind of sound playing alone: a song, an effect, or an effect from a bank of voices. */
+	int32 Loudest(ESoundKind Kind, const FSoundVolumes& Volumes)
+	{
+		FGameSoundSystem Sound(Testing::MakeSoundDriverTables());
+		FSoundInstrument Instrument;
+		Instrument.Rates = 0x0000F000;
+		Instrument.Modes = 0x0311;
+		std::vector<uint8> Block(16, 0x77);
+		Block[0] = 0x00;
+		Block[1] = 0x07;
+		auto Instruments = FSoundBankFile::Parse(Testing::MakeBankFile(0x30, 0, {Instrument}, Block));
+		auto Voices = FSoundBankFile::Parse(Testing::MakeBankFile(0x31, 0, {Instrument}, Block));
+		auto Effects = FSoundEffectFile::Parse(Testing::MakeEffectFile(0, 0x30, {{Testing::HexBytes("7F 01 90"), {}}}));
+		auto Spoken = FSoundEffectFile::Parse(Testing::MakeEffectFile(1, 0x31, {{Testing::HexBytes("7F 01 90"), {}}}));
+		auto Song = FSoundSequenceFile::Parse(Testing::MakeSequenceFile({Testing::HexBytes("90"), Testing::HexBytes("7F 01 90")}));
+		REQUIRE((Instruments && Voices && Effects && Spoken && Song));
+		Sound.SetVolumes(Volumes);
+		{
+			const FLockedGameSound Locked = Sound.Lock();
+			// The song takes the first bank loaded, which the effects' file names too.
+			REQUIRE(Locked->LoadBank(*Instruments, -1) != nullptr);
+			REQUIRE(Locked->LoadVoiceBank(*Voices, -1) != nullptr);
+			REQUIRE(Locked->RegisterEffects(*Effects));
+			REQUIRE(Locked->RegisterEffects(*Spoken));
+			if (Kind == ESoundKind::Music)
+			{
+				FSoundSequence* Playing = Locked->LoadSequence(*Song);
+				REQUIRE(Playing != nullptr);
+				Locked->PlaySequence(*Playing, 0x7F, 0);
+			}
+			else
+			{
+				Locked->PlayEffect(Kind == ESoundKind::Voice ? 0x10000 : 0);
+			}
+		}
+		const std::vector<int16> Samples = Testing::RenderSound(Sound, 3000, 64);
+		// The song's track 1 plays on voice 0; the effect on the first automatic pair, channel 12's voice 20.
+		CHECK(Sound.Lock()->VoiceKind(Kind == ESoundKind::Music ? 0 : 20) == Kind);
+		int32 Most = 0;
+		for (const int16 Sample : Samples)
+		{
+			Most = std::max(Most, std::abs(static_cast<int32>(Sample)));
+		}
+		return Most;
+	}
+}
+
+TEST_CASE("The player's volumes hear songs, effects and voices each at its own, and all of them at the master's", "[Sound]")
+{
+	CHECK(SoundVolumeGain(100) == FSpu::FullGain);
+	CHECK(SoundVolumeGain(50) == FSpu::FullGain / 4);
+	CHECK(SoundVolumeGain(0) == 0);
+	CHECK(SoundVolumeGain(130) == FSpu::FullGain);
+	for (const ESoundKind Kind : {ESoundKind::Music, ESoundKind::Effect, ESoundKind::Voice})
+	{
+		INFO(static_cast<int32>(Kind));
+		const int32 Full = Loudest(Kind, {});
+		REQUIRE(Full > 0x100);
+		FSoundVolumes Halved;
+		FSoundVolumes Others{100, 0, 0, 0, 0};
+		int32 FSoundVolumes::*Own = Kind == ESoundKind::Music ? &FSoundVolumes::Music : Kind == ESoundKind::Effect ? &FSoundVolumes::Effects : &FSoundVolumes::Voices;
+		Halved.*Own = 50;
+		Others.*Own = 100;
+		CHECK(std::abs(Loudest(Kind, Halved) - Full / 4) <= 2);
+		CHECK(Loudest(Kind, Others) == Full);
+		CHECK(std::abs(Loudest(Kind, {50, 100, 100, 100, 100}) - Full / 4) <= 2);
+		CHECK(Loudest(Kind, {0, 100, 100, 100, 100}) == 0);
+	}
 }

@@ -70,9 +70,10 @@ namespace Weltall
 		return Session;
 	}
 
-	void FGameSoundSession::Apply(ESoundOutput Output, const FSoundDriverOptions& DriverOptions, const FFieldMusicOptions& MusicOptions)
+	void FGameSoundSession::Apply(ESoundOutput Output, const FSoundVolumes& Volumes, const FSoundDriverOptions& DriverOptions, const FFieldMusicOptions& MusicOptions)
 	{
 		Music->SetOptions(MusicOptions);
+		GameSound->SetVolumes(Volumes);
 		const FLockedGameSound Locked = GameSound->Lock();
 		Locked->SetOptions(DriverOptions);
 		const int32 Mode = SoundDriverOutputMode(Output);

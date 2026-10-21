@@ -1,10 +1,13 @@
 #pragma once
 
+#include "Foundation/Result.h"
 #include "Foundation/Types.h"
 #include "Media/DiscModFiles.h"
+#include "Media/MovieSubtitles.h"
 
 #include <array>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -48,6 +51,30 @@ namespace Weltall
 		bool operator==(const FPerfectWorksOptions&) const = default;
 	};
 
+	/**
+	 * Perfect Works Build's movie subtitles for one disc, its own wording and timing in the undub's form: the table in the
+	 * boot executable its patcher gives the disc, and a file of each subtitled movie's pictures.
+	 */
+	class FPerfectWorksSubtitles
+	{
+	public:
+		/**
+		 * Disc's (1 or 2) in the release's game files: the executable in `sub_executable/disc<n>`, and the pictures in
+		 * `fmv<n>`, each file named by its record in the first disc's numbering. None where the release lacks any of
+		 * them, or where the executable lacks the undub's subtitle code, which its table is written for.
+		 */
+		WELTALLCORE_API static std::optional<FPerfectWorksSubtitles> Find(const std::filesystem::path& GameFiles, int32 Disc);
+
+		const FMovieSubtitleTable& Table() const { return Movies; }
+		/** The entry's lines and their pictures, from the release's file of them. */
+		WELTALLCORE_API TResult<FMovieSubtitles> Load(const FMovieSubtitleEntry& Entry) const;
+
+	private:
+		FMovieSubtitleTable Movies;
+		/** The files of pictures, by the record each entry names. */
+		std::map<std::size_t, std::filesystem::path> Files;
+	};
+
 	/** A copy of Perfect Works Build's release, unpacked in a folder: its version and its folders of the game's files. */
 	class FPerfectWorksRelease
 	{
@@ -74,6 +101,15 @@ namespace Weltall
 		 * with another, the arena's files are left out and the arena keeps the discs' gears and rules.
 		 */
 		WELTALLCORE_API bool KnowsArenaCode(EPerfectWorksArena Arena, bool bScript) const;
+		/**
+		 * Its movie subtitles for Disc (1 or 2); null where the release lacks them, a file of their pictures, or the
+		 * undub's subtitle code its table is written for.
+		 */
+		const FPerfectWorksSubtitles* MovieSubtitles(int32 Disc) const
+		{
+			const std::optional<FPerfectWorksSubtitles>& Found = Subtitles[Disc == 2 ? 1 : 0];
+			return Found ? &*Found : nullptr;
+		}
 		/** Options take the rebalanced party: chosen, without story mode, and with code the port knows. */
 		WELTALLCORE_API bool UsesRebalancedParty(const FPerfectWorksOptions& Options) const;
 		/** Options take the rebalanced enemies: chosen, without story mode, and with code the port knows. */
@@ -105,5 +141,6 @@ namespace Weltall
 		bool bKnownEnemiesCode = false;
 		/** Each arena mode's Battling (Basic, Expert), without and with the script. */
 		std::array<std::array<bool, 2>, 2> KnownArenaCode{};
+		std::array<std::optional<FPerfectWorksSubtitles>, 2> Subtitles;
 	};
 }

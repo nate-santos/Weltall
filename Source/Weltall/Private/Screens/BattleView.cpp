@@ -13,6 +13,7 @@
 #include "Rendering/BattleTransitionRendering.h"
 #include "Rendering/SharedRenderResource.h"
 #include "Rendering/VramTexture.h"
+#include "Rendering/TextureModLibrary.h"
 #include "Rendering/TextureModSources.h"
 
 /** A displayed frame of the battle: its drawing and what it is textured from. */
@@ -166,7 +167,14 @@ TSharedPtr<const IScreenFrame> FBattleView::Capture(const Weltall::FBattleGamePr
 	{
 		Weltall::BlendBattleFrames(LatestKept, bPreviousFollows ? &PreviousKept : nullptr, Alpha, Blend, BlendScratch);
 	}
-	BuildBattleFrameDraw(Frame, bBlends ? &Blend : nullptr, Options, Next->Draw);
+	// A replacement may draw where the original's texels do not.
+	Weltall::FTexelKindCache* Kinds = nullptr;
+	if (Frame.Vram != nullptr && !FTextureModLibrary::IsReplacing())
+	{
+		TexelKinds.Follow(*Frame.Vram);
+		Kinds = &TexelKinds;
+	}
+	BuildBattleFrameDraw(Frame, bBlends ? &Blend : nullptr, Options, Next->Draw, Kinds);
 	HudFrame.Primitives.assign(Frame.Hud.Primitives.begin(), Frame.Hud.Primitives.end());
 	HudFrame.TextButtons.assign(Frame.Hud.TextButtons.begin(), Frame.Hud.TextButtons.end());
 	HudFrame.Number = Frame.Step + 1;

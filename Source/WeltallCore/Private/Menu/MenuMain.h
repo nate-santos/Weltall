@@ -461,8 +461,8 @@ namespace Weltall
 		struct FMenuOptionsState
 		{
 			FPlayerSettings Settings;
-			/** What the display offered as the screen opened. */
-			FDisplayModes Display;
+			/** What the display offered and the voices and subtitles the game had as the screen opened. */
+			FSettingsContext Context;
 			/** The page L1 and R1 have turned to: the settings' by number, then the saves'. */
 			int32 Turned = 0;
 			/** A list opened from a page's row (the fixes' own, the CRT's parts), the row, and Custom picked while the fixes match a preset. */

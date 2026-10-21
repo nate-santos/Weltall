@@ -221,11 +221,18 @@ TEST_CASE("The title's first orb opens the options screen, whose changes are mad
 	// Down from Continue to the first orb, and Cross (the US discs' Confirm): the layer flies in.
 	Press(Menu, EPadButton::Down);
 	Press(Menu, EPadButton::Cross, 40);
-	// It opens on Display; R1 turns to Sound, whose output Right sets to Wide-Stereo.
+	// It opens on Display; R1 turns to Sound, on its first volume past the heading, which Left lowers. Down past the
+	// other volumes and the next heading to the output, which Right sets to Wide-Stereo.
 	Press(Menu, EPadButton::R1);
+	Press(Menu, EPadButton::Left);
+	CHECK(Settings.Current.Volumes.Master == 90);
+	for (int32 Row = 0; Row < 5; ++Row)
+	{
+		Press(Menu, EPadButton::Down);
+	}
 	Press(Menu, EPadButton::Right);
 	CHECK(Settings.Current.SoundOutput == ESoundOutput::WideStereo);
-	CHECK(Settings.Changes == 1);
+	CHECK(Settings.Changes == 2);
 	// L1 turns back to Display, round to Modding and on to Fixes; Right picks Original.
 	Press(Menu, EPadButton::L1);
 	Press(Menu, EPadButton::L1);
@@ -245,6 +252,7 @@ TEST_CASE("The title's first orb opens the options screen, whose changes are mad
 	Press(Menu, EPadButton::Circle, 40);
 	REQUIRE(Settings.Kept.size() == 1);
 	CHECK(Settings.Kept.front().SoundOutput == ESoundOutput::WideStereo);
+	CHECK(Settings.Kept.front().Volumes.Master == 90);
 	CHECK(Settings.Kept.front().Fixes.Field.bRecoverPartyHpGivesHp);
 	CHECK_FALSE(Menu.Menu().HasEnded());
 	// The title goes on: Up twice to New Game, which ends it.

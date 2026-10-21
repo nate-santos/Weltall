@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Field/FieldFrame.h"
+#include "Graphics/TexelKinds.h"
 #include "Rendering/FieldSceneRendering.h"
 
 #include <array>
@@ -70,16 +71,19 @@ void AddBlendedFieldObject(TArray<FVector4f>& Objects, const Weltall::FAffine& F
 /**
  * Lays a field frame's corners out in drawing order, in runs of one state: the scenery's polygons,
  * the characters' quads, the particles, the panorama and the gears' polygons, in the original's
- * painter's order or against a depth buffer.
+ * painter's order or against a depth buffer. Given the VRAM the frame is drawn from (TexelKinds), a
+ * semi-transparent polygon's pass that has no texels to draw is left out, and a polygon with only one
+ * kind of texel joins its neighbours as an opaque one does.
  */
 class FFieldDrawBuilder
 {
 public:
 	FFieldDrawBuilder(const Weltall::FFieldScene& InScene, const Weltall::FFieldSceneFrame& InFrame, std::span<const Weltall::FFieldCharacterView> InCharacters,
 		std::span<const Weltall::FFieldCharacterQuad> InQuads, std::span<const Weltall::FFieldParticleQuad> InParticles, const FFieldSceneMesh& InMesh,
-		FFieldSceneDraw& InDraw, const Weltall::FFieldGearsFrame* InGears = nullptr, const Weltall::FFieldSpriteModelsFrame* InSpriteModels = nullptr)
+		FFieldSceneDraw& InDraw, const Weltall::FFieldGearsFrame* InGears = nullptr, const Weltall::FFieldSpriteModelsFrame* InSpriteModels = nullptr,
+		Weltall::FTexelKindCache* InTexelKinds = nullptr)
 		: Scene(InScene), Frame(InFrame), Characters(InCharacters), Quads(InQuads), Particles(InParticles), Mesh(InMesh), Draw(InDraw), Gears(InGears),
-		  SpriteModels(InSpriteModels)
+		  SpriteModels(InSpriteModels), TexelKinds(InTexelKinds)
 	{
 	}
 
@@ -117,14 +121,24 @@ private:
 		Weltall::EBlendMode PageBlend = Weltall::EBlendMode::Average;
 		/** The depth rule its runs follow (DepthBuffer's). */
 		EFieldDepthRule Rule = EFieldDepthRule::Entry;
+		/** A semi-transparent textured polygon's kinds of texel (Weltall::TexelKinds), Any where they are not known. */
+		uint8 Kinds = Weltall::TexelKinds::Any;
 	};
 
 	/** Whether it has texels drawn opaque, which a prepass can take the depth of: any but a wholly blended polygon's. */
-	static bool HasOpaqueTexels(const FItem& Item) { return Item.bTextured || !Item.bSemiTransparent; }
+	static bool HasOpaqueTexels(const FItem& Item) { return (Item.bTextured && (Item.Kinds & Weltall::TexelKinds::Plain) != 0) || !Item.bSemiTransparent; }
+	/** Whether it has texels that blend: a semi-transparent polygon's, but where its texture has none. */
+	static bool HasBlendedTexels(const FItem& Item) { return Item.bSemiTransparent && (!Item.bTextured || (Item.Kinds & Weltall::TexelKinds::SemiTransparent) != 0); }
+	/** The pass that draws its opaque texels: all of a polygon's that has no blended ones. */
+	static EFieldPass PlainPass(const FItem& Item) { return HasBlendedTexels(Item) ? EFieldPass::PlainTexels : EFieldPass::Opaque; }
 	/** Whether it marks the pixels of its opaque texels, sorted there by depth: a sprite, or a model with any. */
 	static bool IsMarking(const FItem& Item) { return Item.bSprite || (Item.bModel && HasOpaqueTexels(Item)); }
 
 	FItem Describe(const Weltall::FFieldDrawItem& Item) const;
+	/** The item before its kinds of texel are known. */
+	FItem DescribeShape(const Weltall::FFieldDrawItem& Item) const;
+	/** The kinds of texel a semi-transparent textured item's polygon reads, from the VRAM: Any without one. */
+	uint8 TexelKindsOf(const FItem& Item) const;
 	/** A gear's polygon or cloth triangle; none of its corners when the gears are not drawn. */
 	FItem DescribeGear(const Weltall::FFieldDrawItem& Item) const;
 	/** A polygon of a child's model. */
@@ -147,6 +161,7 @@ private:
 	FFieldSceneDraw& Draw;
 	const Weltall::FFieldGearsFrame* Gears;
 	const Weltall::FFieldSpriteModelsFrame* SpriteModels;
+	Weltall::FTexelKindCache* TexelKinds;
 };
 
 /** How far a character's quads are drawn from where the latest tick put them: back toward the tick before's place by 1 - Alpha. */

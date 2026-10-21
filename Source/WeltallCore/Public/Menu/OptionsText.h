@@ -96,15 +96,37 @@ namespace Weltall::OptionsText
 		inline constexpr FRow Vignette{"Vignette", {"Darkens the picture toward", "its corners.", ""}};
 	}
 
+	/** The Sound page: the volumes, the output, then the voices' language and the movies' subtitles as the discs and mods give them. */
 	namespace Sound
 	{
+		inline constexpr std::string_view Volume = "Volume";
+		inline constexpr FRow Master{"Master", {"How loud all of the game's", "sound is.", ""}};
+		inline constexpr FRow Music{"Music", {"How loud the music is.", "", ""}};
+		inline constexpr FRow Effects{"Effects", {"How loud the sound effects", "are.", ""}};
+		inline constexpr FRow VoiceVolume{"Voices", {"How loud the voices in battle", "are: shouts, cries and", "spoken lines."}};
+		inline constexpr FRow Movies{"Movies", {"How loud the movies are.", "Their speech and music are", "one recording."}};
+		inline constexpr std::string_view VolumeValue = "{}%";
+		inline constexpr std::string_view OutputHeading = "Output";
 		inline constexpr FRow Output{"Sound mode", {"Wide-Stereo spreads the", "sound wider. Mono plays the", "same sound on both sides."}};
 		inline constexpr std::array<std::string_view, 3> OutputValues{"Stereo", "Wide-Stereo", "Mono"};
 		inline constexpr FRow InBackground{"Background audio", {"Keeps the sound playing", "while the game's window", "isn't in focus."}};
+		inline constexpr std::string_view Language = "Language";
 		inline constexpr FRow Voices{"Voices", {"Auto follows the play disc.", "USA or undub discs supply", "voices for new movies/battles."}};
 		inline constexpr std::array<std::string_view, 3> VoiceValues{"Auto", "English", "Japanese"};
-		inline constexpr FRow Subtitles{"Subtitles", {"Movie subtitles from undub", "discs. Auto shows them with", "the Japanese voices."}};
+		/** The Voices row's help where the discs give one language. */
+		inline constexpr std::array<std::string_view, 3> OnlyEnglish{"Japanese voices need the", "undub discs in the Games", "folder."};
+		inline constexpr std::array<std::string_view, 3> OnlyJapanese{"English voices need the USA", "discs in the Games folder.", ""};
+		inline constexpr FRow Subtitles{"Subtitles", {"Subtitles for the movies. Auto", "shows them with the Japanese", "voices. On shows them always."}};
 		inline constexpr std::array<std::string_view, 3> SubtitleValues{"Auto", "On", "Off"};
+		/** The Subtitles row's help without the undub's discs, whose Japanese voices Auto waits for. */
+		inline constexpr std::array<std::string_view, 3> SubtitlesWithoutUndub{"Auto shows them with Japanese", "voices, which need the undub", "discs. On shows them always."};
+		/** The Subtitles row where no disc or mod gives subtitles. */
+		inline constexpr std::string_view NoSubtitles = "None found";
+		inline constexpr std::array<std::string_view, 3> NoSubtitlesHelp{"Movie subtitles need the", "undub discs in Games or", "Perfect Works in Mods."};
+		inline constexpr FRow SubtitleSource{"Subtitles from", {"Whose translation the movies'", "subtitles show. Auto prefers", "Perfect Works while it's on."}};
+		inline constexpr std::array<std::string_view, 3> SubtitleSourceValues{"Auto", "Undub", "Perfect Works"};
+		/** The Subtitles from row's help where one source gives subtitles. */
+		inline constexpr std::array<std::string_view, 3> OnlySource{"The only movie subtitles", "found.", ""};
 	}
 
 	/** The Modding page: the game's balance as the player changes it, then the Assets page and the mods found. */
@@ -223,7 +245,7 @@ namespace Weltall::OptionsText
 		inline constexpr FRow ScenePictures{"Scene pictures", {"Painted backdrops stretch to", "fill screens up to 21:9.", "Original: black at the sides."}};
 		inline constexpr FRow WidescreenStaging{"Widescreen staging", {"No one waits in view beside", "the 4:3 area for a cue.", "Original: some can be seen."}};
 		inline constexpr FRow MoonGlow{"Moon glow", {"The glow around the moon", "fades into the night sky.", "Original: a dark square."}};
-		inline constexpr FRow SpriteFrames{"Sprite frames", {"Billy's hair stays on his", "head as he shakes it.", "Original: a lock floats off."}};
+		inline constexpr FRow SpriteFrames{"Sprite frames", {"Sprite pieces such as Fei's", "arm stay attached. Original:", "some float a few pixels off."}};
 		inline constexpr FRow SwimStroke{"Swimming stroke", {"Bart keeps his fast stroke", "past the waterway's exits.", "Original: it can turn slow."}};
 		inline constexpr FRow SilentSongs{"Silent song starts", {"A song started silently", "doesn't silence the next one.", "Original: it does."}};
 		inline constexpr FRow SoundPanning{"Sound panning", {"Sounds panning across end", "where they should. Original:", "they can end elsewhere."}};

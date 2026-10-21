@@ -6,7 +6,7 @@
 
 namespace Weltall
 {
-	void FSoundDriver::MixReplacementMusic(std::span<int16> Stereo)
+	void FSoundDriver::MixReplacementMusic(std::span<int16> Stereo, int32 Gain)
 	{
 		FState& S = *State;
 		if (S.Flags & DriverFlag::Paused) return;
@@ -24,7 +24,7 @@ namespace Weltall
 				* std::max(0.0, static_cast<double>(Sequence.Scale.Value) / 16777216.0)
 				* std::exp2(static_cast<double>(Sequence.Pitch.Value) / (65536.0 * 256.0 * 12.0));
 			const double Volume = std::clamp(static_cast<double>(Sequence.Volume.Value) / 2130706432.0, 0.0, 1.0)
-				* std::clamp(static_cast<double>(S.MasterVolume) / 16383.0, 0.0, 1.0);
+				* std::clamp(static_cast<double>(S.MasterVolume) / 16383.0, 0.0, 1.0) * (static_cast<double>(Gain) / 32768.0);
 			const double Pan = std::clamp(static_cast<double>(Sequence.Pan.Value) / (16777216.0 * 64.0), -1.0, 1.0);
 			const bool bStereo = (S.Flags & DriverFlag::Stereo) != 0;
 			const bool bAudible = Sequence.Muted == 0 && (Sequence.Flags & SequenceFlag::Seeking) == 0;

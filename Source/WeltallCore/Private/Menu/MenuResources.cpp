@@ -7,6 +7,7 @@
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
 #include "Menu/MenuPortFrames.h"
+#include "Text/MesResident.h"
 #include "Text/MessageOverrides.h"
 #include "Text/MessageTableIds.h"
 
@@ -515,6 +516,17 @@ namespace Weltall
 		if (!Resources)
 		{
 			return Resources;
+		}
+		// A translation redraws the letters the port pieces "Options" from: its own label for an options screen shows
+		// instead where Weltall knows one, else the word typed in the disc's font.
+		if (!HasUsaOptionsLetters(Resources->SpriteSheet, Resources->Archive)
+			&& !UseTranslatedOptionsLabel(Resources->SpriteSheet, Resources->MainTables, Resources->Archive))
+		{
+			const TResult<FMesResident> Resident = LoadMesResident(Image, Index, Kernel);
+			if (Resident)
+			{
+				TypeMenuPortWords(Resources->SpriteSheet, Resources->MainTables, Resident->Font, Resources->Archive);
+			}
 		}
 		Resources->UsePlayersMessages(Image);
 		const TResult<std::vector<uint8>> Member = ReadMenuFile(Image, Index, MemberModuleFile);

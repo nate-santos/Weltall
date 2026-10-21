@@ -7,6 +7,7 @@
 #include "Rendering/DrawListRendering.h"
 #include "Rendering/SharedRenderResource.h"
 #include "Rendering/VramTexture.h"
+#include "Rendering/TextureModLibrary.h"
 #include "Rendering/TextureModSources.h"
 
 namespace
@@ -184,16 +185,23 @@ TSharedPtr<const IScreenFrame> FWorldMapView::CaptureMap(const Weltall::FWorldMa
 	Weltall::BlendWorldMapFrames(*Latest, Previous, AnchorMatches, Alpha, Blend);
 	Weltall::UnroundWorldMapBlend(*Latest, Previous, Alpha, Blend);
 	Weltall::MoveWorldMapBlendToView(*Latest, Previous, Alpha, Program.LiveViewOffsets(), Blend);
+	// A replacement may draw where the original's texels do not.
+	Weltall::FTexelKindCache* Kinds = nullptr;
+	if (!FTextureModLibrary::IsReplacing())
+	{
+		TexelKinds.Follow(Program.Drawing().Vram());
+		Kinds = &TexelKinds;
+	}
 	if (bBuiltStale)
 	{
-		BuildWorldMapFrameDraw(*Latest, &Blend, Options, BuiltDraw, static_cast<float>(WorldMapScreen.Height), 1.0f, &BuiltLayout);
+		BuildWorldMapFrameDraw(*Latest, &Blend, Options, BuiltDraw, static_cast<float>(WorldMapScreen.Height), 1.0f, &BuiltLayout, Kinds);
 		bBuiltStale = false;
 	}
 	Next->Draw = BuiltDraw;
 	if (!MoveWorldMapFrameDraw(*Latest, &Blend, BuiltLayout, Next->Draw))
 	{
 		// The horizon's band wrapped into other pieces since the build: built again at this moment.
-		BuildWorldMapFrameDraw(*Latest, &Blend, Options, BuiltDraw, static_cast<float>(WorldMapScreen.Height), 1.0f, &BuiltLayout);
+		BuildWorldMapFrameDraw(*Latest, &Blend, Options, BuiltDraw, static_cast<float>(WorldMapScreen.Height), 1.0f, &BuiltLayout, Kinds);
 		Next->Draw = BuiltDraw;
 	}
 	Next->Overlays = Overlays;

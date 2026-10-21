@@ -16,7 +16,8 @@ class IScreenFrame;
 class FFrameProfile
 {
 public:
-	FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom);
+	/** GpuPassesAt, when not negative, is the moment of play whose frame the engine's ProfileGPU breaks down by pass in the log. */
+	FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom, double InGpuPassesAt = -1.0);
 	~FFrameProfile();
 
 	/** Draws a captured frame and, from the moment timed on, notes its times; Update and Capture are its game thread's, in seconds, At its moment of play. */
@@ -29,6 +30,7 @@ private:
 	FIntPoint Size;
 	Weltall::FDisplayOptions Options;
 	double From = 0.0;
+	double GpuPassesAt = -1.0;
 	TArray<double> Updates;
 	TArray<double> Captures;
 	TArray<double> Passes;

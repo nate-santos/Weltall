@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Graphics/TexelKinds.h"
 #include "Rendering/FieldSceneRendering.h"
 
 /**
@@ -53,7 +54,16 @@ struct FScenePolygonItem
 	Weltall::EBlendMode PageBlend = Weltall::EBlendMode::Average;
 	/** An untextured polygon drawn after a drawing mode of its own: it sets the blend mode to PageBlend as a textured one does. */
 	bool bSetsBlend = false;
+	/** A semi-transparent textured polygon's kinds of texel (Weltall::TexelKinds), Any where they are not known. */
+	uint8 Kinds = Weltall::TexelKinds::Any;
 };
+
+/**
+ * Finds the kinds of texel each semi-transparent textured item reads, from the VRAM TexelKinds follows (the one the frame is
+ * drawn from, as the GPU will have it), so that its ordering leaves out a pass with none to draw and lets a polygon of one
+ * kind join its neighbours.
+ */
+void FindScenePolygonTexelKinds(const FFieldSceneDraw& Draw, TArrayView<FScenePolygonItem> Items, Weltall::FTexelKindCache& TexelKinds);
 
 /** Lays the polygons out in the order given, as the GPU's painter's order draws them. */
 void AddScenePolygonsInPaintersOrder(FFieldSceneDraw& Draw, TConstArrayView<FScenePolygonItem> Items);

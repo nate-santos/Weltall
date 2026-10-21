@@ -19,11 +19,12 @@ namespace Weltall
 			{
 				return Header.Error();
 			}
-			// A cooked image keeps no subheaders: every sector may be video, which its own header tells, and its
-			// sound sectors keep too little of their sound to be played.
+			// Every Form 1 sector may be video, which its own header tells: the releases' are marked video, a fan
+			// translation's re-encoded movies' data, and a cooked image keeps no subheaders. A cooked image's sound
+			// sectors keep too little of their sound to be played.
 			const bool bCooked = !Image.IsRaw();
 			const bool bAudio = !bCooked && (Header->Submode & CdSector::SubmodeAudio) != 0 && Header->IsForm2();
-			const bool bVideo = bCooked || ((Header->Submode & CdSector::SubmodeVideo) != 0 && !Header->IsForm2());
+			const bool bVideo = bCooked || !Header->IsForm2();
 			if (!bAudio && !bVideo)
 			{
 				continue;

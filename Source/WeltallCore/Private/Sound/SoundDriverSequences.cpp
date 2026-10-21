@@ -55,7 +55,7 @@ namespace Weltall
 		return Bank != nullptr ? Bank : (BankCount != 0 ? Banks[0] : nullptr);
 	}
 
-	const FSoundBank* FSoundDriver::FState::LoadBankSlot(const FSoundBankFile& File, int32 SpuAddress)
+	const FSoundBank* FSoundDriver::FState::LoadBankSlot(const FSoundBankFile& File, int32 SpuAddress, bool bVoices)
 	{
 		FSoundBank* Slot = nullptr;
 		for (FSoundBank& Candidate : BankSlots)
@@ -80,7 +80,7 @@ namespace Weltall
 		QueueWrite(Address, File.Samples(), false);
 		// The driver keeps its own copy of the header: a freed bank's instruments stay readable to the
 		// tracks still pointing at them until another bank takes the place, as in the original's heap.
-		*Slot = FSoundBank{File.Id(), Address, true, {}};
+		*Slot = FSoundBank{File.Id(), Address, true, {}, bVoices};
 		const auto Instruments = File.Instruments();
 		std::copy(Instruments.begin(), Instruments.end(), Slot->Instruments.begin());
 		Banks[static_cast<std::size_t>(BankCount++)] = Slot;
@@ -91,6 +91,10 @@ namespace Weltall
 	void FSoundDriver::FState::SetInstrument(uint8 Number, FSoundTrack& Track)
 	{
 		Track.Instrument = Number;
+		if (Track.Kind != ESoundKind::Music)
+		{
+			Track.Kind = Track.Bank != nullptr && Track.Bank->bVoices ? ESoundKind::Voice : ESoundKind::Effect;
+		}
 		const FSoundInstrument Instrument = Track.Bank != nullptr ? Track.Bank->Instruments[Number] : FSoundInstrument{};
 		const uint32 BankAddress = Track.Bank != nullptr ? Track.Bank->Address : 0;
 		Track.SampleStart = Instrument.SampleStart * 8 + BankAddress;
@@ -187,6 +191,7 @@ namespace Weltall
 			Track.Requests = FirstRequests;
 			Track.Slides = 0;
 			Track.EffectClass = MusicClass;
+			Track.Kind = ESoundKind::Music;
 			Track.Number = static_cast<uint8>(Number);
 			Track.EffectId = File.Id();
 			Track.Octave = MiddleOctave;

@@ -1,6 +1,7 @@
 #include "FrameProfile.h"
 
 #include "DynamicRHI.h"
+#include "Engine/Engine.h"
 #include "RHICommandList.h"
 #include "RenderGraphBuilder.h"
 #include "RenderTargetPool.h"
@@ -29,8 +30,8 @@ namespace
 	}
 }
 
-FFrameProfile::FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom)
-	: Size(InSize), Options(InOptions), From(InFrom)
+FFrameProfile::FFrameProfile(FIntPoint InSize, const Weltall::FDisplayOptions& InOptions, double InFrom, double InGpuPassesAt)
+	: Size(InSize), Options(InOptions), From(InFrom), GpuPassesAt(InGpuPassesAt)
 {
 }
 
@@ -45,6 +46,12 @@ void FFrameProfile::Draw(const IScreenFrame& Frame, double Update, double Captur
 {
 	double PassSeconds = 0.0;
 	double GpuSeconds = 0.0;
+	if (GpuPassesAt >= 0.0 && At >= GpuPassesAt)
+	{
+		// The engine's GPU profiler takes the next frame the RHI ends: this one.
+		GpuPassesAt = -1.0;
+		GEngine->Exec(nullptr, TEXT("ProfileGPU"));
+	}
 	ENQUEUE_RENDER_COMMAND(ProfiledFrame)([this, &Frame, &PassSeconds, &GpuSeconds](FRHICommandListImmediate& RHICmdList)
 	{
 		if (!Began.IsValid())

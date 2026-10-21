@@ -64,11 +64,6 @@ namespace Weltall
 		WELTALLCORE_API static std::optional<int32> FileFor(const FGameState& State, int32 Character, bool bGears);
 
 		void SetFile(int32 Slot, int32 File) { Files[static_cast<std::size_t>(Slot)] = File; }
-		/**
-		 * Whether the files unpacked from now on have the frames FEventOptions::bSpriteFramesAligned moves into place; the
-		 * disc's bytes until the field's options say so.
-		 */
-		void SetFramesAligned(bool bAligned) { bFramesAligned = bAligned; }
 		/** Unpacks the disc's file for File over the slot's buffer; the buffer's bytes past it stay. */
 		WELTALLCORE_API std::optional<FError> Unpack(int32 Slot, int32 File);
 		/** Copies one slot's whole buffer, and the file it holds, over another's. */
@@ -97,6 +92,5 @@ namespace Weltall
 		std::array<FSpriteFile, Slots> Buffers;
 		std::array<int32, Slots> Files{NoFile, NoFile, NoFile};
 		EPartySpriteKind LoadedKind = EPartySpriteKind::None;
-		bool bFramesAligned = false;
 	};
 }

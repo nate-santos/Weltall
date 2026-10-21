@@ -17,6 +17,7 @@ namespace Weltall
 {
 	struct FFieldFrame;
 	struct FFieldGearLayoutItem;
+	class FTexelKindCache;
 }
 
 /**
@@ -91,6 +92,8 @@ public:
 	uint32 FirstCorner(uint32 Polygon) const { return PolygonCorners[Polygon]; }
 	uint32 CornerCount(uint32 Polygon) const { return PolygonCorners[Polygon + 1] - PolygonCorners[Polygon]; }
 	uint32 Corners() const { return static_cast<uint32>(CornerData.Num()); }
+	/** The polygon a corner of the mesh belongs to. */
+	uint32 CornerPolygon(uint32 Corner) const { return CornerData[static_cast<int32>(Corner)].Polygon; }
 	uint32 Polygons() const { return static_cast<uint32>(PolygonData.Num()); }
 	TConstArrayView<FFieldScenePolygonState> States() const { return PolygonData; }
 
@@ -289,17 +292,18 @@ WELTALL_API void BuildFieldSceneDraw(const Weltall::FFieldScene& Scene, const We
  * Makes a displayed frame's drawing of the field from its latest tick's frame: what moves between
  * ticks (the models, the characters, the projection) drawn Alpha of the way from the tick before's
  * Previous, unless the view cut or the thing jumped; cels and colours the latest tick's. Reuses Draw's memory.
- * Returns whether it drew between the two (no cut).
+ * TexelKinds, following the VRAM the frame is drawn from exactly as the GPU will have it, lets a semi-transparent
+ * polygon's pass with no texels to draw be left out. Returns whether it drew between the two (no cut).
  */
 WELTALL_API bool BuildFieldFrameDraw(const Weltall::FFieldScene& Scene, const Weltall::FFieldFrame& Latest, const Weltall::FFieldFrame* Previous, float Alpha,
-	const FFieldSceneMesh& Mesh, const FFieldRenderOptions& Options, FFieldSceneDraw& Draw);
+	const FFieldSceneMesh& Mesh, const FFieldRenderOptions& Options, FFieldSceneDraw& Draw, Weltall::FTexelKindCache* TexelKinds = nullptr);
 
 /**
  * Moves a frame's drawing from the view it was made under (From, world to view) to another (To): every object's
  * rows, so the scene and what is placed in view space with it are shown as To sees them. The player's moves of the
  * view between two frames, shown at once.
  */
-WELTALL_API void MoveFieldSceneView(FFieldSceneDraw& Draw, const Weltall::FGteMatrix& From, const Weltall::FGteMatrix& To);
+WELTALL_API void MoveFieldSceneView(FFieldSceneDraw& Draw, const Weltall::FAffine& From, const Weltall::FAffine& To);
 
 /**
  * Moves a field scene drawn under Latest's view, Alpha of the way from Previous's where it blended, to the same views

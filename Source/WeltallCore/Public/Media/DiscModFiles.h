@@ -56,6 +56,9 @@ namespace Weltall
 	class FDiscModFiles
 	{
 	public:
+		/** The second disc's index has five movies fewer than the first's: every record after them is five lower. */
+		static constexpr int32 SecondDiscShift = 5;
+
 		/**
 		 * Files for the disc whose index is Index, played as disc Disc (1 or 2). A file's record is the first disc's
 		 * number: the second disc's index, which has five movies fewer, has it five records lower. Files whose record

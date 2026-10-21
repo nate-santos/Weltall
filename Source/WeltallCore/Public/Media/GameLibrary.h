@@ -27,14 +27,18 @@ namespace Weltall
 	public:
 		/**
 		 * Opens every disc image in the folder and its subfolders (.cue sheets, .chd files, and .bin, .iso or .img
-		 * files no sheet names) and keeps the ones it recognizes. What it cannot use, it notes: an image it cannot read,
-		 * a disc of another game or release, a disc image of a kind it does not read.
+		 * files no sheet names) and keeps the ones it recognizes, a patched copy of a release (a fan translation) in
+		 * place of the original. What it cannot use, it notes: an image it cannot read, a disc of another game or
+		 * release, a disc image of a kind it does not read, an original a patched copy replaces.
 		 */
 		WELTALLCORE_API static FGameLibrary Scan(const std::filesystem::path& Folder);
 
 		/** The disc of a release, or null when the folder has none. */
 		WELTALLCORE_API const FIso9660* Find(EDiscRelease Release) const;
-		/** English game data: the USA release when present, otherwise the supported undub. Number is one or two. */
+		/**
+		 * The game data played: the USA release (or the patched copy of it found in its place) when present, otherwise
+		 * the supported undub. Number is one or two.
+		 */
 		WELTALLCORE_API const FIso9660* PlayableDisc(int32 Number) const;
 
 		/** The file a release's disc was found in; empty when there is none. */
@@ -55,6 +59,8 @@ namespace Weltall
 		{
 			std::unique_ptr<FIso9660> Disc;
 			std::filesystem::path File;
+			/** A patched copy of its release (DiscIdentity's bPatched), which plays in place of the original. */
+			bool bPatched = false;
 		};
 
 		std::map<EDiscRelease, FFound> Discs;

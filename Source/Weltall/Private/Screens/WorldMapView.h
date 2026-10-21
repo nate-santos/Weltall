@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Graphics/TexelKinds.h"
 #include "Rendering/WorldMapRendering.h"
 #include "Screens/GameScreen.h"
 
@@ -75,6 +76,8 @@ private:
 	mutable FFieldSceneDraw BuiltDraw;
 	mutable FWorldMapDrawLayout BuiltLayout;
 	mutable bool bBuiltStale = true;
+	/** What the drawing knows of the texels VRAM holds. */
+	mutable Weltall::FTexelKindCache TexelKinds;
 	FWorldMapRenderOptions Options;
 	TSharedRef<FVramTexture> Vram;
 	/** The field scene's passes draw a scene's mesh and the frame's own polygons; the world map's are all its own. */

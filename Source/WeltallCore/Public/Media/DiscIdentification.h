@@ -3,6 +3,7 @@
 #include "Foundation/Result.h"
 #include "Media/Iso9660.h"
 
+#include <span>
 #include <string_view>
 
 namespace Weltall
@@ -33,11 +34,21 @@ namespace Weltall
 		/** 1 or 2: which of the game's two discs this is. */
 		uint8 DiscNumber;
 		const char* Title;
+		/**
+		 * The release's data patched, as a translation patches it: the executable's code is the release's byte for
+		 * byte, and only its file index (where each file lies, its size) and the boot notice's picture are its own.
+		 */
+		bool bPatched = false;
 	};
 
 	/**
 	 * Recognizes a disc by its boot executable: the file name gives the disc, the file's hash gives
 	 * the exact release. Different rips of the same disc therefore match, whatever their other files.
+	 * A disc whose executable differs from the USA release's only where a patch of the game's data
+	 * rewrites it is that release, patched.
 	 */
 	WELTALLCORE_API TResult<FDiscIdentity> IdentifyDisc(const FIso9660& Disc);
+
+	/** IdentifyDisc of a boot executable by its name on the disc and its file's bytes. */
+	WELTALLCORE_API TResult<FDiscIdentity> IdentifyExecutable(std::string_view BootPath, std::span<const uint8> Executable);
 }

@@ -53,6 +53,13 @@ namespace Weltall
 		Reset,
 	};
 
+	/** What the game found that the pages' rows follow: the display's window sizes, and the voices and subtitles given. */
+	struct FSettingsContext
+	{
+		FDisplayModes Display;
+		FSoundSources Sound;
+	};
+
 	/** A row of a page as the screen shows it: its label and value, and three lines on what it does. */
 	struct FSettingsRow
 	{
@@ -76,26 +83,32 @@ namespace Weltall
 	{
 	public:
 		WELTALLCORE_API static std::string_view Title(ESettingsPage Page);
-		/** The page's rows; the Display page has its window size's row only where Modes offers sizes. */
-		WELTALLCORE_API static int32 RowCount(ESettingsPage Page, const FDisplayModes& Modes = {});
+		/**
+		 * The page's rows; the Display page has its window's rows only where the display offers sizes, the Sound page its
+		 * subtitles' source only where some are given.
+		 */
+		WELTALLCORE_API static int32 RowCount(ESettingsPage Page, const FSettingsContext& Context = {});
 
-		/** Row of Page as Settings has it; bCustomPicked shows the Fixes page's preset as Custom whatever the fixes. */
+		/**
+		 * Row of Page as Settings has it; bCustomPicked shows the Fixes page's preset as Custom whatever the fixes. A choice
+		 * the game was given nothing to choose between for shows what there is, and in its help why.
+		 */
 		WELTALLCORE_API static FSettingsRow Row(ESettingsPage Page, int32 Row, const FPlayerSettings& Settings, bool bCustomPicked = false,
-			const FDisplayModes& Modes = {});
+			const FSettingsContext& Context = {});
 
 		/**
 		 * Left (-1) or Right (+1) on a row: its setting moved to the previous or next choice, wrapping, a
 		 * number stepped within its range. False where nothing changed. On the preset row, Custom keeps the
 		 * fixes as they are and sets bCustomPicked; the other two set every fix and clear it. The window's
-		 * size goes to the next smaller or larger of Modes', from the window's own until one is chosen. A
+		 * size goes to the next smaller or larger of the display's, from the window's own until one is chosen. A
 		 * CRT part changes the look shown (ShownCrtLook) into the player's own, and the filter to Custom.
 		 */
 		WELTALLCORE_API static bool Step(ESettingsPage Page, int32 Row, int32 Direction, FPlayerSettings& Settings, bool& bCustomPicked,
-			const FDisplayModes& Modes = {});
+			const FSettingsContext& Context = {});
 
 		/** Confirm on a row. */
 		WELTALLCORE_API static ESettingsAction Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked,
-			const FDisplayModes& Modes = {});
+			const FSettingsContext& Context = {});
 
 		/** The preset the fixes match, Custom when they match neither. */
 		WELTALLCORE_API static EFixesPreset Preset(const FGameFixes& Fixes);

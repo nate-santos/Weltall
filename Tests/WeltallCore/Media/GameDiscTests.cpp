@@ -3,6 +3,9 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <utility>
+#include <vector>
+
 using namespace Weltall;
 
 namespace
@@ -37,4 +40,38 @@ TEST_CASE("Disc 2 is identified and holds only its boot files", "[Media][Content
 	REQUIRE(Identity);
 	CHECK(Identity->DiscNumber == 2);
 	CheckBootFiles(*Disc, "SLUS_006.69");
+}
+
+TEST_CASE("A disc whose program differs only where a patch of the game's data rewrites it is the release, patched", "[Media][Content]")
+{
+	for (const auto& [Release, Name] : {std::pair{EDiscRelease::UsaDisc1, "SLUS_006.64"}, std::pair{EDiscRelease::UsaDisc2, "SLUS_006.69"}})
+	{
+		REQUIRE_DISC(Disc, Release);
+		const auto Program = Disc->ReadFile(Name);
+		REQUIRE(Program);
+		const auto At = [](uint32 Address) { return FPsxExecutable::HeaderSize + (Address - 0x80010000); };
+		const auto Original = IdentifyExecutable(Name, *Program);
+		REQUIRE(Original);
+		CHECK(Original->Release == Release);
+		CHECK_FALSE(Original->bPatched);
+		// A translation moves and resizes files (their index records) and redraws the boot notice's picture.
+		std::vector<uint8> Translated = *Program;
+		Translated[At(0x80011000)] ^= 0xFF;
+		Translated[At(0x80018003)] ^= 0xFF;
+		Translated[At(0x8004EABC)] ^= 0xFF;
+		Translated.back() ^= 0xFF;
+		const auto Patched = IdentifyExecutable(Name, Translated);
+		REQUIRE(Patched);
+		CHECK(Patched->Release == Release);
+		CHECK(Patched->DiscNumber == Original->DiscNumber);
+		CHECK(Patched->bPatched);
+		// Its code changed, or the directory table after the index, it is a release Weltall does not know.
+		std::vector<uint8> Coded = Translated;
+		Coded[At(0x80019524)] ^= 0x01;
+		CHECK_FALSE(IdentifyExecutable(Name, Coded));
+		std::vector<uint8> Directories = Translated;
+		Directories[At(0x80018004)] ^= 0xFF;
+		CHECK_FALSE(IdentifyExecutable(Name, Directories));
+		CHECK_FALSE(IdentifyExecutable(Release == EDiscRelease::UsaDisc1 ? "SLUS_006.69" : "SLUS_006.64", Translated));
+	}
 }

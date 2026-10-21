@@ -53,6 +53,8 @@ namespace Weltall
 		virtual void UnloadBattleBank() = 0;
 		/** A `wds` bank into sound memory as the battle's, the one UnloadBattleBank gives up. */
 		virtual void LoadBattleBank(std::span<const uint8> Wds) = 0;
+		/** As LoadBattleBank, for a bank of recorded voices (one the voice track's disc gives), which the Voices volume plays. */
+		virtual void LoadBattleVoiceBank(std::span<const uint8> Wds) = 0;
 		/** The battle's end: its own bank loaded as the kernel's gear battle bank again, which the programs after it keep. */
 		virtual void LoadGearBattleBank(std::span<const uint8> Wds) = 0;
 		/** The driver holds a bank of the id already. */

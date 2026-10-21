@@ -59,6 +59,7 @@ namespace Weltall::Testing
 		void UnloadGearBattleBank() override {}
 		void UnloadBattleBank() override {}
 		void LoadBattleBank(std::span<const uint8>) override {}
+		void LoadBattleVoiceBank(std::span<const uint8>) override {}
 		void LoadGearBattleBank(std::span<const uint8>) override {}
 		bool HasBank(uint16) override { return false; }
 		void PauseSound() override { Events.push_back({"pause", {}}); }

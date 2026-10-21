@@ -134,6 +134,11 @@ public:
 	void SetMenuAssets(Weltall::IMenuAssets* InAssets);
 	/** The mods the game found, which the options screen's Modding page lists. */
 	void SetMenuMods(Weltall::FMenuMods InMods);
+	/**
+	 * Perfect Works Build's movie subtitles, which every session of the screen is given (null: none); bInUse: the game
+	 * plays with the mod. They must outlive the screen.
+	 */
+	void SetPerfectWorksSubtitles(std::array<const Weltall::FPerfectWorksSubtitles*, 2> Subtitles, bool bInUse);
 
 	/** What the display offers the options screen's Display page, asked as the screen opens. None: the page offers no window sizes. */
 	void SetDisplayModes(FDisplayModesAsked InDisplayModes);
@@ -228,6 +233,8 @@ private:
 	Weltall::IMenuKeys* MenuKeys = nullptr;
 	Weltall::IMenuAssets* MenuAssets = nullptr;
 	Weltall::FMenuMods MenuMods;
+	std::array<const Weltall::FPerfectWorksSubtitles*, 2> PerfectWorksSubtitles{};
+	bool bPerfectWorksInUse = false;
 	FDisplayModesAsked DisplayModes;
 	FQuit Quit;
 	FStopped Stopped;

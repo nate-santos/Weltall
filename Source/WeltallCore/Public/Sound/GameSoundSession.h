@@ -50,9 +50,9 @@ namespace Weltall
 
 		/**
 		 * The player's choices for the sound, at once: the output (set only when it changes, as the
-		 * title's option sets it), the driver's and the field music's fixes.
+		 * title's option sets it), the volumes, the driver's and the field music's fixes.
 		 */
-		WELTALLCORE_API void Apply(ESoundOutput Output, const FSoundDriverOptions& DriverOptions, const FFieldMusicOptions& MusicOptions);
+		WELTALLCORE_API void Apply(ESoundOutput Output, const FSoundVolumes& Volumes, const FSoundDriverOptions& DriverOptions, const FFieldMusicOptions& MusicOptions);
 
 	private:
 		FGameSoundSession() = default;

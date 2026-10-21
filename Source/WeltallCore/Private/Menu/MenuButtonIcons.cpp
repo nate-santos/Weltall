@@ -177,6 +177,20 @@ namespace Weltall
 			{
 				continue;
 			}
+			if (Icon.Role >= MenuPictureRole)
+			{
+				const FMenuSheetPicture* SheetPicture = Sheet.Picture(Icon.Role - MenuPictureRole);
+				const FPlaced* Picture = SheetPicture != nullptr ? PlacePicture(*SheetPicture) : nullptr;
+				if (Picture != nullptr)
+				{
+					const EBlendMode Blend = Drawn.Texture->Page.Blend;
+					Drawn.Texture = FDrawTexture{PicturesVram, FTexturePage::FromAttribute(MenuGpu::TexturePage(DirectDepth, 0, Picture->PageX, Picture->PageY)), {}};
+					Drawn.Texture->Page.Blend = Blend;
+					MoveTexels(Drawn, static_cast<float>(Picture->U), static_cast<float>(Picture->V), static_cast<float>(Picture->Width),
+						static_cast<float>(Picture->Height));
+				}
+				continue;
+			}
 			EButtonIconSet Set = EButtonIconSet::Keyboard;
 			std::string_view Symbol;
 			if (Icon.Role >= MenuKeyRole)
@@ -419,7 +433,36 @@ namespace Weltall
 				return &Known;
 			}
 		}
-		FMenuIconPicture Picture = DrawMenuButtonIcon(Set, Icon, Slot);
+		FPlaced* Made = Shelve(DrawMenuButtonIcon(Set, Icon, Slot));
+		if (Made != nullptr)
+		{
+			Made->Set = Set;
+			Made->Icon = std::string(Icon);
+			Made->Slot = Slot;
+		}
+		return Made;
+	}
+
+	const FMenuButtonIcons::FPlaced* FMenuButtonIcons::PlacePicture(const FMenuSheetPicture& Own)
+	{
+		for (const FPlaced& Known : Placed)
+		{
+			if (Known.bSheetPicture && Known.PictureKey == Own.Key)
+			{
+				return &Known;
+			}
+		}
+		FPlaced* Made = Shelve({Own.Width, Own.Height, Own.Texels});
+		if (Made != nullptr)
+		{
+			Made->bSheetPicture = true;
+			Made->PictureKey = Own.Key;
+		}
+		return Made;
+	}
+
+	FMenuButtonIcons::FPlaced* FMenuButtonIcons::Shelve(FMenuIconPicture Picture)
+	{
 		if (Picture.Width > PageSize || Picture.Height > PageSize)
 		{
 			return nullptr;
@@ -442,9 +485,6 @@ namespace Weltall
 			return nullptr;
 		}
 		FPlaced& Made = Placed.emplace_back();
-		Made.Set = Set;
-		Made.Icon = std::string(Icon);
-		Made.Slot = Slot;
 		Made.PageX = Page % PagesAcross * PageSize;
 		Made.PageY = Page / PagesAcross * PageSize;
 		Made.U = ShelfX;

@@ -414,7 +414,7 @@ namespace Weltall
 			if (Show.Audio != nullptr)
 			{
 				Show.Audio->RegisterEffects(VoiceSounds);
-				Show.Audio->LoadBattleBank(*Bank);
+				Show.Audio->LoadBattleVoiceBank(*Bank);
 				Show.Audio->PlayEffect(VoiceSound);
 			}
 			Routine.Resume = 1;

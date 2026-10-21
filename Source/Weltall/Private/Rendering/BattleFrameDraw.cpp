@@ -380,7 +380,7 @@ namespace
 			}
 		}
 
-		const TArray<FScenePolygonItem>& Items() const { return AddedItems; }
+		TArray<FScenePolygonItem>& Items() { return AddedItems; }
 
 	private:
 		/**
@@ -539,7 +539,7 @@ namespace
 
 	/** The drawing of the links given of the frame's order, with the frame's projection. */
 	void BuildBattleDraw(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, const FFieldRenderOptions& Options, FBattleLinks Links,
-		bool bDepthBuffer, FFieldSceneDraw& Draw)
+		bool bDepthBuffer, FFieldSceneDraw& Draw, Weltall::FTexelKindCache* TexelKinds)
 	{
 		ResetBattleDraw(Draw);
 		Draw.Background = FLinearColor::Black;
@@ -605,6 +605,10 @@ namespace
 				Builder.AddModelPolygon(Frame.ModelPolygons[Link.Index]);
 			}
 		}
+		if (TexelKinds != nullptr)
+		{
+			FindScenePolygonTexelKinds(Draw, Builder.Items(), *TexelKinds);
+		}
 		if (Draw.bDepthBuffer)
 		{
 			AddScenePolygonsUnderDepthRule(Draw, Builder.Items());
@@ -641,13 +645,14 @@ namespace
 	}
 }
 
-void BuildBattleFrameDraw(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, const FFieldRenderOptions& Options, FBattleFrameDraw& Draw)
+void BuildBattleFrameDraw(const Weltall::FBattleShowFrame& Frame, const Weltall::FBattleFrameBlend* Blend, const FFieldRenderOptions& Options, FBattleFrameDraw& Draw,
+	Weltall::FTexelKindCache* TexelKinds)
 {
-	BuildBattleDraw(Frame, Blend, Options, BattleSceneLinks(Frame), Options.Sorting != EFieldSorting::PaintersOrder, Draw.Scene);
+	BuildBattleDraw(Frame, Blend, Options, BattleSceneLinks(Frame), Options.Sorting != EFieldSorting::PaintersOrder, Draw.Scene, TexelKinds);
 	BuildBattleFade(Frame, Blend, Options.BattleFlashes, Draw.Fade);
 	// A layer has no depth: over it, the table's order alone.
-	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, false), false, Draw.OverFade);
-	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, true), false, Draw.OverHud);
+	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, false), false, Draw.OverFade, TexelKinds);
+	BuildBattleDraw(Frame, Blend, Options, BattleOverlayLinks(Frame, true), false, Draw.OverHud, TexelKinds);
 }
 
 void AddBattleFramePasses(FRDGBuilder& GraphBuilder, const FFieldSceneMesh& Mesh, const FVramTexture& Vram, const FVramTexture& IconVram,

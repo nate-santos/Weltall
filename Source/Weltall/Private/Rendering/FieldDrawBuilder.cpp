@@ -1,5 +1,7 @@
 #include "FieldDrawBuilder.h"
 
+#include "Graphics/TextureUpscale.h"
+
 namespace
 {
 	/** Adds a stretch of the order to the runs, joined to the last when it continues it with the same state. */
@@ -32,6 +34,33 @@ namespace
 }
 
 FFieldDrawBuilder::FItem FFieldDrawBuilder::Describe(const Weltall::FFieldDrawItem& Item) const
+{
+	FItem Described = DescribeShape(Item);
+	Described.Kinds = TexelKindsOf(Described);
+	return Described;
+}
+
+uint8 FFieldDrawBuilder::TexelKindsOf(const FItem& Item) const
+{
+	if (TexelKinds == nullptr || !Item.bSemiTransparent || !Item.bTextured || Item.CornerCount == 0)
+	{
+		return Weltall::TexelKinds::Any;
+	}
+	const uint32 MeshCorners = Mesh.Corners();
+	const uint32 Polygon = Item.FirstCorner < MeshCorners ? Mesh.CornerPolygon(Item.FirstCorner) : Draw.DynamicCorners[Item.FirstCorner - MeshCorners].Polygon;
+	const FFieldScenePolygonState& State = Polygon < Mesh.Polygons() ? Mesh.States()[Polygon] : Draw.DynamicPolygons[Polygon - Mesh.Polygons()];
+	if (State.Texture == Weltall::NoTextureView)
+	{
+		return Weltall::TexelKinds::Any;
+	}
+	const EFieldTextureFilter Filter = (State.Flags & FieldPolygonFlags::Sprite) != 0 ? Draw.SpriteFilter : Draw.Filter;
+	const Weltall::FTexelRect Rect{static_cast<uint8>(State.TexelMin), static_cast<uint8>(State.TexelMin >> 8), static_cast<uint8>(State.TexelMax),
+		static_cast<uint8>(State.TexelMax >> 8)};
+	// A window's texels wrap: only its CLUT tells.
+	return TexelKinds->Kinds(State.Texture, Rect, Filter == EFieldTextureFilter::Upscaled ? Weltall::TextureUpscale::Reach : 0, (State.Flags & FieldPolygonFlags::Window) != 0);
+}
+
+FFieldDrawBuilder::FItem FFieldDrawBuilder::DescribeShape(const Weltall::FFieldDrawItem& Item) const
 {
 	if (Item.Kind == Weltall::EFieldDrawKind::Gear)
 	{
@@ -140,12 +169,21 @@ void FFieldDrawBuilder::AddLayered(const FItem& Item, Weltall::EBlendMode Untext
 	{
 		return;
 	}
-	if (!Item.bSemiTransparent)
+	if (!HasBlendedTexels(Item))
 	{
-		Add(Item, EFieldPass::Opaque, Weltall::EBlendMode::Average, Depth, bDepthWrite, true);
+		if (HasOpaqueTexels(Item))
+		{
+			Add(Item, EFieldPass::Opaque, Weltall::EBlendMode::Average, Depth, bDepthWrite, true);
+		}
 	}
 	else if (Item.bTextured)
 	{
+		if (!HasOpaqueTexels(Item))
+		{
+			// Its blended texels alone, which join the blended texels drawn just before them.
+			Add(Item, EFieldPass::SemiTransparentTexels, Item.PageBlend, Depth, false, true);
+			return;
+		}
 		const uint32 First = Add(Item, EFieldPass::PlainTexels, Weltall::EBlendMode::Average, Depth, bDepthWrite, false);
 		AddRun(Draw.Runs, {First, Item.CornerCount, static_cast<uint8>(EFieldPass::SemiTransparentTexels), Item.PageBlend, Depth, false, Item.Rule}, false);
 	}
@@ -179,9 +217,9 @@ void FFieldDrawBuilder::Depth(const TItems& Items, bool bSceneryByDepth)
 	for (const auto& Entry : Items)
 	{
 		const FItem Item = DescribeForDepth(ToItem(Entry), bSceneryByDepth);
-		if (IsMarking(Item) || (Item.Rule == EFieldDepthRule::Scenery && HasOpaqueTexels(Item)))
+		if ((IsMarking(Item) || Item.Rule == EFieldDepthRule::Scenery) && HasOpaqueTexels(Item))
 		{
-			Add(Item, Item.bSemiTransparent ? EFieldPass::PlainTexels : EFieldPass::Opaque, Weltall::EBlendMode::Average, EFieldRunDepth::Mask, true, true);
+			Add(Item, PlainPass(Item), Weltall::EBlendMode::Average, EFieldRunDepth::Mask, true, true);
 		}
 	}
 	// Then everything in the painter's order: outside the marked pixels exactly as the original draws
@@ -198,12 +236,17 @@ void FFieldDrawBuilder::Depth(const TItems& Items, bool bSceneryByDepth)
 		{
 			Current = Item.PageBlend;
 		}
-		const EFieldPass Plain = Item.bSemiTransparent ? EFieldPass::PlainTexels : EFieldPass::Opaque;
-		if (Item.bSprite)
+		const EFieldPass Plain = PlainPass(Item);
+		if (Item.bSprite && !HasOpaqueTexels(Item))
+		{
+			// Nothing of it marks or stands at its depth: its blended texels alone.
+			Add(Item, EFieldPass::SemiTransparentTexels, Item.PageBlend, EFieldRunDepth::Masked, false, false);
+		}
+		else if (Item.bSprite)
 		{
 			// Against the depth, then its own pushed back by the margin, so what the order draws after covers it unless clearly behind.
 			const uint32 First = Add(Item, Plain, Weltall::EBlendMode::Average, EFieldRunDepth::InsideMask, false, false);
-			if (Item.bSemiTransparent)
+			if (HasBlendedTexels(Item))
 			{
 				AddRun(Draw.Runs, {First, Item.CornerCount, static_cast<uint8>(EFieldPass::SemiTransparentTexels), Item.PageBlend, EFieldRunDepth::Masked, false},
 					false);
@@ -213,8 +256,8 @@ void FFieldDrawBuilder::Depth(const TItems& Items, bool bSceneryByDepth)
 		else if (IsMarking(Item))
 		{
 			// A model's opaque texels against its prepass's depth, which within the margin lets the order decide among the models.
-			const uint32 First = Add(Item, Plain, Weltall::EBlendMode::Average, EFieldRunDepth::InsideMask, false, !Item.bSemiTransparent);
-			if (Item.bSemiTransparent)
+			const uint32 First = Add(Item, Plain, Weltall::EBlendMode::Average, EFieldRunDepth::InsideMask, false, !HasBlendedTexels(Item));
+			if (HasBlendedTexels(Item))
 			{
 				AddRun(Draw.Runs,
 					{First, Item.CornerCount, static_cast<uint8>(EFieldPass::SemiTransparentTexels), Item.PageBlend, EFieldRunDepth::Masked, false, Item.Rule},

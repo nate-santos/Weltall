@@ -25,12 +25,17 @@ namespace Weltall
 
 	const FSoundBank* FSoundDriver::LoadBank(const FSoundBankFile& File, int32 SpuAddress)
 	{
-		return State->LoadBankSlot(File, SpuAddress);
+		return State->LoadBankSlot(File, SpuAddress, false);
+	}
+
+	const FSoundBank* FSoundDriver::LoadVoiceBank(const FSoundBankFile& File, int32 SpuAddress)
+	{
+		return State->LoadBankSlot(File, SpuAddress, true);
 	}
 
 	const FSoundBank* FSoundDriver::LoadNewBank(const FSoundBankFile& File, int32 SpuAddress)
 	{
-		return State->FindBank(File.Id()) != nullptr ? nullptr : State->LoadBankSlot(File, SpuAddress);
+		return State->FindBank(File.Id()) != nullptr ? nullptr : State->LoadBankSlot(File, SpuAddress, false);
 	}
 
 	void FSoundDriver::UnloadBank(const FSoundBank& Bank)
@@ -61,6 +66,11 @@ namespace Weltall
 	uint32 FSoundDriver::BankAddress(const FSoundBank& Bank)
 	{
 		return Bank.Address;
+	}
+
+	ESoundKind FSoundDriver::VoiceKind(int32 Voice) const
+	{
+		return Voice >= 0 && Voice < VoiceCount ? State->VoiceKinds[static_cast<std::size_t>(Voice)] : ESoundKind::Effect;
 	}
 
 	bool FSoundDriver::RegisterEffects(const FSoundEffectFile& File)

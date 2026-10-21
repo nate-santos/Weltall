@@ -3,6 +3,8 @@
 #include "Foundation/LittleEndian.h"
 #include "Graphics/TextureRegion.h"
 #include "Menu/MenuButtonIcons.h"
+#include "Text/MesFont.h"
+#include "Text/MesGlyphs.h"
 
 #include <algorithm>
 
@@ -14,6 +16,12 @@ namespace Weltall
 
 		constexpr std::size_t PartSize = 0x1C;
 		constexpr std::size_t FirstPart = 4;
+
+		/** A drawn part's role: its picture's where it shows one of the sheet's own, else the frame's Role. */
+		uint16 PartRole(const FMenuSpritePart& Part, uint16 Role)
+		{
+			return Part.Picture >= 0 ? static_cast<uint16>(MenuPictureRole + Part.Picture) : Role;
+		}
 
 		/** An offset or size times a scale in 4.12, rounded toward zero as the kernel's arithmetic shift after its bias does. */
 		int16 Scaled(int32 Value, int32 Scale)
@@ -82,6 +90,99 @@ namespace Weltall
 		Frames[static_cast<std::size_t>(Number)] = std::move(Parts);
 	}
 
+	int16 FMenuSpriteSheet::AddPicture(FMenuSheetPicture Picture)
+	{
+		// FNV-1a over the size and the texels.
+		uint64 Key = 0xCBF29CE484222325ull;
+		const auto Mix = [&Key](uint64 Value)
+		{
+			Key = (Key ^ Value) * 0x100000001B3ull;
+		};
+		Mix(static_cast<uint64>(Picture.Width));
+		Mix(static_cast<uint64>(Picture.Height));
+		for (const uint16 Texel : Picture.Texels)
+		{
+			Mix(Texel);
+		}
+		Picture.Key = Key;
+		Pictures.push_back(std::move(Picture));
+		return static_cast<int16>(Pictures.size() - 1);
+	}
+
+	const FMenuSheetPicture* FMenuSpriteSheet::Picture(int32 Number) const
+	{
+		return Number >= 0 && Number < static_cast<int32>(Pictures.size()) ? &Pictures[static_cast<std::size_t>(Number)] : nullptr;
+	}
+
+	FMenuSheetPicture MenuLetteredWord(const FMesFont& Font, std::span<const uint16> Colours, std::string_view Word)
+	{
+		struct FGlyph
+		{
+			FMesFont::FCell Cell{};
+			/** The columns it inks, outline included; none (First past Last) for a space. */
+			int32 First = FMesFont::CellWidth;
+			int32 Last = -1;
+			int32 X = 0;
+		};
+		std::vector<FGlyph> Glyphs;
+		int32 Width = 0;
+		bool bInked = false;
+		for (const char Character : Word)
+		{
+			const FMesCode Code = MesCodeOfCharacter(Character).value_or(*MesCodeOfCharacter(' '));
+			FGlyph& Glyph = Glyphs.emplace_back();
+			Glyph.Cell = Font.Cell(Code);
+			for (int32 Column = 0; Column < FMesFont::CellWidth; ++Column)
+			{
+				for (int32 Row = 0; Row < FMesFont::CellHeight; ++Row)
+				{
+					if (Glyph.Cell[static_cast<std::size_t>(Row * FMesFont::CellWidth + Column)] != 0)
+					{
+						Glyph.First = std::min(Glyph.First, Column);
+						Glyph.Last = std::max(Glyph.Last, Column);
+					}
+				}
+			}
+			if (Glyph.Last < 0)
+			{
+				// A space keeps the font's advance.
+				Width += Font.WidthUnits(Code) * 4;
+				bInked = false;
+				continue;
+			}
+			// Its first inked column over the last one inked before it: the outlines' column shared.
+			Glyph.X = (bInked ? Width - 1 : Width) - Glyph.First;
+			Width = Glyph.X + Glyph.Last + 1;
+			bInked = true;
+		}
+		FMenuSheetPicture Picture;
+		Picture.Width = Width;
+		Picture.Height = FMesFont::CellHeight;
+		// The cells' values first, then their colours in their place.
+		Picture.Texels.assign(static_cast<std::size_t>(Picture.Width * Picture.Height), 0);
+		for (const FGlyph& Glyph : Glyphs)
+		{
+			for (int32 Row = 0; Row < FMesFont::CellHeight; ++Row)
+			{
+				for (int32 Column = Glyph.First; Column <= Glyph.Last; ++Column)
+				{
+					const uint16 Value = Glyph.Cell[static_cast<std::size_t>(Row * FMesFont::CellWidth + Column)];
+					uint16& At = Picture.Texels[static_cast<std::size_t>(Row * Picture.Width + Glyph.X + Column)];
+					// Where two glyphs meet, a body pixel stays over the other's outline.
+					if (Value != 0 && !(Value == 2 && (At == 1 || At == 3)))
+					{
+						At = Value;
+					}
+				}
+			}
+		}
+		for (uint16& Texel : Picture.Texels)
+		{
+			Texel = Texel != 0 && Texel < Colours.size() ? Colours[Texel] : uint16{0};
+		}
+		return Picture;
+	}
+
 	FMenuSpriteTexture FMenuSpriteSheet::Texture(int32 Number) const
 	{
 		const std::span<const FMenuSpritePart> Parts = Frame(Number);
@@ -131,7 +232,7 @@ namespace Weltall
 		for (const FMenuSpritePart& Part : Parts)
 		{
 			FMenuPrimitive Quad;
-			Quad.ButtonRole = &Part == &Parts.back() ? Role : 0;
+			Quad.ButtonRole = PartRole(Part, &Part == &Parts.back() ? Role : 0);
 			Quad.ButtonSlot = MenuIconSlotOf(Role);
 			Quad.Code = MenuGpu::TexturedQuad | MenuGpu::RawTexture;
 			Quad.Page = MenuGpu::TexturePage(Part.Depth, 0, Part.ImageX, Part.ImageY);
@@ -189,7 +290,7 @@ namespace Weltall
 		for (const FMenuSpritePart& Part : Parts)
 		{
 			FMenuPrimitive Quad;
-			Quad.ButtonRole = &Part == &Parts.back() ? Role : 0;
+			Quad.ButtonRole = PartRole(Part, &Part == &Parts.back() ? Role : 0);
 			Quad.ButtonSlot = MenuIconSlotOf(Role);
 			Quad.Code = MenuGpu::TexturedQuad | MenuGpu::RawTexture;
 			Quad.Page = MenuGpu::TexturePage(Part.Depth, 0, Part.ImageX, Part.ImageY);
@@ -253,7 +354,7 @@ namespace Weltall
 		{
 			for (const FMenuSpritePart& Part : Sheet.Frame(Frame))
 			{
-				if (Part.Width <= 0 || Part.Height <= 0)
+				if (Part.Width <= 0 || Part.Height <= 0 || Part.Picture >= 0)
 				{
 					continue;
 				}

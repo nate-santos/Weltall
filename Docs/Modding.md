@@ -12,9 +12,13 @@ uses the voices of the version you're playing, which is the USA release when bot
 you chose aren't available, you'll hear the ones from the version you're playing. A change applies from the
 next battle or movie.
 
-The undub's subtitles come from its discs. **Options → Sound → Subtitles** has three choices: Auto shows
-them whenever a movie plays the Japanese voices, On also shows them with the English voices, and Off hides
-them. On needs the undub disc for the disc you're playing in `Games`.
+Movie subtitles come from the undub's discs or from Perfect Works Build (see below). **Options → Sound → Subtitles**
+has three choices: Auto shows them whenever a movie plays the Japanese voices, On also shows them with the English
+voices, and Off hides them. The Japanese voices in movies need the undub disc for the disc you're playing in `Games`.
+
+When you have both, **Subtitles from** picks whose translation you read. Auto uses Perfect Works Build's while the
+mod is on, and the undub's otherwise. If only one of them has subtitles for the disc you're playing, the game uses
+that one. With neither, the Subtitles row reads None found, and its help says what to add.
 
 The game recognizes the undub by the SHA-1 hashes of its boot files, not by file names:
 
@@ -25,6 +29,16 @@ The game recognizes the undub by the SHA-1 hashes of its boot files, not by file
 
 Japanese retail discs use a different text encoding, different scripts and different movie numbering. In this
 version you can dump their files, but they can't supply Japanese text or voices.
+
+## Fan translations
+
+A fan translation that only changes the game's text, pictures and movies plays like the USA release it was made
+from, such as the Spanish translation by Romhack Hispano. The game checks that the patched boot file runs the same
+program as the USA one. It doesn't need to know the translation. Put the patched images in `Games`. If the original
+USA images are there too, the patched ones play. Weltall's own screens, such as Options, stay in English.
+
+Translations that also change the game's program aren't supported yet. The French translation by Atelier
+Traduction is one: it adds a font with letters of different widths, which Weltall doesn't draw yet.
 
 ## Dumping disc files
 
@@ -331,6 +345,10 @@ files as they are.
 
 The experience, gold and encounter options, faster text, battle flashes, Japanese voices and controls are Weltall's
 own settings, so they work with or without the mod.
+
+The mod's movie subtitles are a choice on the Sound page, **Subtitles from**, which works even while the mod is off.
+They show its own wording and timing over the movies, as the mod's FMV undub does. Japanese voices in the movies still
+come from the undub's discs.
 
 The fixes the mod makes in the program code are rows of Weltall's Fixes page, on by default with or without the mod:
 Billy's ether guns, Deus's first fight, the shop pointer, EP in Member Change, names ending in s, Def UP on foot and

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Battle/Show/BattleFrameBlend.h"
+#include "Graphics/TexelKinds.h"
 #include "Menu/MenuButtonIcons.h"
 #include "Menu/MenuDrawing.h"
 #include "Rendering/BattleTransitionRendering.h"
@@ -76,6 +77,8 @@ private:
 	TSharedRef<FVramTexture> IconVram;
 	/** Frames handed out; one the rendering thread no longer holds is filled again. */
 	mutable TArray<TSharedRef<FBattleScreenFrame>> DisplayFrames;
+	/** What the frames' drawing knows of the texels VRAM holds. */
+	mutable Weltall::FTexelKindCache TexelKinds;
 	/** The picture of the screen before the battle, kept while its transition runs, and the transition's drawing. */
 	TSharedPtr<FFieldCoverPicture> ScreenBefore;
 	mutable FBattleTransitionDrawBuilder Transition;

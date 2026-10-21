@@ -157,7 +157,7 @@ TSharedPtr<const IScreenFrame> FMenuView::Capture(TSharedPtr<const IScreenFrame>
 	const std::size_t Now = static_cast<std::size_t>(Latest);
 	const Weltall::FMenuFrame* Before = bPrevious ? &Frames[1 - Now] : nullptr;
 	Builder.Build(Frames[Now], Before, Alpha, Next->Layer);
-	if (Sheet != nullptr && !Builder.Icons.empty() && (Glyphs != nullptr || !Frames[Now].Keys.empty()))
+	if (Sheet != nullptr && !Builder.Icons.empty())
 	{
 		static const FMenuViewNoGlyphs NoGlyphs;
 		Icons.Apply(Next->Layer, Builder.Icons, Glyphs != nullptr ? *Glyphs : NoGlyphs, *Sheet, Weltall::MenuSheetButtonPictures, Frames[Now].Keys);

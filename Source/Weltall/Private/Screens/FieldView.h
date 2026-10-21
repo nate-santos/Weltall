@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Field/FieldGearDrawing.h"
 #include "Field/FieldScreenInVram.h"
+#include "Graphics/TexelKinds.h"
 #include "Menu/MenuButtonIcons.h"
 #include "Rendering/FieldSceneRendering.h"
 #include "Screens/GameScreen.h"
@@ -66,9 +67,14 @@ private:
 
 	/** The picture of the screen a tick took: the frame shown before it, as the display showed it, with VRAM and the scenery as they were. */
 	void TakePicture(const Weltall::FFieldProgram& Program);
-	/** Fills a displayed frame of Now, drawn Alpha of the way from Before (none: as it is); whether the scene was drawn between the two. */
-	bool Fill(FFieldScreenFrame& Display, const Weltall::FFieldScene& Scene, const Weltall::FFieldFrame& Now, const Weltall::FFieldFrame* Before, float Alpha,
-		const std::vector<int32>* LayerMatches, const FShownMovie& Shown) const;
+	/**
+	 * Fills a displayed frame of Now, its textures from SceneVram, drawn Alpha of the way from Before (none: as it is); whether the
+	 * scene was drawn between the two.
+	 */
+	bool Fill(FFieldScreenFrame& Display, const Weltall::FFieldScene& Scene, const Weltall::FVram& SceneVram, const Weltall::FFieldFrame& Now,
+		const Weltall::FFieldFrame* Before, float Alpha, const std::vector<int32>* LayerMatches, const FShownMovie& Shown) const;
+	/** What the drawing of Now may know of its texels from SceneVram: nothing where the GPU's textures are not the core's VRAM. */
+	Weltall::FTexelKindCache* TexelKindsOf(const Weltall::FVram& SceneVram, const Weltall::FFieldFrame& Now) const;
 
 	/** The player's buttons in place of the text's button glyphs. */
 	void ShowTextButtons(FFieldScreenFrame& Display, const Weltall::FFieldFrame& Now) const;
@@ -105,4 +111,5 @@ private:
 	mutable uint32 StillTick = 0;
 	mutable FFieldRenderOptions StillOptions;
 	mutable TSharedPtr<const FFieldSceneMesh> StillMesh;
+	mutable Weltall::FTexelKindCache TexelKinds;
 };

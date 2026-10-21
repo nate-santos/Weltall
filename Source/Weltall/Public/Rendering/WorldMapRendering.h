@@ -43,10 +43,12 @@ struct FWorldMapDrawLayout
  * anchor's polygons where the blend moves them, under its projection. Reuses Draw's memory. ScreenLines: the lines of
  * the screen the frame was projected for (the arena's frames, in the same form, have 218); ColumnScale: the width of
  * one of its columns in 320 columns' (the arena's winner screen has 640 across the same width: one half). With a layout,
- * where its horizon band lies, for MoveWorldMapFrameDraw.
+ * where its horizon band lies, for MoveWorldMapFrameDraw. TexelKinds, following the VRAM the frame is drawn from, lets a
+ * semi-transparent polygon's pass with no texels to draw be left out.
  */
 WELTALL_API void BuildWorldMapFrameDraw(const Weltall::FWorldMapFrame& Frame, const Weltall::FWorldMapFrameBlend* Blend, const FWorldMapRenderOptions& Options,
-	FFieldSceneDraw& Draw, float ScreenLines = 216.0f, float ColumnScale = 1.0f, FWorldMapDrawLayout* Layout = nullptr);
+	FFieldSceneDraw& Draw, float ScreenLines = 216.0f, float ColumnScale = 1.0f, FWorldMapDrawLayout* Layout = nullptr,
+	Weltall::FTexelKindCache* TexelKinds = nullptr);
 
 /**
  * A drawing of Frame built with its layout, made as BuildWorldMapFrameDraw would make it under another blend of the same

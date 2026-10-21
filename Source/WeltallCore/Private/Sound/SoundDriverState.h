@@ -189,6 +189,8 @@ namespace Weltall
 		uint8 Voice = NoVoice;
 		uint8 InstrumentRelease = 0;
 		const FSoundBank* Bank = nullptr;
+		/** A song's track plays music; an effect's channel plays what its instrument's bank holds. */
+		ESoundKind Kind = ESoundKind::Effect;
 
 		// What the SPU flush writes to the track's voice.
 		uint16 Switches = 0;
@@ -253,6 +255,8 @@ namespace Weltall
 		uint32 Address = 0;
 		bool bLoaded = false;
 		std::array<FSoundInstrument, FSoundBankFile::InstrumentSlots> Instruments{};
+		/** Its instruments are recorded voices (LoadVoiceBank). */
+		bool bVoices = false;
 	};
 
 	struct FSoundSequence
@@ -326,6 +330,8 @@ namespace Weltall
 		uint16 Flags = DriverFlag::Started;
 
 		std::array<FSoundTrack*, VoiceCount> Owners{};
+		/** What each voice's last note was, kept while it rings on after its track lets it go. */
+		std::array<ESoundKind, VoiceCount> VoiceKinds{};
 		uint32 KeyOnMask = 0;
 		uint32 KeyOffMask = 0;
 		uint32 ReleasedMask = 0;
@@ -379,7 +385,7 @@ namespace Weltall
 		// Banks, instruments, sequences (SoundDriverSequences.cpp).
 		FSoundBank* FindBank(int32 Id) const;
 		const FSoundBank* BankOrFirst(int32 Id) const;
-		const FSoundBank* LoadBankSlot(const FSoundBankFile& File, int32 SpuAddress);
+		const FSoundBank* LoadBankSlot(const FSoundBankFile& File, int32 SpuAddress, bool bVoices);
 		void SetInstrument(uint8 Number, FSoundTrack& Track);
 		void Link(FSoundSequence& Sequence);
 		void ResetSequence(FSoundSequence& Sequence);

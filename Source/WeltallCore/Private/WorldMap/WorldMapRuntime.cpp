@@ -360,6 +360,7 @@ namespace Weltall
 		Context.Encounters.Rate = Services.EncounterRate;
 		Context.Sprites.Random = Services.Random;
 		Context.Sprites.Arctangents = Services.Arctangents;
+		Context.Sprites.bMirroredPartsPlacedByArt = Services.bMirroredSpritePartsPlacedByArt;
 		if (Cutscene == nullptr)
 		{
 			// A cutscene reads no place names or notices.

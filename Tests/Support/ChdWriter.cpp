@@ -121,4 +121,16 @@ namespace Weltall::Testing
 		}
 		return Bin;
 	}
+
+	std::vector<uint8> RawSector(const FCdSectorHeader& Header, std::span<const uint8> UserData)
+	{
+		std::vector<uint8> Sector(CdSectorBytes, 0);
+		std::fill_n(Sector.begin() + 1, 10, uint8{0xFF});
+		Sector[15] = Header.Mode;
+		const std::array<uint8, 4> Subheader{Header.FileNumber, Header.Channel, Header.Submode, Header.CodingInfo};
+		std::copy(Subheader.begin(), Subheader.end(), Sector.begin() + 16);
+		std::copy(Subheader.begin(), Subheader.end(), Sector.begin() + 20);
+		std::copy(UserData.begin(), UserData.end(), Sector.begin() + 24);
+		return Sector;
+	}
 }

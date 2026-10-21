@@ -59,6 +59,7 @@ namespace Weltall
 			ReleasedMask |= Bit(Voice);
 		}
 		KeyOnMask |= Bit(Voice);
+		VoiceKinds[Voice] = Track.Kind;
 	}
 
 	void FSoundDriver::FState::KeyOffVoice(const FSoundTrack& Track, uint8 Voice)

@@ -73,6 +73,12 @@ namespace Weltall
 		FSpuNoise Noise;
 		FSpuReverb Reverb;
 		FSpuCdInput CdInput{CdInputFrames};
+		std::array<int32, VoiceCount> VoiceGains = [] {
+			std::array<int32, VoiceCount> Gains;
+			Gains.fill(FullGain);
+			return Gains;
+		}();
+		int32 CdGain = FullGain;
 	};
 
 	FSpu::FSpu()
@@ -93,6 +99,19 @@ namespace Weltall
 	void FSpu::ClearCdInput()
 	{
 		State->CdInput.Clear();
+	}
+
+	void FSpu::SetVoiceGain(int32 Voice, int32 Gain)
+	{
+		if (Voice >= 0 && Voice < VoiceCount)
+		{
+			State->VoiceGains[static_cast<std::size_t>(Voice)] = std::clamp(Gain, 0, FullGain);
+		}
+	}
+
+	void FSpu::SetCdGain(int32 Gain)
+	{
+		State->CdGain = std::clamp(Gain, 0, FullGain);
 	}
 
 	FSpu::~FSpu() = default;
@@ -255,8 +274,9 @@ namespace Weltall
 				const int32 Output = Voice.Sample(S.SoundRam, (S.Noisy & Bit) != 0 ? std::optional<int16>(S.Noise.Level()) : std::nullopt,
 					bModulated ? std::optional<int32>(PreviousOutput) : std::nullopt, S.Ended, Bit);
 				PreviousOutput = Output;
-				const int32 VoiceLeft = Output * Voice.Left.Level >> 15;
-				const int32 VoiceRight = Output * Voice.Right.Level >> 15;
+				const int32 Gain = S.VoiceGains[static_cast<std::size_t>(Index)];
+				const int32 VoiceLeft = (Output * Voice.Left.Level >> 15) * Gain >> 15;
+				const int32 VoiceRight = (Output * Voice.Right.Level >> 15) * Gain >> 15;
 				Left += VoiceLeft;
 				Right += VoiceRight;
 				if (S.Reverberant & Bit)
@@ -278,8 +298,8 @@ namespace Weltall
 			}
 			if (bCdInput)
 			{
-				const int32 FromCdLeft = Cd[0] * CdLeft >> 15;
-				const int32 FromCdRight = Cd[1] * CdRight >> 15;
+				const int32 FromCdLeft = (Cd[0] * CdLeft >> 15) * S.CdGain >> 15;
+				const int32 FromCdRight = (Cd[1] * CdRight >> 15) * S.CdGain >> 15;
 				Left += FromCdLeft;
 				Right += FromCdRight;
 				if (bCdReverb)

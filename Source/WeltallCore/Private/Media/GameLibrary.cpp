@@ -121,6 +121,9 @@ namespace Weltall
 			return Last && Last->Mode != 0;
 		}
 
+		/** The note on an original a patched copy of it plays in place of. */
+		constexpr const char* ReplacedByPatch = "Not played: a patched copy of this disc is in the folder and plays instead.";
+
 		/** Why a disc image the game read is not one it plays, as a player would put it. */
 		std::string NotPlayed(const FIso9660& Disc)
 		{
@@ -197,14 +200,29 @@ namespace Weltall
 				Library.LibraryNotes.push_back({Path, NotPlayed(*Disc)});
 				continue;
 			}
-			if (Library.Discs.contains(Identity->Release))
+			// A patched disc (a fan translation's) plays in place of the original of its release; of two alike, the first found.
+			const auto Existing = Library.Discs.find(Identity->Release);
+			if (Existing != Library.Discs.end() && (!Identity->bPatched || Existing->second.bPatched))
 			{
+				if (!Identity->bPatched && Existing->second.bPatched)
+				{
+					Library.LibraryNotes.push_back({Path, ReplacedByPatch});
+				}
 				continue;
 			}
 			if (!HoldsEveryFile(*Disc))
 			{
 				Library.LibraryNotes.push_back({Path, "Ends too soon: still being copied, or a rip cut short."});
 				continue;
+			}
+			if (Existing != Library.Discs.end())
+			{
+				Library.LibraryNotes.push_back({Existing->second.File, ReplacedByPatch});
+				Library.Discs.erase(Existing);
+			}
+			if (Identity->bPatched)
+			{
+				Library.LibraryNotes.push_back({Path, "A patched copy of disc " + std::to_string(Identity->DiscNumber) + " (a fan translation, for example). It plays in place of the original.", true});
 			}
 			if (bCooked && IsPlayableRelease(Identity->Release))
 			{
@@ -216,7 +234,7 @@ namespace Weltall
 			{
 				Library.LibraryNotes.push_back({Path, "A Japanese disc: available for asset extraction. Playing requires a USA or supported undub disc."});
 			}
-			Library.Discs.emplace(Identity->Release, FFound{std::make_unique<FIso9660>(std::move(*Disc)), Path});
+			Library.Discs.emplace(Identity->Release, FFound{std::make_unique<FIso9660>(std::move(*Disc)), Path, Identity->bPatched});
 		}
 		return Library;
 	}

@@ -334,10 +334,16 @@ namespace Weltall
 			Visitor.Choice("field.gear_models", Field.GearModels, {"false", "outside_cutscenes", "true"});
 			Visitor.Choice("field.battle_flashes", Field.BattleFlashes, {"original", "softer", "off"});
 
+			Visitor.Level("sound.master_volume", Settings.Volumes.Master, 0, FSoundVolumes::Full);
+			Visitor.Level("sound.music_volume", Settings.Volumes.Music, 0, FSoundVolumes::Full);
+			Visitor.Level("sound.effects_volume", Settings.Volumes.Effects, 0, FSoundVolumes::Full);
+			Visitor.Level("sound.voices_volume", Settings.Volumes.Voices, 0, FSoundVolumes::Full);
+			Visitor.Level("sound.movies_volume", Settings.Volumes.Movies, 0, FSoundVolumes::Full);
 			Visitor.Choice("sound.output", Settings.SoundOutput, {"stereo", "wide_stereo", "mono"});
 			Visitor.Flag("sound.in_background", Settings.Display.bSoundInBackground);
 			Visitor.Choice("sound.voices", Settings.VoiceLanguage, {"automatic", "english", "japanese"});
 			Visitor.Choice("sound.subtitles", Settings.MovieSubtitles, {"automatic", "on", "off"});
+			Visitor.Choice("sound.subtitles_from", Settings.MovieSubtitleSource, {"automatic", "undub", "perfect_works"});
 			Visitor.Flag("assets.external", Settings.bExternalAssets);
 			Visitor.Flag("assets.capture_textures", Settings.bCaptureTextures);
 

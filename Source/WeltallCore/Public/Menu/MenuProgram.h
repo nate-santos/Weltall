@@ -5,6 +5,7 @@
 #include "Game/SaveLoad.h"
 #include "Input/ButtonGlyphs.h"
 #include "Input/PadState.h"
+#include "Media/VoiceLanguage.h"
 #include "Menu/MenuOptions.h"
 #include "Menu/MenuPrimitive.h"
 #include "Menu/MenuTask.h"
@@ -103,6 +104,8 @@ namespace Weltall
 		virtual IMenuAssets* Assets() const { return nullptr; }
 		/** The mods found; none where the game looked for none. */
 		virtual FMenuMods Mods() const { return {}; }
+		/** The voices and movie subtitles the game was given, which the Sound page offers; none where it says nothing of them. */
+		virtual FSoundSources SoundSources() const { return {}; }
 	};
 
 	/** A key, button or axis the player pressed, by the engine's name for it. */

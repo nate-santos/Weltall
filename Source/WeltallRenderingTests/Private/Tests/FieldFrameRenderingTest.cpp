@@ -1,5 +1,7 @@
+#include "Algo/Count.h"
 #include "Field/FieldFrame.h"
 #include "Field/FieldSceneFrame.h"
+#include "Graphics/TexelKinds.h"
 #include "Graphics/Vram.h"
 #include "Misc/AutomationTest.h"
 #include "OffscreenRender.h"
@@ -220,6 +222,70 @@ bool FFieldParticlesRenderingTest::RunTest(const FString&)
 	Near(Pixels, TEXT("beside it, the background"), 40, 21, 64, 64, 64);
 	Near(Between, TEXT("between two ticks: half way"), 13, 101, 255, 0, 0);
 	Near(Between, TEXT("between two ticks: not yet where the latest put it"), 33, 101, 64, 64, 64);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldTexelKindsRenderingTest, "Weltall.Rendering.FieldLeavesOutPassesWithNoTexelsToDraw",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFieldTexelKindsRenderingTest::RunTest(const FString&)
+{
+	// Beside the strip's mixed CLUT, one of blended colours only (rain's) and one of plain colours only.
+	Weltall::FVram Vram = MakeVram();
+	Vram.Upload({{16, 256, 4, 1}, {0x0000, 0x801F, 0x83E0, 0xFFFF}});
+	Vram.Upload({{32, 256, 4, 1}, {0x0000, 0x001F, 0x03E0, 0x7FFF}});
+	constexpr uint16 BlendedClut = ClutAttribute | 1;
+	constexpr uint16 PlainClut = ClutAttribute | 2;
+	FVramTexture Units;
+	BeginInitResource(&Units);
+	Units.Follow(Vram);
+
+	// Two overlapping particles of blended texels, one of both kinds, one of plain texels: added, as rain is.
+	FTestFrame Test;
+	Test.Sprite(28, 18, 2000);
+	Test.Particle(20, 20, 1, 5, {128, 128, 128}, 1, 10);
+	Test.Frame.Particles.back().Clut = BlendedClut;
+	Test.Particle(26, 22, 2, 5, {128, 128, 128}, 1, 10);
+	Test.Frame.Particles.back().Clut = BlendedClut;
+	Test.Particle(20, 60, 3, 5, {128, 128, 128}, 1, 10);
+	Test.Particle(20, 100, 4, 5, {128, 128, 128}, 1, 10);
+	Test.Frame.Particles.back().Clut = PlainClut;
+	Test.Evaluate();
+	const FFieldSceneMesh Mesh(Test.Scene);
+	const auto Passes = [](const FFieldSceneDraw& Draw, uint8 Pass)
+	{
+		return Algo::CountIf(Draw.Runs, [Pass](const FFieldDrawRun& Run) { return Run.Pass == Pass; });
+	};
+	for (const EFieldSorting Sorting : {EFieldSorting::PaintersOrder, EFieldSorting::DepthBufferWithScenery})
+	{
+		for (const EFieldAntiAliasing AntiAliasing : {EFieldAntiAliasing::None, EFieldAntiAliasing::Msaa})
+		{
+			const FString Case = FString::Printf(TEXT("sorting %d, anti-aliasing %d"), static_cast<int32>(Sorting), static_cast<int32>(AntiAliasing));
+			FFieldRenderOptions Options;
+			Options.Sorting = Sorting;
+			Options.AntiAliasing = AntiAliasing;
+			FFieldSceneDraw Both;
+			BuildFieldFrameDraw(Test.Scene, Test.Frame, nullptr, 1.0f, Mesh, Options, Both);
+			Weltall::FTexelKindCache Kinds;
+			Kinds.Follow(Vram);
+			FFieldSceneDraw Needed;
+			BuildFieldFrameDraw(Test.Scene, Test.Frame, nullptr, 1.0f, Mesh, Options, Needed, &Kinds);
+			// Every particle drawn twice; then the mixed one alone, the blended pair as one run, the plain one opaque.
+			TestEqual(Case + TEXT(": plain passes without kinds"), Passes(Both, 1), 4);
+			TestEqual(Case + TEXT(": plain passes"), Passes(Needed, 1), 1);
+			TestEqual(Case + TEXT(": blended runs"), Passes(Needed, 2), Passes(Both, 2) - 2);
+			TestEqual(Case + TEXT(": opaque runs"), Passes(Needed, 0), Passes(Both, 0) + 1);
+			const TArray<FColor> Expected = RenderFieldSceneOffscreen(Mesh, Units, Both, FIntPoint(ScreenWidth, ScreenHeight) * 2);
+			const TArray<FColor> Drawn = RenderFieldSceneOffscreen(Mesh, Units, Needed, FIntPoint(ScreenWidth, ScreenHeight) * 2);
+			TestTrue(Case + TEXT(": drawn"), Expected.Num() == ScreenWidth * ScreenHeight * 4 && Drawn.Num() == Expected.Num());
+			TestTrue(Case + TEXT(": the same pixels"), Drawn == Expected);
+			// The pair's overlap, beside the sprite: the second's texels added over the first's.
+			const int32 Overlap = 44 * ScreenWidth * 2 + 54;
+			TestTrue(Case + TEXT(": the blended pair drawn"), Expected.IsValidIndex(Overlap) && Expected[Overlap] != FColor(64, 64, 64));
+		}
+	}
+	BeginReleaseResource(&Units);
+	FlushRenderingCommands();
 	return true;
 }
 
@@ -604,7 +670,7 @@ bool FFieldViewMoveTest::RunTest(const FString&)
 	Draw.Objects.Emplace(1.0f, 0.0f, 0.0f, 0.0f);
 	Draw.Objects.Emplace(0.0f, 1.0f, 0.0f, 0.0f);
 	Draw.Objects.Emplace(0.0f, 0.0f, 1.0f, 0.0f);
-	MoveFieldSceneView(Draw, From, To);
+	MoveFieldSceneView(Draw, Weltall::FAffine::From(From), Weltall::FAffine::From(To));
 	const FVector3f Expected = Through(To, World);
 	for (int32 Row = 0; Row < 3; ++Row)
 	{

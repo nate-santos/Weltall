@@ -1,12 +1,14 @@
 #include "Media/MovieSubtitles.h"
 
 #include "Foundation/LittleEndian.h"
+#include "Foundation/Sha1.h"
 #include "Media/GameFileIndex.h"
 #include "Media/PsxExecutable.h"
 
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace Weltall
 {
@@ -19,6 +21,10 @@ namespace Weltall
 		constexpr uint32 DirectoryBaseAddress = 0x80010A74;
 		constexpr uint32 MoviesAddress = 0x80017208;
 		constexpr uint32 IndexEnd = 0x80018000;
+		/** The patch's code in the index's spare slots, and its SHA-1 on both of the undub's discs. */
+		constexpr uint32 CodeAddress = 0x800107AC;
+		constexpr uint32 CodeEnd = 0x80010A54;
+		constexpr std::string_view UndubCode = "f90b967723d5dae0532179595fbb4918980ea3b5";
 		constexpr uint32 PairBytes = 8;
 		constexpr uint32 EntryBytes = 16;
 		constexpr uint32 LineBytes = 0x18;
@@ -111,6 +117,12 @@ namespace Weltall
 			Table.Movies.push_back(std::move(Movie));
 		}
 		return Table;
+	}
+
+	bool FMovieSubtitleTable::HasUndubCode(const FPsxExecutable& Executable)
+	{
+		const std::span<const uint8> Code = Executable.Read(CodeAddress, CodeEnd - CodeAddress);
+		return !Code.empty() && FSha1::ToHex(FSha1::Hash(Code)) == UndubCode;
 	}
 
 	const FMovieSubtitleEntry* FMovieSubtitleTable::Find(int32 Movie) const

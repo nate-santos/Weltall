@@ -43,6 +43,9 @@ namespace Weltall
 		/** How many times finer Upscale makes the texels: Double twice. */
 		inline constexpr int32 Factor = 4;
 
+		/** How far beside a texel the upscaled texels within it may take their indices from: a texel for each doubling. */
+		inline constexpr int32 Reach = 2;
+
 		/** VRAM read as Depth's indices (Indexed4 or Indexed8), with their edges. */
 		WELTALLCORE_API FTextureIndices ReadIndices(const FVram& Vram, ETextureDepth Depth);
 

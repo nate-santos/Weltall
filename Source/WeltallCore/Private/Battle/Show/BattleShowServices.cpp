@@ -222,7 +222,15 @@ namespace Weltall
 		UnloadSystemSoundBank();
 		if (Audio != nullptr)
 		{
-			Audio->LoadBattleBank(File.Sprite().From(Section.Offset).first(Section.Size));
+			const std::span<const uint8> Wds = File.Sprite().From(Section.Offset).first(Section.Size);
+			if (File.HoldsVoices())
+			{
+				Audio->LoadBattleVoiceBank(Wds);
+			}
+			else
+			{
+				Audio->LoadBattleBank(Wds);
+			}
 		}
 	}
 }

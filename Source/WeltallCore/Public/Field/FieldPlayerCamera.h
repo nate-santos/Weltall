@@ -168,8 +168,12 @@ namespace Weltall
 		 */
 		WELTALLCORE_API FFieldViewOffsets LiveOffsets() const;
 
-		/** The last frame's view as other offsets would show it. */
-		WELTALLCORE_API FFieldView ViewWithOffsets(const FFieldViewOffsets& Shows) const;
+		/**
+		 * The last frame's view as other offsets would show it, without the whole steps the game's look-at takes (as the
+		 * frame's own Unrounded): the display moves a frame from the offsets it shows to the live ones between two of
+		 * these, where the game's steps, different for each, would shake a slow turn.
+		 */
+		WELTALLCORE_API FAffine UnroundedViewWithOffsets(const FFieldViewOffsets& Shows) const;
 
 	private:
 		/** What the last frame's view was built from, besides the offsets. */
@@ -189,6 +193,8 @@ namespace Weltall
 		void ApplyInput(const FFieldCamera& Camera, bool bScripted);
 		/** How far across the ground the steady follow shows the camera from the game's, after its own step when the camera moved (16.16). */
 		FFieldPoint StepSteadyFollow(const FFieldCamera& Camera, bool bTicked, bool bSnap);
+		/** The eye and the target the basis is drawn from, moved by the offsets as they show. */
+		FFieldViewPoints DrawnPoints(const FFieldViewOffsets& Shows) const;
 		/** The view of the basis moved by the offsets as they show. */
 		void BuildShown(FFieldPresentedView& Out, const FFieldViewOffsets& Shows) const;
 		/** The camera's points averaged over its last ticks, after this one's when the camera moved (16.16). */

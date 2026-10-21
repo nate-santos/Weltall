@@ -102,7 +102,8 @@ namespace Weltall
 		 * A button icon's role: the game's logical button the picture stands for, as the kernel's
 		 * logical word has it (0x20 Circle, 0x40 Cross, 0x10 Triangle, 0x80 Square, 4 L1, 8 R1), for the
 		 * display to draw the player's binding of it; from MenuKeyRole up, the picture of a key the frame names
-		 * (FMenuFrame::Keys, by the role's offset from it); 0 for any other picture.
+		 * (FMenuFrame::Keys, by the role's offset from it); from MenuPictureRole up, a picture of the sheet's own
+		 * (FMenuSpriteSheet::Picture, by the role's offset); 0 for any other picture.
 		 */
 		uint16 ButtonRole = 0;
 		/** A button icon's shape. */
@@ -128,6 +129,8 @@ namespace Weltall
 
 	/** The first button role that names a key of the frame's rather than a logical button. */
 	inline constexpr uint16 MenuKeyRole = 0x100;
+	/** The first button role that names a picture of the sheet's own, past every key's. */
+	inline constexpr uint16 MenuPictureRole = 0x200;
 
 	/** The 3D layer's transform in one frame: its rotation (4096 a turn) and its translation. */
 	struct FMenuLayerTransform

@@ -8,6 +8,7 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -124,4 +125,49 @@ TEST_CASE("The battle's effect files are known by the bytes they were registered
 	// The battle gone, the driver holds none of its sets, and none of their effects plays.
 	CHECK(Game.Session->Sound()->Lock()->FindEffects(CommonSoundsId) == nullptr);
 	CHECK(Game.Session->Sound()->Lock()->PlayingEffects(FSoundDriver::AnyEffect) == 0);
+}
+
+TEST_CASE("A battle's voices play from the banks it loads as voices, which the Voices volume then hears", "[Battle][Content][Sound]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	// Fei's hit voice: the common effects' 52h, from the enemies' bank of cries and voices.
+	constexpr uint32 FeiHitVoice = static_cast<uint32>(CommonSoundsId) << 16 | 0x52;
+	const auto KindsOf = [](FGameSoundSystem& System, uint32 Effect)
+	{
+		uint32 Tracks = 0;
+		{
+			const FLockedGameSound Locked = System.Lock();
+			Locked->PlayEffect(Effect);
+			Tracks = Locked->PlayingEffects(Effect);
+		}
+		std::vector<int16> Samples(4000 * 2);
+		System.Render(Samples);
+		std::vector<ESoundKind> Kinds;
+		const FLockedGameSound Locked = System.Lock();
+		for (int32 Track = 0; Track < 16; ++Track)
+		{
+			if ((Tracks >> Track & 1) != 0)
+			{
+				// Effect track n plays on voice n + 8.
+				Kinds.push_back(Locked->VoiceKind(Track + 8));
+			}
+		}
+		Locked->StopAllEffects();
+		return Kinds;
+	};
+	FBattleSound Game(*Disc);
+	FBattleGameSound Sound(*Game.Session->Sound(), Game.Session->Resident(), nullptr);
+	Sound.UnloadGearBattleBank();
+	Sound.RegisterEffects(Game.CommonSounds);
+	Sound.LoadBattleVoiceBank(Game.EnemyBank);
+	REQUIRE_FALSE(Sound.TakeError());
+	const std::vector<ESoundKind> Voiced = KindsOf(*Game.Session->Sound(), FeiHitVoice);
+	REQUIRE_FALSE(Voiced.empty());
+	CHECK(std::all_of(Voiced.begin(), Voiced.end(), [](ESoundKind Kind) { return Kind == ESoundKind::Voice; }));
+
+	Sound.UnloadBattleBank();
+	Sound.LoadBattleBank(Game.EnemyBank);
+	const std::vector<ESoundKind> Plain = KindsOf(*Game.Session->Sound(), FeiHitVoice);
+	REQUIRE_FALSE(Plain.empty());
+	CHECK(std::all_of(Plain.begin(), Plain.end(), [](ESoundKind Kind) { return Kind == ESoundKind::Effect; }));
 }

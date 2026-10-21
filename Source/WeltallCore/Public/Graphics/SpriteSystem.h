@@ -265,6 +265,15 @@ namespace Weltall
 		/** The updates of counting tasks (kind 7) so far. */
 		int32 CountedUpdates = 0;
 
+		/**
+		 * A streamed frame's part mirrored left to right is drawn where its frame was made to put it: moved left by the
+		 * empty columns that pad its cell's art to the width VRAM takes. The tool that made the frames placed a mirrored
+		 * cell by its art's width; the kernel mirrors the whole cell, which leaves the art that many texels to the right
+		 * (Fei's arm off his shoulder as he runs away from the view, a lock of Billy's hair off his head). Off: as the
+		 * original draws.
+		 */
+		bool bMirroredPartsPlacedByArt = false;
+
 		/** The texture page scripts give the models they attach (the model builder's override). */
 		bool bModelTextureOverride = false;
 		int16 ModelTextureX = 0;

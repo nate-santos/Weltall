@@ -3,8 +3,10 @@
 #include "Sound/GameSound.h"
 #include "Sound/GameSoundClock.h"
 #include "Sound/SoundDriver.h"
+#include "Sound/SoundVolumes.h"
 #include "Sound/Spu.h"
 
+#include <array>
 #include <mutex>
 
 namespace Weltall
@@ -52,13 +54,26 @@ namespace Weltall
 		/** Game thread: the driver and the SPU, for a few calls. */
 		WELTALLCORE_API FLockedGameSound Lock();
 
+		/**
+		 * Game thread: the player's volumes, from the next samples on. Each voice is heard at its kind's volume as of its
+		 * last note (ESoundKind), the replacement music at the music's, the CD input at the movies', and all of it at the
+		 * master volume.
+		 */
+		WELTALLCORE_API void SetVolumes(const FSoundVolumes& Volumes);
+
 		/** Audio thread: the next samples, the driver's interrupts run among them as they fall due. */
 		WELTALLCORE_API virtual void Render(std::span<int16> Stereo) override;
 
 	private:
+		/** The voices' gains after an interrupt, which may have started notes of another kind on them. */
+		void SetVoiceGains();
+
 		std::mutex Mutex;
 		FSpu Spu;
 		FSoundDriver Driver;
 		FGameSoundClock Clock;
+		/** The volumes as gains: master, then each ESoundKind's. */
+		int32 MasterGain = FSpu::FullGain;
+		std::array<int32, 3> KindGains{FSpu::FullGain, FSpu::FullGain, FSpu::FullGain};
 	};
 }

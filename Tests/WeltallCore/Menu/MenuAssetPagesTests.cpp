@@ -7,7 +7,17 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <string>
+#include <string_view>
+
 using namespace Weltall;
+
+namespace
+{
+	/** The Sound page's voices and subtitles rows, under its Language heading. */
+	constexpr int32 VoicesRow = 10;
+	constexpr int32 SubtitlesRow = 11;
+}
 
 TEST_CASE("Asset status rows preserve the selected action through progress and cancellation", "[Menu][Assets]")
 {
@@ -84,10 +94,11 @@ TEST_CASE("Voice language choices cycle independently of sound output and persis
 {
 	FPlayerSettings Settings;
 	bool bCustomPicked = false;
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 2, -1, Settings, bCustomPicked));
+	const FSettingsContext Both{{}, {true, true, false, false}};
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, VoicesRow, -1, Settings, bCustomPicked, Both));
 	CHECK(Settings.VoiceLanguage == EVoiceLanguage::Japanese);
 	CHECK(Settings.SoundOutput == ESoundOutput::Stereo);
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 2, Settings).Value == "Japanese");
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, VoicesRow, Settings, false, Both).Value == "Japanese");
 	Settings.bExternalAssets = true;
 	const auto Read = ReadPlayerSettings(WritePlayerSettings(Settings));
 	CHECK(Read.VoiceLanguage == EVoiceLanguage::Japanese);
@@ -101,14 +112,35 @@ TEST_CASE("Movie subtitles step through Auto, On and Off beside the voices and p
 {
 	FPlayerSettings Settings;
 	bool bCustomPicked = false;
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Label == OptionsText::Sound::Subtitles.Label);
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Value == "Auto");
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 3, 1, Settings, bCustomPicked));
+	const FSettingsContext Undub{{}, {true, true, false, false}};
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SubtitlesRow, Settings, false, Undub).Label == OptionsText::Sound::Subtitles.Label);
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SubtitlesRow, Settings, false, Undub).Value == "Auto");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SubtitlesRow, 1, Settings, bCustomPicked, Undub));
 	CHECK(Settings.MovieSubtitles == EMovieSubtitles::On);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 3, 1, Settings, bCustomPicked));
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 3, Settings).Value == "Off");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SubtitlesRow, 1, Settings, bCustomPicked, Undub));
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SubtitlesRow, Settings, false, Undub).Value == "Off");
 	CHECK(Settings.VoiceLanguage == EVoiceLanguage::Automatic);
 	CHECK(ReadPlayerSettings(WritePlayerSettings(Settings)).MovieSubtitles == EMovieSubtitles::Off);
 	CHECK(ReadPlayerSettings("sound.subtitles = on\n").MovieSubtitles == EMovieSubtitles::On);
 	CHECK(ReadPlayerSettings("sound.subtitles = invalid\n").MovieSubtitles == EMovieSubtitles::Automatic);
+}
+
+TEST_CASE("The volumes and the subtitles' source persist, and a value out of range keeps the default", "[Menu][Settings]")
+{
+	FPlayerSettings Settings;
+	Settings.Volumes = {90, 40, 70, 0, 100};
+	Settings.MovieSubtitleSource = EMovieSubtitleSource::PerfectWorks;
+	const FPlayerSettings Read = ReadPlayerSettings(WritePlayerSettings(Settings));
+	CHECK(Read.Volumes == Settings.Volumes);
+	CHECK(Read.MovieSubtitleSource == EMovieSubtitleSource::PerfectWorks);
+	const std::string Written = WritePlayerSettings(Settings);
+	for (const std::string_view Key : {"sound.master_volume = 90", "sound.music_volume = 40", "sound.effects_volume = 70", "sound.voices_volume = 0",
+			 "sound.movies_volume = 100", "sound.subtitles_from = perfect_works"})
+	{
+		CHECK(Written.find(Key) != std::string::npos);
+	}
+	CHECK(ReadPlayerSettings("sound.subtitles_from = undub\n").MovieSubtitleSource == EMovieSubtitleSource::Undub);
+	const FPlayerSettings Invalid = ReadPlayerSettings("sound.music_volume = 101\nsound.subtitles_from = elsewhere\n");
+	CHECK(Invalid.Volumes.Music == FSoundVolumes::Full);
+	CHECK(Invalid.MovieSubtitleSource == EMovieSubtitleSource::Automatic);
 }

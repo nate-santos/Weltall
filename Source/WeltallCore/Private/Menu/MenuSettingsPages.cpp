@@ -1,5 +1,7 @@
 #include "Menu/MenuSettingsPages.h"
 
+#include "Menu/MenuSoundPage.h"
+#include "Menu/SettingsRows.h"
 #include "Menu/OptionsText.h"
 
 #include <algorithm>
@@ -117,35 +119,11 @@ namespace Weltall
 			return Rows;
 		}
 
-		/** A row's setting among choices named in order. */
-		template <typename TEnum>
-		bool StepChoice(TEnum& Value, int32 Direction, int32 Count)
-		{
-			Value = static_cast<TEnum>((static_cast<int32>(Value) + Direction + Count) % Count);
-			return true;
-		}
-
-		template <typename TEnum, std::size_t Count>
-		std::string ChoiceName(TEnum Value, const std::array<std::string_view, Count>& Names)
-		{
-			return std::string(Names[static_cast<std::size_t>(Value)]);
-		}
-
-		std::string OnOff(bool bOn)
-		{
-			return std::string(bOn ? OptionsText::On : OptionsText::Off);
-		}
-
-		/** A row as the screen shows it: the words' label and help, and its value. */
-		FSettingsRow Shown(const OptionsText::FRow& Text, std::string Value)
-		{
-			return {std::string(Text.Label), std::move(Value), OptionsText::Fill(Text.Help)};
-		}
-
-		namespace Sound
-		{
-			enum : int32 { Output, InBackground, Voices, Subtitles, Count };
-		}
+		using SettingsRows::ChoiceName;
+		using SettingsRows::Heading;
+		using SettingsRows::OnOff;
+		using SettingsRows::Shown;
+		using SettingsRows::StepChoice;
 
 		namespace Modding
 		{
@@ -165,14 +143,6 @@ namespace Weltall
 			{
 				return std::string(Values[bMods ? 0 : 1]);
 			}
-		}
-
-		FSettingsRow Heading(std::string_view Label)
-		{
-			FSettingsRow Row;
-			Row.Label = std::string(Label);
-			Row.bHeading = true;
-			return Row;
 		}
 
 		namespace Display
@@ -269,14 +239,14 @@ namespace Weltall
 		return {};
 	}
 
-	int32 FSettingsPages::RowCount(ESettingsPage Page, const FDisplayModes& Modes)
+	int32 FSettingsPages::RowCount(ESettingsPage Page, const FSettingsContext& Context)
 	{
 		switch (Page)
 		{
 		case ESettingsPage::Display:
-			return Display::Count - Display::Hidden(Modes);
+			return Display::Count - Display::Hidden(Context.Display);
 		case ESettingsPage::Sound:
-			return Sound::Count;
+			return SoundPage::RowCount(Context.Sound);
 		case ESettingsPage::Camera:
 			return Camera::Count;
 		case ESettingsPage::Fixes:
@@ -293,9 +263,10 @@ namespace Weltall
 		return 0;
 	}
 
-	FSettingsRow FSettingsPages::Row(ESettingsPage Page, int32 Row, const FPlayerSettings& Settings, bool bCustomPicked, const FDisplayModes& Modes)
+	FSettingsRow FSettingsPages::Row(ESettingsPage Page, int32 Row, const FPlayerSettings& Settings, bool bCustomPicked, const FSettingsContext& Context)
 	{
 		namespace Text = OptionsText;
+		const FDisplayModes& Modes = Context.Display;
 		switch (Page)
 		{
 		case ESettingsPage::Display:
@@ -395,19 +366,7 @@ namespace Weltall
 			}
 		}
 		case ESettingsPage::Sound:
-			if (Row == Sound::Voices)
-			{
-				return Shown(Text::Sound::Voices, ChoiceName(Settings.VoiceLanguage, Text::Sound::VoiceValues));
-			}
-			if (Row == Sound::Subtitles)
-			{
-				return Shown(Text::Sound::Subtitles, ChoiceName(Settings.MovieSubtitles, Text::Sound::SubtitleValues));
-			}
-			if (Row == Sound::InBackground)
-			{
-				return Shown(Text::Sound::InBackground, OnOff(Settings.Display.bSoundInBackground));
-			}
-			return Shown(Text::Sound::Output, ChoiceName(Settings.SoundOutput, Text::Sound::OutputValues));
+			return SoundPage::Row(Row, Settings, Context.Sound);
 		case ESettingsPage::Camera:
 			switch (Row)
 			{
@@ -458,8 +417,9 @@ namespace Weltall
 		return {};
 	}
 
-	bool FSettingsPages::Step(ESettingsPage Page, int32 Row, int32 Direction, FPlayerSettings& Settings, bool& bCustomPicked, const FDisplayModes& Modes)
+	bool FSettingsPages::Step(ESettingsPage Page, int32 Row, int32 Direction, FPlayerSettings& Settings, bool& bCustomPicked, const FSettingsContext& Context)
 	{
+		const FDisplayModes& Modes = Context.Display;
 		switch (Page)
 		{
 		case ESettingsPage::Display:
@@ -585,20 +545,7 @@ namespace Weltall
 			}
 		}
 		case ESettingsPage::Sound:
-			if (Row == Sound::Voices)
-			{
-				return StepChoice(Settings.VoiceLanguage, Direction, 3);
-			}
-			if (Row == Sound::Subtitles)
-			{
-				return StepChoice(Settings.MovieSubtitles, Direction, 3);
-			}
-			if (Row == Sound::InBackground)
-			{
-				Settings.Display.bSoundInBackground = !Settings.Display.bSoundInBackground;
-				return true;
-			}
-			return StepChoice(Settings.SoundOutput, Direction, 3);
+			return SoundPage::Step(Row, Direction, Settings, Context.Sound);
 		case ESettingsPage::Crt:
 		{
 			// The look shown becomes the player's own, the change made to it.
@@ -689,9 +636,9 @@ namespace Weltall
 		return false;
 	}
 
-	ESettingsAction FSettingsPages::Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked, const FDisplayModes& Modes)
+	ESettingsAction FSettingsPages::Activate(ESettingsPage Page, int32 Row, FPlayerSettings& Settings, bool bCustomPicked, const FSettingsContext& Context)
 	{
-		if (Page == ESettingsPage::Display && Row + Display::Hidden(Modes) == Display::Crt)
+		if (Page == ESettingsPage::Display && Row + Display::Hidden(Context.Display) == Display::Crt)
 		{
 			return ESettingsAction::OpenCrt;
 		}

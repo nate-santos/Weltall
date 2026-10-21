@@ -1,12 +1,17 @@
 #include "Game/GameSession.h"
 #include "Media/GameMovies.h"
 #include "Media/MoviePlayer.h"
+#include "Mods/PerfectWorks.h"
 #include "Support/GameDiscs.h"
 #include "Support/GameLoopSession.h"
 
 #include <catch_amalgamated.hpp>
 
+#include <algorithm>
+#include <filesystem>
 #include <map>
+#include <optional>
+#include <string>
 
 using namespace Weltall;
 
@@ -161,4 +166,138 @@ TEST_CASE("The opening shows its first subtitle from frame 931 to 970, laid wher
 	CHECK(First->Y == 189);
 	CHECK(First->Width == 256);
 	CHECK(First->Height == 14);
+}
+
+namespace
+{
+	/** The checkout's copy of Perfect Works Build 0.11.4, or none. */
+	std::optional<FPerfectWorksRelease> PerfectWorks()
+	{
+		std::optional<FPerfectWorksRelease> Release = FPerfectWorksRelease::Find(std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks");
+		return Release && Release->Version() == "0.11.4" ? std::move(Release) : std::nullopt;
+	}
+
+	void SetSource(FGameSession& Session, EMovieSubtitleSource Source)
+	{
+		FPlayerSettings Settings = Session.Settings();
+		Settings.MovieSubtitleSource = Source;
+		Session.SetSettings(Settings);
+	}
+
+	/** The opening's first subtitle: the undub's from frame 931, Perfect Works' from 934. */
+	enum class EOpeningLines { None, Undub, PerfectWorks };
+	EOpeningLines OpeningLines(const FGameSession& Session)
+	{
+		auto Subtitles = Session.MovieSubtitles(13);
+		REQUIRE(Subtitles);
+		if (!Subtitles->has_value())
+		{
+			return EOpeningLines::None;
+		}
+		return (*Subtitles)->At(932) != nullptr ? EOpeningLines::Undub : EOpeningLines::PerfectWorks;
+	}
+}
+
+TEST_CASE("Perfect Works 0.11.4 subtitles the undub's movies with its own table, every line's picture in its file", "[Mods][Content][Voices]")
+{
+	const std::optional<FPerfectWorksRelease> Release = PerfectWorks();
+	if (!Release)
+	{
+		SKIP("Perfect Works Build 0.11.4 not found in Mods/PerfectWorks");
+	}
+	const std::map<int32, std::map<int32, std::size_t>> Expected{
+		{1, {{1, 1}, {2, 6}, {5, 2}, {6, 2}, {7, 5}, {8, 15}, {9, 10}, {13, 36}}},
+		{2, {{0, 8}, {4, 37}, {8, 6}}},
+	};
+	for (const auto& [Disc, Movies] : Expected)
+	{
+		INFO("disc " << Disc);
+		const FPerfectWorksSubtitles* Subtitles = Release->MovieSubtitles(Disc);
+		REQUIRE(Subtitles != nullptr);
+		REQUIRE(Subtitles->Table().Entries().size() == Movies.size());
+		for (const auto& [Movie, Lines] : Movies)
+		{
+			INFO("movie " << Movie);
+			const FMovieSubtitleEntry* Entry = Subtitles->Table().Find(Movie);
+			REQUIRE(Entry != nullptr);
+			CHECK(Entry->Lines.size() == Lines);
+			auto Loaded = Subtitles->Load(*Entry);
+			REQUIRE(Loaded);
+			for (const FMovieSubtitleLine& Line : Entry->Lines)
+			{
+				const auto Picture = Loaded->At(Line.FirstFrame);
+				REQUIRE(Picture);
+				CHECK(std::any_of(Picture->Pixels.begin() + 3, Picture->Pixels.end(), [](uint8 Alpha) { return Alpha == 255; }));
+			}
+		}
+	}
+}
+
+TEST_CASE("A release whose subtitles lack a file of pictures gives none for that disc", "[Mods][Content]")
+{
+	const std::optional<FPerfectWorksRelease> Release = PerfectWorks();
+	if (!Release)
+	{
+		SKIP("Perfect Works Build 0.11.4 not found in Mods/PerfectWorks");
+	}
+	const std::filesystem::path From = std::filesystem::path(WELTALL_GAMES_DIR).parent_path() / "Mods" / "PerfectWorks" / "gamefiles";
+	const std::filesystem::path Copy = std::filesystem::temp_directory_path() / "WeltallPerfectWorksSubtitles";
+	std::filesystem::remove_all(Copy);
+	std::filesystem::create_directories(Copy / "fmv1");
+	std::filesystem::copy(From / "sub_executable", Copy / "sub_executable", std::filesystem::copy_options::recursive);
+	REQUIRE(FPerfectWorksSubtitles::Find(Copy, 1) == std::nullopt);
+	for (int32 Record = 4150; Record <= 4156; ++Record)
+	{
+		const std::string Name = std::to_string(Record) + ".str";
+		std::filesystem::copy_file(From / "fmv1" / Name, Copy / "fmv1" / Name);
+	}
+	CHECK_FALSE(FPerfectWorksSubtitles::Find(Copy, 1).has_value());
+	std::filesystem::copy_file(From / "fmv1" / "4157.str", Copy / "fmv1" / "4157.str");
+	CHECK(FPerfectWorksSubtitles::Find(Copy, 1).has_value());
+	CHECK_FALSE(FPerfectWorksSubtitles::Find(Copy, 2).has_value());
+	std::filesystem::remove_all(Copy);
+}
+
+TEST_CASE("Movie subtitles come from the source chosen, Perfect Works' first on Auto while the game uses it, either where only it is given", "[Game][Content][Voices]")
+{
+	REQUIRE_DISC(Usa1, EDiscRelease::UsaDisc1);
+	REQUIRE_DISC(Undub1, EDiscRelease::UndubDisc1);
+	const std::optional<FPerfectWorksRelease> Release = PerfectWorks();
+	if (!Release)
+	{
+		SKIP("Perfect Works Build 0.11.4 not found in Mods/PerfectWorks");
+	}
+	auto Game = Testing::FGameLoopSession::Start(*Usa1);
+	FGameSession& Session = *Game->Session;
+	CHECK(Session.SoundSources() == FSoundSources{true, false, false, false});
+
+	// Perfect Works alone: its subtitles over the English sound when on; Auto waits for a Japanese sound there is none of.
+	Session.SetPerfectWorksSubtitles({Release->MovieSubtitles(1), Release->MovieSubtitles(2)}, false);
+	CHECK(Session.SoundSources() == FSoundSources{true, false, true, false});
+	SetSubtitles(Session, EVoiceLanguage::Automatic, EMovieSubtitles::Automatic);
+	CHECK(OpeningLines(Session) == EOpeningLines::None);
+	SetSubtitles(Session, EVoiceLanguage::Automatic, EMovieSubtitles::On);
+	SetSource(Session, EMovieSubtitleSource::Undub);
+	CHECK(OpeningLines(Session) == EOpeningLines::PerfectWorks);
+
+	// Both: the source chosen; Auto takes the undub's unless the game uses the mod.
+	const FGameFileIndex Japanese = IndexOf(*Undub1);
+	Session.AddVoiceDisc(EVoiceLanguage::Japanese, 0, Undub1->Image(), Japanese);
+	CHECK(Session.SoundSources() == FSoundSources{true, true, true, false});
+	SetSubtitles(Session, EVoiceLanguage::Japanese, EMovieSubtitles::Automatic);
+	CHECK(OpeningLines(Session) == EOpeningLines::Undub);
+	SetSource(Session, EMovieSubtitleSource::PerfectWorks);
+	CHECK(OpeningLines(Session) == EOpeningLines::PerfectWorks);
+	SetSource(Session, EMovieSubtitleSource::Automatic);
+	CHECK(OpeningLines(Session) == EOpeningLines::Undub);
+	Session.SetPerfectWorksSubtitles({Release->MovieSubtitles(1), Release->MovieSubtitles(2)}, true);
+	CHECK(OpeningLines(Session) == EOpeningLines::PerfectWorks);
+	SetSubtitles(Session, EVoiceLanguage::English, EMovieSubtitles::Automatic);
+	CHECK(OpeningLines(Session) == EOpeningLines::None);
+
+	// The undub alone again, Perfect Works chosen: the undub's.
+	Session.SetPerfectWorksSubtitles({}, false);
+	SetSubtitles(Session, EVoiceLanguage::Japanese, EMovieSubtitles::Automatic);
+	SetSource(Session, EMovieSubtitleSource::PerfectWorks);
+	CHECK(OpeningLines(Session) == EOpeningLines::Undub);
 }

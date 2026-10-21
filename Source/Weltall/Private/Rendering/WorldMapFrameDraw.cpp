@@ -146,7 +146,7 @@ namespace
 			}
 		}
 
-		const TArray<FScenePolygonItem>& Items() const { return AddedItems; }
+		TArray<FScenePolygonItem>& Items() { return AddedItems; }
 
 	private:
 		void AddCorners(const Weltall::FWorldMapPolygon& Polygon, const FPolygonPiece& Piece)
@@ -286,7 +286,7 @@ namespace
 }
 
 void BuildWorldMapFrameDraw(const Weltall::FWorldMapFrame& Frame, const Weltall::FWorldMapFrameBlend* Blend, const FWorldMapRenderOptions& Options,
-	FFieldSceneDraw& Draw, float ScreenLines, float ColumnScale, FWorldMapDrawLayout* Layout)
+	FFieldSceneDraw& Draw, float ScreenLines, float ColumnScale, FWorldMapDrawLayout* Layout, Weltall::FTexelKindCache* TexelKinds)
 {
 	Draw.Objects.Reset();
 	Draw.Colors.Reset();
@@ -322,6 +322,10 @@ void BuildWorldMapFrameDraw(const Weltall::FWorldMapFrame& Frame, const Weltall:
 	for (std::size_t Number = 0; Number < Frame.Polygons.size(); ++Number)
 	{
 		Builder.AddPolygon(Frame.Polygons[Number], static_cast<uint32>(Number));
+	}
+	if (TexelKinds != nullptr)
+	{
+		FindScenePolygonTexelKinds(Draw, Builder.Items(), *TexelKinds);
 	}
 	if (Draw.bDepthBuffer)
 	{

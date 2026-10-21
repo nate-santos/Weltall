@@ -130,6 +130,7 @@ namespace Weltall
 		Program->Show->Show.Objects.Culling = Session.Settings().Field.Culling;
 		Program->Show->Show.Gte.LightMatrix = Kernel.LightMatrix;
 		Program->Show->Show.Options = Session.Settings().Fixes.BattleShow;
+		Program->Show->Show.Sprites.bMirroredPartsPlacedByArt = Session.Settings().Fixes.Field.bSpriteFramesAligned;
 
 		FBattleRuntimeServices Services;
 		Services.Image = &Session.Image();
@@ -180,6 +181,7 @@ namespace Weltall
 		}
 		Show->Show.Objects.Culling = Session.Settings().Field.Culling;
 		Show->Show.Options = Session.Settings().Fixes.BattleShow;
+		Show->Show.Sprites.bMirroredPartsPlacedByArt = Session.Settings().Fixes.Field.bSpriteFramesAligned;
 		BattleRuntime->Frame();
 		Session.Kernel().LightMatrix = Show->Show.Gte.LightMatrix;
 		if (auto Error = Sound->TakeError())

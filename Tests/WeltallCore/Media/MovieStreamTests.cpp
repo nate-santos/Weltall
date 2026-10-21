@@ -7,6 +7,7 @@
 #include "Media/GameFileIndex.h"
 #include "Media/MovieStream.h"
 #include "Media/PsxExecutable.h"
+#include "Support/ChdWriter.h"
 #include "Support/GameDiscs.h"
 
 #include <catch_amalgamated.hpp>
@@ -179,6 +180,52 @@ TEST_CASE("A movie from an image of 2048-byte sectors streams the same frames, w
 	}
 	CHECK(Frames == 137);
 	CHECK(CookedSound.empty());
+}
+
+TEST_CASE("A movie whose video sectors are marked as data, as a fan translation's re-encoded ones are, streams the same frames and sound", "[Media][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const FIndexRecord Movie = MovieRecord(*Disc, 16);
+	const uint32 Sectors = static_cast<uint32>(Movie.Size) / MovieSectorBytes;
+	// The Spanish translation's movies: file 0, real-time data with no coding info, where the release's say file 1, real-time video.
+	std::vector<uint8> Bin;
+	for (uint32 Sector = 0; Sector < Sectors; ++Sector)
+	{
+		auto Header = Disc->Image().ReadHeader(Movie.Lba + Sector);
+		const auto UserData = Disc->Image().ReadUserData(Movie.Lba + Sector);
+		REQUIRE(Header);
+		REQUIRE(UserData);
+		if ((Header->Submode & CdSector::SubmodeVideo) != 0)
+		{
+			*Header = {2, 0, Header->Channel, 0x48, 0};
+		}
+		const std::vector<uint8> Raw = Testing::RawSector(*Header, *UserData);
+		Bin.insert(Bin.end(), Raw.begin(), Raw.end());
+	}
+	const FCdImage Image(std::make_shared<FMemoryByteSource>(std::move(Bin)), CdSector::RawSize, 0);
+	FMovieStream Release(Disc->Image(), Movie.Lba, Sectors);
+	FMovieStream Translated(Image, 0, Sectors);
+	std::vector<int16> ReleaseSound;
+	std::vector<int16> TranslatedSound;
+	uint32 Frames = 0;
+	for (;;)
+	{
+		auto Expected = Release.NextFrame(ReleaseSound);
+		auto Actual = Translated.NextFrame(TranslatedSound);
+		REQUIRE(Expected);
+		REQUIRE(Actual);
+		REQUIRE(Expected->has_value() == Actual->has_value());
+		if (!Expected->has_value())
+		{
+			break;
+		}
+		++Frames;
+		CHECK((*Actual)->FrameNumber == (*Expected)->FrameNumber);
+		const bool bSameBitstream = (*Actual)->Bitstream == (*Expected)->Bitstream;
+		CHECK(bSameBitstream);
+	}
+	CHECK(Frames == 137);
+	CHECK(TranslatedSound == ReleaseSound);
 }
 
 TEST_CASE("A movie picture is cleaned within its quantization and upscales to the same pixels on every machine", "[Media][Content]")

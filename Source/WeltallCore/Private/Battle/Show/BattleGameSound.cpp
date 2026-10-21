@@ -169,15 +169,20 @@ namespace Weltall
 
 	void FBattleGameSound::LoadBattleBank(std::span<const uint8> Wds)
 	{
-		BattleBank = Load(Wds);
+		BattleBank = Load(Wds, false);
+	}
+
+	void FBattleGameSound::LoadBattleVoiceBank(std::span<const uint8> Wds)
+	{
+		BattleBank = Load(Wds, true);
 	}
 
 	void FBattleGameSound::LoadGearBattleBank(std::span<const uint8> Wds)
 	{
-		Resident.GearBattleBank = Load(Wds);
+		Resident.GearBattleBank = Load(Wds, false);
 	}
 
-	const FSoundBank* FBattleGameSound::Load(std::span<const uint8> Wds)
+	const FSoundBank* FBattleGameSound::Load(std::span<const uint8> Wds, bool bVoices)
 	{
 		TResult<FSoundBankFile> Parsed = FSoundBankFile::Parse(std::vector<uint8>(Wds.begin(), Wds.end()));
 		if (!Parsed)
@@ -185,7 +190,8 @@ namespace Weltall
 			Fail(Parsed.Error());
 			return nullptr;
 		}
-		const FSoundBank* Bank = Sound.Lock()->LoadBank(*Parsed);
+		const FLockedGameSound Locked = Sound.Lock();
+		const FSoundBank* Bank = bVoices ? Locked->LoadVoiceBank(*Parsed) : Locked->LoadBank(*Parsed);
 		if (Bank == nullptr)
 		{
 			Fail(MakeError("the battle's sound bank " + std::to_string(Parsed->Id()) + " finds no room in sound memory"));

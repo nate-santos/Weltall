@@ -5,11 +5,15 @@
 #include "Menu/MenuResources.h"
 #include "Support/BoundGlyphs.h"
 #include "Support/GameDiscs.h"
+#include "Text/MesFont.h"
+#include "Text/MesGlyphs.h"
+#include "Text/MesResident.h"
 
 #include <catch_amalgamated.hpp>
 
 #include <algorithm>
 #include <array>
+#include <string_view>
 
 using namespace Weltall;
 
@@ -477,4 +481,85 @@ TEST_CASE("A button named in words shows the player's button where the word was,
 		!= DrawMenuButtonIcon(EButtonIconSet::Keyboard, "W", EMenuIconSlot::FaceButton).Texels);
 	CHECK(Keys.Primitives[3].Corners[0].X == 60.0f + KeysWidth);
 	CHECK(DrawMenuButtonIcon(EButtonIconSet::Keyboard, "W|A|S|D", EMenuIconSlot::FaceButton).Width == static_cast<int32>(KeysWidth * 2.0f));
+}
+
+TEST_CASE("The port's Options is pieced from the USA release's letters, and typed as a picture of the sheet's own where they are another's",
+	"[Menu][Content]")
+{
+	REQUIRE_DISC(Disc, EDiscRelease::UsaDisc1);
+	const auto Executable = ReadBootExecutable(*Disc);
+	REQUIRE(Executable);
+	const auto Index = FGameFileIndex::Read(*Executable);
+	REQUIRE(Index);
+	const auto Resources = FMenuResources::Load(Disc->Image(), *Index, *Executable);
+	REQUIRE(Resources);
+	FMenuSpriteSheet Sheet = Resources->Sheet();
+	// The title's Options, the Normal Menu's and the raised title's: the O, the p, "tion" and the s, all of VRAM.
+	for (const int32 Frame : {0x200, 0x202, 0x209})
+	{
+		INFO("frame " << Frame);
+		REQUIRE(Sheet.Frame(Frame).size() == 4);
+		CHECK(std::all_of(Sheet.Frame(Frame).begin(), Sheet.Frame(Frame).end(), [](const FMenuSpritePart& Part) { return Part.Picture < 0; }));
+	}
+
+	const auto Resident = LoadMesResident(Disc->Image(), *Index, *Executable);
+	REQUIRE(Resident);
+	const std::span<const uint16> Colours = std::span<const uint16>(Resources->TextClut()).first(16);
+	const FMenuSheetPicture Word = MenuLetteredWord(Resident->Font, Colours, "Options");
+	// Set tight as the labels' letters are: narrower than the font's advances (12 or 8 a glyph), inked from edge to edge.
+	int32 Advances = 0;
+	for (const char Character : std::string_view("Option"))
+	{
+		Advances += Resident->Font.WidthUnits(*MesCodeOfCharacter(Character)) * 4;
+	}
+	CHECK(Word.Width < Advances);
+	CHECK(Word.Width > 7 * 5);
+	CHECK(Word.Height == FMesFont::CellHeight);
+	const auto Inked = [&Word](int32 Column)
+	{
+		for (int32 Row = 0; Row < Word.Height; ++Row)
+		{
+			if (Word.Texels[static_cast<std::size_t>(Row * Word.Width + Column)] != 0)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	CHECK(Inked(0));
+	CHECK(Inked(Word.Width - 1));
+	// A space keeps the font's advance between the words.
+	const FMenuSheetPicture Two = MenuLetteredWord(Resident->Font, Colours, "Op tions");
+	CHECK(Two.Width == Word.Width + Resident->Font.WidthUnits(*MesCodeOfCharacter(' ')) * 4 + 1);
+	CHECK(std::all_of(Word.Texels.begin(), Word.Texels.end(), [&Colours](uint16 Texel) { return Texel == 0 || std::find(Colours.begin() + 1, Colours.begin() + 4, Texel) != Colours.begin() + 4; }));
+	CHECK(std::count_if(Word.Texels.begin(), Word.Texels.end(), [](uint16 Texel) { return Texel != 0; }) > Word.Width * 3);
+
+	// Shown by a part of its own, the word is drawn into the pictures' VRAM once, its texels the whole picture.
+	FMenuSpritePart Part;
+	Part.Width = static_cast<int16>(Word.Width);
+	Part.Height = static_cast<int16>(Word.Height);
+	Part.Picture = Sheet.AddPicture(Word);
+	Sheet.SetFrame(0x200, {Part});
+	FMenuFrame Frame;
+	Frame.Layer = MenuFlatTransform;
+	Sheet.Draw(0x200, 40, 60, 0x1000, Frame.Primitives);
+	REQUIRE(Frame.Primitives.size() == 1);
+	CHECK(Frame.Primitives[0].ButtonRole == MenuPictureRole + Part.Picture);
+	FMenuDrawBuilder Builder;
+	FDrawList List;
+	Builder.Build(Frame, nullptr, 1.0f, List);
+	REQUIRE(Builder.Icons.size() == 1);
+	const FDrawList Stand = List;
+	FMenuButtonIcons Pictures;
+	const FTestGlyphs Glyphs(EButtonIconSet::PlayStation);
+	Pictures.Apply(List, Builder.Icons, Glyphs, Sheet, MenuSheetButtonPictures);
+	const FDrawPrimitive& Drawn = List.Primitives[Builder.Icons[0].Primitive];
+	CHECK(Drawn.Texture->Vram == FMenuButtonIcons::PicturesVram);
+	CHECK(Drawn.Corners[3].U - Drawn.Corners[0].U == static_cast<float>(Word.Width));
+	CHECK(Drawn.Corners[3].V - Drawn.Corners[0].V == static_cast<float>(Word.Height));
+	CHECK(Drawn.Corners[0].X == Stand.Primitives[Builder.Icons[0].Primitive].Corners[0].X);
+	CHECK(Pictures.Pictures().Revision() == 1);
+	FDrawList Again = Stand;
+	Pictures.Apply(Again, Builder.Icons, Glyphs, Sheet, MenuSheetButtonPictures);
+	CHECK(Pictures.Pictures().Revision() == 1);
 }

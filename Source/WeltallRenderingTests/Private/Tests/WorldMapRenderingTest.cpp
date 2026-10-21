@@ -1,4 +1,6 @@
+#include "Algo/Count.h"
 #include "Field/FieldScene.h"
+#include "Graphics/TexelKinds.h"
 #include "Graphics/Vram.h"
 #include "Misc/AutomationTest.h"
 #include "OffscreenRender.h"
@@ -131,6 +133,84 @@ bool FWorldMapRenderingTest::RunTest(const FString&)
 	Near(Halved, TEXT("to its right edge"), 218, 30, 0, 0, 255);
 	Near(Halved, TEXT("clear left of it"), 187, 30, 0, 0, 0);
 	Near(Halved, TEXT("clear right of it"), 223, 30, 0, 0, 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapTexelKindsRenderingTest, "Weltall.Rendering.WorldMapLeavesOutPassesWithNoTexelsToDraw",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FWorldMapTexelKindsRenderingTest::RunTest(const FString&)
+{
+	// Beside the strip's CLUT (transparent, red, green), one of blended colours only and one of plain and blended.
+	Weltall::FVram Vram = MakeVram();
+	Vram.Upload({{16, 256, 3, 1}, {0x0000, 0x801F, 0x83E0}});
+	Vram.Upload({{32, 256, 3, 1}, {0x0000, 0x001F, 0x83E0}});
+	FVramTexture Units;
+	BeginInitResource(&Units);
+	Units.Follow(Vram);
+
+	// Semi-transparent quads, added: two of blended texels overlapping, one of both kinds, one of plain texels, over a
+	// gear's opaque quad.
+	Weltall::FWorldMapFrame Frame;
+	Frame.ScreenCenterY = 108;
+	Frame.ProjectionDistance = Distance;
+	const auto Quad = [&Frame](int32 X0, int32 Y0, int32 X1, int32 Y1, float Depth, uint16 ClutColumn, bool bSemiTransparent)
+	{
+		Weltall::FWorldMapPolygon& Polygon = Frame.Polygons.emplace_back(ScreenQuad(X0, Y0, X1, Y1, Depth, 108));
+		Polygon.Layer = bSemiTransparent ? Weltall::EWorldMapLayer::Model : Weltall::EWorldMapLayer::Gear;
+		Polygon.bTextured = true;
+		Polygon.bRaw = true;
+		Polygon.bSemiTransparent = bSemiTransparent;
+		Polygon.TexturePage = static_cast<uint16>(Page | 1 << 5);
+		Polygon.Clut = static_cast<uint16>(Clut | ClutColumn);
+		for (std::size_t Corner = 0; Corner < 4; ++Corner)
+		{
+			Polygon.TexCoords[Corner] = {(Corner & 1) != 0 ? 32.0f : 0.0f, (Corner & 2) != 0 ? 2.0f : 0.0f};
+		}
+		Polygon.TexelMin = {0, 0};
+		Polygon.TexelMax = {31, 1};
+	};
+	Quad(100, 20, 220, 200, 1500.0f, 0, false);
+	Quad(20, 20, 140, 60, 1000.0f, 1, true);
+	Quad(60, 40, 180, 80, 1000.0f, 1, true);
+	Quad(20, 100, 140, 140, 1000.0f, 2, true);
+	Quad(180, 100, 300, 140, 1000.0f, 0, true);
+	const FFieldSceneMesh NoMesh{Weltall::FFieldScene{}};
+	const auto Passes = [](const FFieldSceneDraw& Draw, uint8 Pass)
+	{
+		return Algo::CountIf(Draw.Runs, [Pass](const FFieldDrawRun& Run) { return Run.Pass == Pass; });
+	};
+	for (const EFieldSorting Sorting : {EFieldSorting::PaintersOrder, EFieldSorting::DepthBufferWithScenery})
+	{
+		for (const EFieldAntiAliasing AntiAliasing : {EFieldAntiAliasing::None, EFieldAntiAliasing::Msaa})
+		{
+			const FString Case = FString::Printf(TEXT("sorting %d, anti-aliasing %d"), static_cast<int32>(Sorting), static_cast<int32>(AntiAliasing));
+			FWorldMapRenderOptions Options;
+			Options.Sorting = Sorting;
+			Options.AntiAliasing = AntiAliasing;
+			FFieldSceneDraw Both;
+			BuildWorldMapFrameDraw(Frame, nullptr, Options, Both, static_cast<float>(ScreenHeight));
+			Weltall::FTexelKindCache Kinds;
+			Kinds.Follow(Vram);
+			FFieldSceneDraw Needed;
+			BuildWorldMapFrameDraw(Frame, nullptr, Options, Needed, static_cast<float>(ScreenHeight), 1.0f, nullptr, &Kinds);
+			if (Sorting == EFieldSorting::PaintersOrder)
+			{
+				// Every semi-transparent quad drawn twice; then the mixed one alone, the blended pair as one run, the plain one opaque.
+				TestEqual(Case + TEXT(": plain passes without kinds"), Passes(Both, 1), 4);
+				TestEqual(Case + TEXT(": plain passes"), Passes(Needed, 1), 1);
+				TestEqual(Case + TEXT(": blended runs"), Passes(Needed, 2), Passes(Both, 2) - 2);
+			}
+			// The depth rule adds the scenery's prepass, of the opaque texels only.
+			TestTrue(Case + TEXT(": fewer runs"), Needed.Runs.Num() < Both.Runs.Num());
+			const TArray<FColor> Expected = RenderFieldSceneOffscreen(NoMesh, Units, Both, FIntPoint(ScreenWidth, ScreenHeight) * 2);
+			const TArray<FColor> Drawn = RenderFieldSceneOffscreen(NoMesh, Units, Needed, FIntPoint(ScreenWidth, ScreenHeight) * 2);
+			TestTrue(Case + TEXT(": drawn"), Expected.Num() == ScreenWidth * ScreenHeight * 4 && Drawn.Num() == Expected.Num());
+			TestTrue(Case + TEXT(": the same pixels"), Drawn == Expected);
+		}
+	}
+	BeginReleaseResource(&Units);
+	FlushRenderingCommands();
 	return true;
 }
 

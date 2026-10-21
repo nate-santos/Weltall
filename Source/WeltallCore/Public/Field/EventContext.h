@@ -408,9 +408,10 @@ namespace Weltall
 		 */
 		bool bMoonGlowFades = true;
 		/**
-		 * Billy's own sprite file (the party's file 4) draws a lock of his hair two texels off his head in the mirrored frames of
-		 * his head shake (6 and 8): their unmirrored twins (4 and 2) overlap it with the head, as these do once it is moved
-		 * back. The original's file as the disc has it otherwise.
+		 * The pieces a streamed sprite's frame mirrors left to right are drawn where the frame was made to put them, in the
+		 * field, on the world map and in battle (FSpriteSystem::bMirroredPartsPlacedByArt): Fei's arm on his shoulder as he
+		 * runs away from the view, Billy's lock of hair on his head as he shakes it. The original draws each up to three
+		 * texels to its right.
 		 */
 		bool bSpriteFramesAligned = true;
 

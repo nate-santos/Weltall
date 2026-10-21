@@ -1,10 +1,14 @@
 #pragma once
 
 #include "Foundation/Types.h"
+#include "Graphics/Vram.h"
+
+#include <span>
 
 namespace Weltall
 {
 	class FMenuSpriteSheet;
+	class FMesFont;
 	struct FMenuMainTables;
 
 	/**
@@ -34,4 +38,23 @@ namespace Weltall
 
 	/** The port's frames added to the sheet as the disc has it, its arcs' places from Tables. */
 	void AddMenuPortFrames(FMenuSpriteSheet& Sheet, const FMenuMainTables& Tables);
+
+	/**
+	 * Whether the letters the port pieces "Options" from are the USA release's, in the images the Menu's archive uploads
+	 * (Archive, later ones over earlier ones). A translation redraws them, and the pieces then spell nothing.
+	 */
+	bool HasUsaOptionsLetters(const FMenuSpriteSheet& Sheet, std::span<const FVramImage> Archive);
+
+	/**
+	 * The port's "Options" frames shown as a label of the translation's own that names an options screen, where the sheet
+	 * has one Weltall knows (the Spanish translation's "Opcion"), in its lettering where "Options" stands; false, changing
+	 * nothing, where it has none.
+	 */
+	bool UseTranslatedOptionsLabel(FMenuSpriteSheet& Sheet, const FMenuMainTables& Tables, std::span<const FVramImage> Archive);
+
+	/**
+	 * The port's "Options" frames shown as the word typed in Font, in the colours of the labels' lettering (its CLUT in
+	 * Archive), a picture of the sheet's own, for a sheet whose letters are not the USA release's.
+	 */
+	void TypeMenuPortWords(FMenuSpriteSheet& Sheet, const FMenuMainTables& Tables, const FMesFont& Font, std::span<const FVramImage> Archive);
 }

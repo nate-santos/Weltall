@@ -11,8 +11,6 @@ namespace Weltall
 {
 	namespace
 	{
-		/** The second disc's index has five movies fewer than the first's: every record after them is five lower. */
-		constexpr int32 SecondDiscShift = 5;
 		/** A field map's header words: its scripts' offset (section 5) and the next section's, which ends them. */
 		constexpr std::size_t ScriptsAt = 0x51 * 4;
 		constexpr std::size_t ScriptsEndAt = 0x52 * 4;

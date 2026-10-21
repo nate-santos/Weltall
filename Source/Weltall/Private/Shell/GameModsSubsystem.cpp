@@ -28,6 +28,10 @@ void UGameModsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		UE_LOG(LogWeltall, Log, TEXT("Perfect Works Build %hs found in %s: %s"), Found.PerfectWorks->Version().c_str(), *ModsFolder(),
 			InUse.bEnabled ? TEXT("in use") : TEXT("not in use"));
+		if (Found.PerfectWorks->MovieSubtitles(1) == nullptr && Found.PerfectWorks->MovieSubtitles(2) == nullptr)
+		{
+			UE_LOG(LogWeltall, Warning, TEXT("Perfect Works Build %hs gives no movie subtitles Weltall can read"), Found.PerfectWorks->Version().c_str());
+		}
 		if (!Found.PerfectWorks->KnowsBattleEventCode())
 		{
 			UE_LOG(LogWeltall, Warning, TEXT("Perfect Works Build %hs changes the battle dialogue's windows in a way Weltall doesn't know: the battles keep the original dialogue"),
@@ -72,6 +76,15 @@ void UGameModsSubsystem::Refresh()
 	{
 		UE_LOG(LogWeltall, Warning, TEXT("The mods' files are not used: %hs"), Error->Message.c_str());
 	}
+}
+
+std::array<const Weltall::FPerfectWorksSubtitles*, 2> UGameModsSubsystem::PerfectWorksSubtitles() const
+{
+	if (!Found.PerfectWorks)
+	{
+		return {};
+	}
+	return {Found.PerfectWorks->MovieSubtitles(1), Found.PerfectWorks->MovieSubtitles(2)};
 }
 
 Weltall::FMenuMods UGameModsSubsystem::MenuMods() const

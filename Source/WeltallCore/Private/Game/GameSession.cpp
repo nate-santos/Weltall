@@ -150,6 +150,12 @@ namespace Weltall
 		return VoiceDisc(DiscNumber());
 	}
 
+	void FGameSession::SetPerfectWorksSubtitles(std::array<const FPerfectWorksSubtitles*, 2> Subtitles, bool bInUse)
+	{
+		PerfectWorksSubtitles = Subtitles;
+		bPerfectWorksInUse = bInUse;
+	}
+
 	TResult<std::optional<FMovieSubtitles>> FGameSession::MovieSubtitles(int32 Number) const
 	{
 		const int32 Disc = DiscNumber();
@@ -158,21 +164,33 @@ namespace Weltall
 			return std::optional<FMovieSubtitles>();
 		}
 		const FGameDisc& Undub = VoiceDiscs[1][static_cast<std::size_t>(Disc)];
-		if (Undub.Image == nullptr || (PlayerSettings.MovieSubtitles == EMovieSubtitles::Automatic && VoiceDisc(Disc).Image != Undub.Image))
+		if (PlayerSettings.MovieSubtitles == EMovieSubtitles::Automatic && (Undub.Image == nullptr || VoiceDisc(Disc).Image != Undub.Image))
 		{
 			return std::optional<FMovieSubtitles>();
 		}
-		const FMovieSubtitleEntry* Entry = Undub.Index->MovieSubtitles().Find(Number);
+		const FPerfectWorksSubtitles* Mod = PerfectWorksSubtitles[static_cast<std::size_t>(Disc)];
+		const EMovieSubtitleSource Source = PlayerSettings.MovieSubtitleSource;
+		const bool bModFirst = Source == EMovieSubtitleSource::PerfectWorks || (Source == EMovieSubtitleSource::Automatic && bPerfectWorksInUse);
+		const bool bFromMod = Mod != nullptr && (bModFirst || Undub.Image == nullptr);
+		const FMovieSubtitleEntry* Entry = bFromMod ? Mod->Table().Find(Number) : Undub.Image != nullptr ? Undub.Index->MovieSubtitles().Find(Number) : nullptr;
 		if (Entry == nullptr)
 		{
 			return std::optional<FMovieSubtitles>();
 		}
-		TResult<FMovieSubtitles> MovieLines = FMovieSubtitles::Load(*Undub.Image, *Undub.Index, *Entry);
+		TResult<FMovieSubtitles> MovieLines = bFromMod ? Mod->Load(*Entry) : FMovieSubtitles::Load(*Undub.Image, *Undub.Index, *Entry);
 		if (!MovieLines)
 		{
 			return MovieLines.Error();
 		}
 		return std::optional<FMovieSubtitles>(std::move(*MovieLines));
+	}
+
+	FSoundSources FGameSession::SoundSources() const
+	{
+		const auto Given = [](const std::array<FGameDisc, 2>& Track) { return Track[0].Image != nullptr || Track[1].Image != nullptr; };
+		const bool bUsaPlayed = DiscRelease == EDiscRelease::UsaDisc1 || DiscRelease == EDiscRelease::UsaDisc2;
+		return {Given(VoiceDiscs[0]) || bUsaPlayed, Given(VoiceDiscs[1]), PerfectWorksSubtitles[0] != nullptr || PerfectWorksSubtitles[1] != nullptr,
+			bPerfectWorksInUse};
 	}
 
 	TResult<FGameDisc> FGameSession::DriveDisc() const
@@ -203,7 +221,7 @@ namespace Weltall
 		PlayerSettings = Settings;
 		FollowVoiceLanguage();
 		++SettingsSet;
-		GameSound.Apply(Settings.SoundOutput, Settings.Fixes.SoundDriver, Settings.Fixes.Music);
+		GameSound.Apply(Settings.SoundOutput, Settings.Volumes, Settings.Fixes.SoundDriver, Settings.Fixes.Music);
 	}
 
 	void FGameSession::Vblank(FPadState Held)

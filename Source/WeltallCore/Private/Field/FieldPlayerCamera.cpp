@@ -337,6 +337,13 @@ namespace Weltall
 		return Shown;
 	}
 
+	FFieldViewPoints FFieldPlayerCamera::DrawnPoints(const FFieldViewOffsets& Shows) const
+	{
+		// The game's view is drawn from this tick's points while the map settles, then from the tick before's.
+		return Basis.bOwnTick ? OffsetFieldView(Basis.Eye, Basis.Target, Basis.Pivot, Shows.Zoom, Shows.Tilt, Shows.Turn)
+							  : OffsetFieldView(DrawnEye, DrawnTarget, DrawnPivot, Shows.Zoom, Shows.Tilt, Shows.Turn);
+	}
+
 	void FFieldPlayerCamera::BuildShown(FFieldPresentedView& Out, const FFieldViewOffsets& Shows) const
 	{
 		const FFieldCamera& Camera = Basis.Camera;
@@ -345,9 +352,7 @@ namespace Weltall
 		const float Turn = Shows.Turn;
 		Out.Offsets = Shows;
 		Out.bGameView = Zoom == 1.0f && Tilt == 0.0f && Turn == 0.0f && !Basis.bFollowMoved;
-		// The game's view is drawn from this tick's points while the map settles, then from the tick before's.
-		const FFieldViewPoints Drawn = Basis.bOwnTick ? OffsetFieldView(Basis.Eye, Basis.Target, Basis.Pivot, Zoom, Tilt, Turn)
-													 : OffsetFieldView(DrawnEye, DrawnTarget, DrawnPivot, Zoom, Tilt, Turn);
+		const FFieldViewPoints Drawn = DrawnPoints(Shows);
 		Out.Unrounded = UnroundedFieldView(Camera, Drawn.Eye, Drawn.Target);
 		Out.bUnrounded = true;
 		if (Out.bGameView)
@@ -368,11 +373,10 @@ namespace Weltall
 		Out.FarBucketShift = static_cast<int32>(std::lround((Distance(Moved.Eye, Moved.Target) - Distance(Camera.Eye, Camera.Target)) * EntriesPerWorldUnit));
 	}
 
-	FFieldView FFieldPlayerCamera::ViewWithOffsets(const FFieldViewOffsets& Shows) const
+	FAffine FFieldPlayerCamera::UnroundedViewWithOffsets(const FFieldViewOffsets& Shows) const
 	{
-		FFieldPresentedView View;
-		BuildShown(View, Shows);
-		return View.View;
+		const FFieldViewPoints Drawn = DrawnPoints(Shows);
+		return UnroundedFieldView(Basis.Camera, Drawn.Eye, Drawn.Target);
 	}
 
 	FFieldViewOffsets FFieldPlayerCamera::LiveOffsets() const

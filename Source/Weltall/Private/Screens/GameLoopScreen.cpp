@@ -328,6 +328,7 @@ std::optional<Weltall::FError> FGameLoopScreen::Start(std::optional<uint16> Fiel
 	}
 	Session->SetDiscDrive(Drive.get());
 	Session->SetSettings(StartSettings);
+	Session->SetPerfectWorksSubtitles(PerfectWorksSubtitles, bPerfectWorksInUse);
 	RefreshVoiceDiscs();
 #if UE_BUILD_SHIPPING
 	// The player's builds carry play past the cases no script reaches; the editor's and development builds stop there.
@@ -678,6 +679,16 @@ void FGameLoopScreen::SetMenuMods(Weltall::FMenuMods InMods)
 {
 	MenuMods = MoveTemp(InMods);
 	FollowMenuServices();
+}
+
+void FGameLoopScreen::SetPerfectWorksSubtitles(std::array<const Weltall::FPerfectWorksSubtitles*, 2> Subtitles, bool bInUse)
+{
+	PerfectWorksSubtitles = Subtitles;
+	bPerfectWorksInUse = bInUse;
+	if (Session)
+	{
+		Session->SetPerfectWorksSubtitles(PerfectWorksSubtitles, bPerfectWorksInUse);
+	}
 }
 
 void FGameLoopScreen::SetDisplayModes(FDisplayModesAsked InDisplayModes)

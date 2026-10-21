@@ -5,7 +5,9 @@
 
 #include <catch_amalgamated.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 using namespace Weltall;
 
@@ -56,6 +58,22 @@ namespace
 	bool SameMatrix(const FGteMatrix& A, const FGteMatrix& B)
 	{
 		return A.M == B.M && A.T == B.T;
+	}
+
+	bool SameAffine(const FAffine& A, const FAffine& B)
+	{
+		return A.M == B.M && A.T == B.T;
+	}
+
+	/** Where a view puts a world point across the original's screen (pixels from its middle, H 512). */
+	double ScreenX(const FAffine& View, const std::array<double, 3>& Point)
+	{
+		std::array<double, 3> InView{};
+		for (std::size_t Row = 0; Row < 3; ++Row)
+		{
+			InView[Row] = View.T[Row] + View.M[Row][0] * Point[0] + View.M[Row][1] * Point[1] + View.M[Row][2] * Point[2];
+		}
+		return 512.0 * InView[0] / InView[2];
 	}
 
 	void TickTimes(FFieldPlayerCamera& Player, const FEventContext& Context, int32 Ticks)
@@ -406,18 +424,18 @@ TEST_CASE("A display between frames shows the offsets with the input so far, as 
 	FFieldPlayerCamera Player(Offsets);
 	const FFieldPresentedView& First = Player.Present(Context, true, true);
 	CHECK(Player.LiveOffsets() == First.Offsets);
-	CHECK(SameMatrix(Player.ViewWithOffsets(First.Offsets).View, First.View.View));
+	CHECK(SameAffine(Player.UnroundedViewWithOffsets(First.Offsets), First.Unrounded));
 	FFieldViewInput Input;
 	Input.Turn = 12.5f;
 	Input.Tilt = 4.0f;
 	Input.Zoom = 0.25f;
 	Player.AddInput(Input);
 	const FFieldViewOffsets Live = Player.LiveOffsets();
-	const FFieldView LiveView = Player.ViewWithOffsets(Live);
+	const FAffine LiveView = Player.UnroundedViewWithOffsets(Live);
 	CHECK_FALSE(Live == Player.ShownView().Offsets);
 	const FFieldPresentedView& Next = Player.Present(Context, false, false);
 	CHECK(Next.Offsets == Live);
-	CHECK(SameMatrix(LiveView.View, Next.View.View));
+	CHECK(SameAffine(LiveView, Next.Unrounded));
 	CHECK(Player.LiveOffsets() == Next.Offsets);
 
 	// While a script's shot has the camera the input moves nothing: the live offsets are the frame's.
@@ -425,6 +443,67 @@ TEST_CASE("A display between frames shows the offsets with the input so far, as 
 	Player.Present(Context, true, false);
 	Player.AddInput(Input);
 	CHECK(Player.LiveOffsets() == Player.ShownView().Offsets);
+}
+
+TEST_CASE("A slow turn or zoom close up moves the view between frames in even steps, where the game's look-at would shake it", "[Field]")
+{
+	const FEventContext Context = FollowingAt(0x800);
+	const FFieldCamera& Camera = Context.Camera;
+	const std::array<double, 3> Ground = {Camera.Target[0] / double{Unit} + 150.0, Camera.Target[1] / double{Unit} + 32.0, Camera.Target[2] / double{Unit}};
+	const auto Steps = [](const std::vector<double>& Places)
+	{
+		std::vector<double> Made;
+		for (std::size_t Index = 1; Index < Places.size(); ++Index)
+		{
+			Made.push_back(Places[Index] - Places[Index - 1]);
+		}
+		return Made;
+	};
+	// A twentieth of the stick's push at a display of four frames a tick, 120 a second.
+	FFieldViewInput Turn;
+	Turn.Turn = FFieldViewInput::TurnPerSecond * 0.05f / 120.0f;
+	FFieldViewInput Zoom;
+	Zoom.Zoom = FFieldViewInput::ZoomPerSecond * 0.05f / 120.0f;
+	for (const FFieldViewInput& Push : {Turn, Zoom})
+	{
+		INFO((Push.Turn != 0.0f ? "turning" : "zooming"));
+		FFieldCameraOffsets Offsets = FFieldCameraOffsets::Defaults();
+		Offsets.Zoom = 0.6f;
+		FFieldPlayerCamera Player(Offsets);
+		Player.Present(Context, true, true);
+		std::vector<double> Live;
+		std::vector<double> Game;
+		for (int32 Tick = 0; Tick < 30; ++Tick)
+		{
+			for (int32 Display = 0; Display < 4; ++Display)
+			{
+				Player.AddInput(Push);
+				const FFieldViewOffsets Shows = Player.LiveOffsets();
+				const FAffine View = Player.UnroundedViewWithOffsets(Shows);
+				Live.push_back(ScreenX(View, Ground));
+				// The same points' view as the game's look-at builds it: whole units and the library's table.
+				const FFieldViewPoints Points = OffsetFieldView(Camera.Eye, Camera.Target, Camera.Target, Shows.Zoom, Shows.Tilt, Shows.Turn);
+				CHECK(SameAffine(View, UnroundedFieldView(Camera, Points.Eye, Points.Target)));
+				FFieldCamera Moved = Camera;
+				Moved.Eye = Points.Eye;
+				Moved.Target = Points.Target;
+				Game.push_back(ScreenX(FAffine::From(BuildFieldView(Moved, FieldLookAt(Points.Eye, Points.Target)).View), Ground));
+			}
+			Player.Present(Context, true, false);
+		}
+		// Every step the same way, each within a hundredth of the one before (perspective speeds the point up slowly).
+		const std::vector<double> LiveSteps = Steps(Live);
+		const double Way = LiveSteps.front() < 0.0 ? -1.0 : 1.0;
+		for (std::size_t Index = 1; Index < LiveSteps.size(); ++Index)
+		{
+			INFO("display frame " << Index);
+			CHECK(LiveSteps[Index] * Way > 0.0);
+			CHECK(std::abs(LiveSteps[Index] - LiveSteps[Index - 1]) < 0.01 * std::abs(LiveSteps[Index]));
+		}
+		// The game's look-at holds still and jumps, back and forth by a fraction of the original's pixel.
+		const std::vector<double> GameSteps = Steps(Game);
+		CHECK(std::ranges::count_if(GameSteps, [Way](double Step) { return Step * Way <= 0.0; }) > 30);
+	}
 }
 
 TEST_CASE("The steady follow closes on the camera's goal across the ground, faster than the game's camera and all the way", "[Field]")

@@ -73,6 +73,8 @@ namespace Weltall
 		IWorldMapSound* Sound = nullptr;
 		/** The fixes of its broken effects in use. */
 		FWorldMapOptions Options;
+		/** The sprites' mirrored pieces drawn where their frames were made to put them (FSpriteSystem::bMirroredPartsPlacedByArt). */
+		bool bMirroredSpritePartsPlacedByArt = false;
 		/** How often the player asked random battles to come. */
 		EEncounterRate EncounterRate = EEncounterRate::Original;
 		/** The kernel's lock on boarding the gears as the world map starts: a cutscene leaves it as it is. */

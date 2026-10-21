@@ -133,6 +133,7 @@ namespace Weltall
 			Track.EffectId = Id;
 			Track.EffectTime = InterruptCount;
 			Track.EffectClass = static_cast<uint8>(PairAndClass >> 8);
+			Track.Kind = ESoundKind::Effect;
 			const uint16 Offset = File->ChannelOffset(Number * EffectChannels + Channel);
 			if (Offset == 0)
 			{

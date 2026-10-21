@@ -496,7 +496,7 @@ namespace Weltall
 		UnloadSystemSoundBank();
 		if (Audio != nullptr)
 		{
-			Audio->LoadBattleBank(*Bank);
+			Audio->LoadBattleVoiceBank(*Bank);
 		}
 	}
 

@@ -19,6 +19,7 @@
 #include "Media/VoiceLanguage.h"
 #include "Presentation/DisplayOptions.h"
 #include "Sound/GameSoundSession.h"
+#include "Sound/SoundVolumes.h"
 #include "Text/MesWindow.h"
 #include "WorldMap/WorldMapOptions.h"
 
@@ -53,8 +54,10 @@ namespace Weltall
 		FDisplayOptions Display;
 		FFieldRenderOptions Field;
 		ESoundOutput SoundOutput = ESoundOutput::Stereo;
+		FSoundVolumes Volumes;
 		EVoiceLanguage VoiceLanguage = EVoiceLanguage::Automatic;
 		EMovieSubtitles MovieSubtitles = EMovieSubtitles::Automatic;
+		EMovieSubtitleSource MovieSubtitleSource = EMovieSubtitleSource::Automatic;
 		/** Read replacements from the Assets folder, falling back to the discs for absent files. */
 		bool bExternalAssets = false;
 		/** Save original texture pages as PNG files when they are first drawn. */

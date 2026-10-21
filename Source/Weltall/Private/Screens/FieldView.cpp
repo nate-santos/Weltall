@@ -8,6 +8,7 @@
 #include "Game/FieldProgram.h"
 #include "Rendering/SharedRenderResource.h"
 #include "Rendering/VramTexture.h"
+#include "Rendering/TextureModLibrary.h"
 #include "Rendering/TextureModSources.h"
 
 #include <algorithm>
@@ -113,14 +114,25 @@ void FFieldView::TakePicture(const Weltall::FFieldProgram& Program)
 	ShownVram->Follow(Program.Drawing().PictureVram());
 	WriteScreenIntoVram(ShownVram, Shown->ScreenInVram, Pictures);
 	const TSharedRef<FFieldScreenFrame> Source = MakeShared<FFieldScreenFrame>(Mesh.ToSharedRef(), ShownVram);
-	Fill(*Source, Program.Drawing().PictureScene(), *Shown, nullptr, 1.0f, nullptr, ShownMovie);
+	Fill(*Source, Program.Drawing().PictureScene(), Program.Drawing().PictureVram(), *Shown, nullptr, 1.0f, nullptr, ShownMovie);
 	FollowTextureModSources(*ShownVram, Program.Drawing().PictureVram(), Mesh.Get(), {&Source->Draw}, {&Source->Layer}, Shown->Gears.TextureSeeds);
 	Picture = FFieldCoverPicture::Make(Source);
 	Pictures.Add(static_cast<int32>(PicturesTaken), Picture);
 }
 
-bool FFieldView::Fill(FFieldScreenFrame& Display, const Weltall::FFieldScene& Scene, const Weltall::FFieldFrame& Now, const Weltall::FFieldFrame* Before, float Alpha,
-	const std::vector<int32>* LayerMatches, const FShownMovie& Shown) const
+Weltall::FTexelKindCache* FFieldView::TexelKindsOf(const Weltall::FVram& SceneVram, const Weltall::FFieldFrame& Now) const
+{
+	// A replacement may draw where the original's texels do not, and the screen's pixels written into VRAM are not the core's.
+	if (FTextureModLibrary::IsReplacing() || !Now.ScreenInVram.empty())
+	{
+		return nullptr;
+	}
+	TexelKinds.Follow(SceneVram);
+	return &TexelKinds;
+}
+
+bool FFieldView::Fill(FFieldScreenFrame& Display, const Weltall::FFieldScene& Scene, const Weltall::FVram& SceneVram, const Weltall::FFieldFrame& Now,
+	const Weltall::FFieldFrame* Before, float Alpha, const std::vector<int32>* LayerMatches, const FShownMovie& Shown) const
 {
 	Display.MoviePicture = Shown.Picture;
 	Display.Alpha = Alpha;
@@ -142,7 +154,7 @@ bool FFieldView::Fill(FFieldScreenFrame& Display, const Weltall::FFieldScene& Sc
 		Display.Alpha = 1.0f;
 		return false;
 	}
-	const bool bBlended = BuildFieldFrameDraw(Scene, Now, Before, Alpha, *Display.GetMesh(), Options, Display.Draw);
+	const bool bBlended = BuildFieldFrameDraw(Scene, Now, Before, Alpha, *Display.GetMesh(), Options, Display.Draw, TexelKindsOf(SceneVram, Now));
 	Display.Layer.Primitives.assign(Now.Screen.Primitives.begin(), Now.Screen.Primitives.end());
 	Display.bPreviousLayer = Before != nullptr && LayerMatches != nullptr;
 	if (Display.bPreviousLayer)
@@ -183,7 +195,7 @@ TSharedPtr<const IScreenFrame> FFieldView::Capture(const Weltall::FFieldProgram&
 	TSharedRef<FFieldScreenFrame>* Free = DisplayFrames.FindByPredicate([](const TSharedRef<FFieldScreenFrame>& Candidate) { return Candidate.IsUnique(); });
 	TSharedRef<FFieldScreenFrame> Next = Free != nullptr ? *Free : DisplayFrames.Add_GetRef(MakeShared<FFieldScreenFrame>(Mesh.ToSharedRef(), Vram));
 	const Weltall::FFieldFrame* Previous = Program.PreviousFrame();
-	const bool bBlended = Fill(*Next, Program.Drawing().Scene(), *Latest, Previous, Alpha, &Matches, ShownMovie);
+	const bool bBlended = Fill(*Next, Program.Drawing().Scene(), Program.Drawing().Vram(), *Latest, Previous, Alpha, &Matches, ShownMovie);
 	UnroundFieldSceneView(Next->Draw, *Latest, bBlended ? Previous : nullptr, Alpha);
 	// The player's offsets show live rather than a tick behind: what the drawing shows of them moved to what they are now.
 	Weltall::FFieldViewOffsets Drawn = Latest->ShownOffsets;
@@ -198,7 +210,7 @@ TSharedPtr<const IScreenFrame> FFieldView::Capture(const Weltall::FFieldProgram&
 	const Weltall::FFieldViewOffsets Live = Player.LiveOffsets();
 	if (!(Live == Drawn))
 	{
-		MoveFieldSceneView(Next->Draw, Player.ViewWithOffsets(Drawn).View, Player.ViewWithOffsets(Live).View);
+		MoveFieldSceneView(Next->Draw, Player.UnroundedViewWithOffsets(Drawn), Player.UnroundedViewWithOffsets(Live));
 	}
 	FollowTextureModSources(*Vram, Program.Drawing().Vram(), Mesh.Get(), {&Next->Draw}, {&Next->Layer}, Latest->Gears.TextureSeeds);
 	return Next;
@@ -217,7 +229,7 @@ TSharedPtr<const IScreenFrame> FFieldView::CaptureStill(const Weltall::FFieldPro
 		return Still;
 	}
 	const TSharedRef<FFieldScreenFrame> Next = MakeShared<FFieldScreenFrame>(Mesh.ToSharedRef(), Vram);
-	BuildFieldFrameDraw(Program.Drawing().Scene(), *Latest, nullptr, 1.0f, *Mesh, Options, Next->Draw);
+	BuildFieldFrameDraw(Program.Drawing().Scene(), *Latest, nullptr, 1.0f, *Mesh, Options, Next->Draw, TexelKindsOf(Program.Drawing().Vram(), *Latest));
 	// The picture of the screen keeps its place among the layer's primitives that remain.
 	Next->Cover = Latest->Cover;
 	Next->Cover.LayerIndex = 0;

@@ -97,11 +97,18 @@ namespace Weltall
 		/** The selected voice track's disc for the movie in the drive, with the gameplay disc as fallback. */
 		WELTALLCORE_API TResult<FGameDisc> MovieDisc() const;
 		/**
-		 * The undub's subtitles for movie Number of the disc in the drive, as the player's setting shows them: none
-		 * when it has them off, when the undub disc of that number was not supplied or does not subtitle the movie,
-		 * or, on Auto, when the movie's sound is not the undub's.
+		 * Perfect Works Build's movie subtitles of each disc (null: none), from the player's copy of the mod, which must
+		 * outlive the session; bInUse: the game plays with the mod, so Auto shows them before the undub's.
+		 */
+		WELTALLCORE_API void SetPerfectWorksSubtitles(std::array<const FPerfectWorksSubtitles*, 2> Subtitles, bool bInUse);
+		/**
+		 * The subtitles for movie Number of the disc in the drive, as the player's settings show them: from the source
+		 * they choose (the other where only it subtitles that disc's movies), and none when they have them off, when
+		 * neither source subtitles the movie, or, on Auto, when the movie's sound is not the undub's Japanese.
 		 */
 		WELTALLCORE_API TResult<std::optional<FMovieSubtitles>> MovieSubtitles(int32 Number) const;
+		/** The voices and subtitles the session was given, which the Sound page offers. */
+		WELTALLCORE_API FSoundSources SoundSources() const;
 		/** Whether the session has disc Number (0 or 1), the host's drive asked for it first when it has not. */
 		WELTALLCORE_API bool HasDisc(int32 Number);
 		void SetDiscDrive(IGameDiscDrive* InDrive) { DiscDrive = InDrive; }
@@ -217,6 +224,8 @@ namespace Weltall
 		/** Each disc the session was given, by number. */
 		std::array<FGameDisc, 2> Discs{};
 		std::array<std::array<FGameDisc, 2>, 2> VoiceDiscs{};
+		std::array<const FPerfectWorksSubtitles*, 2> PerfectWorksSubtitles{};
+		bool bPerfectWorksInUse = false;
 		FGameSoundSession& GameSound;
 		FGteArctangents GteArctangents;
 		FMesResident TextResources;

@@ -32,8 +32,18 @@ namespace
 		return Lines;
 	}
 
-	/** A display's sizes, the widest a row need show among them, and a window of none of them. */
-	const FDisplayModes WideDisplay{{{1280, 720}, {1920, 1080}, {3840, 2160}, {7680, 4320}}, {1600, 900}};
+	/** A display's sizes, the widest a row need show among them, and a window of none of them; every voice and subtitle given. */
+	const FSettingsContext WideDisplay{{{{1280, 720}, {1920, 1080}, {3840, 2160}, {7680, 4320}}, {1600, 900}}, {true, true, true, true}};
+
+	/** The Sound page's rows past its volumes: the output's, then the language's. */
+	namespace SoundRow
+	{
+		constexpr int32 Output = 7;
+		constexpr int32 InBackground = 8;
+		constexpr int32 Voices = 10;
+		constexpr int32 Subtitles = 11;
+		constexpr int32 SubtitlesFrom = 12;
+	}
 
 	int32 CustomRowOfFix(int32 Fix)
 	{
@@ -263,13 +273,13 @@ TEST_CASE("The options' choices wrap, and their numbers step within their ranges
 {
 	FPlayerSettings Settings;
 	bool bCustomPicked = false;
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 0, Settings).Value == Text::Sound::OutputValues[0]);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 0, -1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SoundRow::Output, Settings).Value == Text::Sound::OutputValues[0]);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Output, -1, Settings, bCustomPicked));
 	CHECK(Settings.SoundOutput == ESoundOutput::Mono);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 0, 1, Settings, bCustomPicked));
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 0, 1, Settings, bCustomPicked));
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 0, Settings).Value == "Wide-Stereo");
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 0, Settings).Label == Text::Sound::Output.Label);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Output, 1, Settings, bCustomPicked));
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Output, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SoundRow::Output, Settings).Value == "Wide-Stereo");
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SoundRow::Output, Settings).Label == Text::Sound::Output.Label);
 
 	// The scenery's and the sprites' filters, each its own: Sharp, Crisp, Smooth and the upscaler, round to Sharp.
 	CHECK(FSettingsPages::Row(ESettingsPage::Display, 2, Settings).Label == Text::Display::SceneryFilter.Label);
@@ -381,8 +391,8 @@ TEST_CASE("The options' choices wrap, and their numbers step within their ranges
 	CHECK(FSettingsPages::Row(ESettingsPage::Display, 14, Settings).Value == Text::On);
 	REQUIRE(FSettingsPages::Step(ESettingsPage::Display, 14, 1, Settings, bCustomPicked));
 	CHECK_FALSE(Settings.Display.bPauseInBackground);
-	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 1, Settings).Value == Text::Off);
-	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, 1, 1, Settings, bCustomPicked));
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, SoundRow::InBackground, Settings).Value == Text::Off);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::InBackground, 1, Settings, bCustomPicked));
 	CHECK(Settings.Display.bSoundInBackground);
 	CHECK(Settings.SoundOutput == ESoundOutput::WideStereo);
 
@@ -423,6 +433,93 @@ TEST_CASE("The options' choices wrap, and their numbers step within their ranges
 	CHECK(FSettingsPages::Activate(ESettingsPage::Camera, 4, Settings, false) == ESettingsAction::Reset);
 	CHECK(Settings.Camera == FFieldCameraOffsets::Defaults());
 	CHECK(FSettingsPages::Activate(ESettingsPage::Camera, 0, Settings, false) == ESettingsAction::None);
+}
+
+TEST_CASE("The Sound page's volumes step by ten within 0 and 100, each of its own", "[Menu][Sound]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	CHECK(FSettingsPages::Row(ESettingsPage::Sound, 0, Settings).bHeading);
+	const std::array<std::pair<std::string_view, int32 FSoundVolumes::*>, 5> Volumes{{{Text::Sound::Master.Label, &FSoundVolumes::Master},
+		{Text::Sound::Music.Label, &FSoundVolumes::Music}, {Text::Sound::Effects.Label, &FSoundVolumes::Effects},
+		{Text::Sound::VoiceVolume.Label, &FSoundVolumes::Voices}, {Text::Sound::Movies.Label, &FSoundVolumes::Movies}}};
+	for (std::size_t Index = 0; Index < Volumes.size(); ++Index)
+	{
+		const int32 Row = static_cast<int32>(Index) + 1;
+		const auto [Label, Volume] = Volumes[Index];
+		INFO(Label);
+		CHECK(FSettingsPages::Row(ESettingsPage::Sound, Row, Settings).Label == Label);
+		CHECK(FSettingsPages::Row(ESettingsPage::Sound, Row, Settings).Value == "100%");
+		CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, Row, 1, Settings, bCustomPicked));
+		REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, Row, -1, Settings, bCustomPicked));
+		CHECK(Settings.Volumes.*Volume == 90);
+		CHECK(FSettingsPages::Row(ESettingsPage::Sound, Row, Settings).Value == "90%");
+		// One set between the steps (in the settings file) goes to the step past it either way.
+		Settings.Volumes.*Volume = 55;
+		REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, Row, 1, Settings, bCustomPicked));
+		CHECK(Settings.Volumes.*Volume == 60);
+		Settings.Volumes.*Volume = 55;
+		REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, Row, -1, Settings, bCustomPicked));
+		CHECK(Settings.Volumes.*Volume == 50);
+		Settings.Volumes.*Volume = 10;
+		REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, Row, -1, Settings, bCustomPicked));
+		CHECK(Settings.Volumes.*Volume == 0);
+		CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, Row, -1, Settings, bCustomPicked));
+	}
+	// Each volume is its own: the others stayed at 0 after their own rows.
+	CHECK(Settings.Volumes == FSoundVolumes{0, 0, 0, 0, 0});
+}
+
+TEST_CASE("The Sound page offers the voices and subtitles the game was given, and says what is missing", "[Menu][Sound]")
+{
+	FPlayerSettings Settings;
+	bool bCustomPicked = false;
+	const auto Context = [](bool bEnglish, bool bUndub, bool bPerfectWorks)
+	{
+		return FSettingsContext{{}, {bEnglish, bUndub, bPerfectWorks, false}};
+	};
+	const auto Row = [&Settings](int32 At, const FSettingsContext& Given) { return FSettingsPages::Row(ESettingsPage::Sound, At, Settings, false, Given); };
+
+	// The USA discs alone: English voices only, no subtitles, so no choice of whose. Rows with nothing to choose say why,
+	// where the cursor still stops.
+	const FSettingsContext Usa = Context(true, false, false);
+	CHECK(Row(SoundRow::Voices, Usa).Value == "English");
+	CHECK(Row(SoundRow::Voices, Usa).Help[0] == Text::Sound::OnlyEnglish[0]);
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Voices, 1, Settings, bCustomPicked, Usa));
+	CHECK(Row(SoundRow::Subtitles, Usa).Value == Text::Sound::NoSubtitles);
+	CHECK(Row(SoundRow::Subtitles, Usa).Help[0] == Text::Sound::NoSubtitlesHelp[0]);
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Subtitles, 1, Settings, bCustomPicked, Usa));
+	CHECK(FSettingsPages::RowCount(ESettingsPage::Sound, Usa) == SoundRow::SubtitlesFrom);
+	CHECK(Settings.VoiceLanguage == EVoiceLanguage::Automatic);
+	CHECK(Settings.MovieSubtitles == EMovieSubtitles::Automatic);
+
+	// The undub alone: Japanese voices only, and its subtitles.
+	const FSettingsContext Undub = Context(false, true, false);
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Voices, 1, Settings, bCustomPicked, Undub));
+	CHECK(Row(SoundRow::Voices, Undub).Value == "Japanese");
+	CHECK(Row(SoundRow::Voices, Undub).Help[0] == Text::Sound::OnlyJapanese[0]);
+	CHECK(Row(SoundRow::Subtitles, Undub).Help[0] == Text::Sound::Subtitles.Help[0]);
+	CHECK(Row(SoundRow::SubtitlesFrom, Undub).Value == "Undub");
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::SubtitlesFrom, 1, Settings, bCustomPicked, Undub));
+
+	// The USA discs and Perfect Works: its subtitles shown always on On, Auto waiting for Japanese voices there are none of.
+	const FSettingsContext Mod = Context(true, false, true);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Subtitles, 1, Settings, bCustomPicked, Mod));
+	CHECK(Settings.MovieSubtitles == EMovieSubtitles::On);
+	CHECK(Row(SoundRow::Subtitles, Mod).Help[0] == Text::Sound::SubtitlesWithoutUndub[0]);
+	CHECK(Row(SoundRow::SubtitlesFrom, Mod).Value == "Perfect Works");
+	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::SubtitlesFrom, 1, Settings, bCustomPicked, Mod));
+
+	// Both languages and both subtitles: every choice.
+	const FSettingsContext Every = Context(true, true, true);
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::Voices, 1, Settings, bCustomPicked, Every));
+	CHECK(Settings.VoiceLanguage == EVoiceLanguage::English);
+	CHECK(Row(SoundRow::SubtitlesFrom, Every).Value == "Auto");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::SubtitlesFrom, 1, Settings, bCustomPicked, Every));
+	CHECK(Row(SoundRow::SubtitlesFrom, Every).Value == "Undub");
+	REQUIRE(FSettingsPages::Step(ESettingsPage::Sound, SoundRow::SubtitlesFrom, 1, Settings, bCustomPicked, Every));
+	CHECK(Settings.MovieSubtitleSource == EMovieSubtitleSource::PerfectWorks);
+	CHECK(FSettingsPages::RowCount(ESettingsPage::Sound, Every) == SoundRow::SubtitlesFrom + 1);
 }
 
 TEST_CASE("The CRT filter's parts show the look in use, and changing one makes it the player's own", "[Menu]")
@@ -499,7 +596,7 @@ TEST_CASE("The window's size is chosen among the display's, from the window's ow
 	CHECK(Settings.Display.WindowSize == FDisplaySize{1280, 720});
 
 	// A display with the one size, already chosen, has nothing to change to.
-	const FDisplayModes Single{{{1280, 720}}, {1280, 720}};
+	const FSettingsContext Single{{{{1280, 720}}, {1280, 720}}, {}};
 	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Display, 1, 1, Settings, bCustomPicked, Single));
 	CHECK_FALSE(FSettingsPages::Step(ESettingsPage::Display, 1, -1, Settings, bCustomPicked, Single));
 }
@@ -528,24 +625,35 @@ TEST_CASE("Every row's words are in the game's font and fit their places on the 
 	FPlayerSettings Settings;
 	FPlayerSettings Original;
 	FSettingsPages::ApplyPreset(EFixesPreset::Original, Original.Fixes);
+	// Every page with everything given; the Sound page also with each set of voices and subtitles it words otherwise.
+	std::vector<std::pair<ESettingsPage, FSettingsContext>> Shown;
 	for (const ESettingsPage Page : Pages)
+	{
+		Shown.push_back({Page, WideDisplay});
+	}
+	for (const FSoundSources Sources : {FSoundSources{}, FSoundSources{true, false, false, false}, FSoundSources{false, true, false, false},
+			 FSoundSources{true, false, true, false}})
+	{
+		Shown.push_back({ESettingsPage::Sound, {WideDisplay.Display, Sources}});
+	}
+	for (const auto& [Page, Context] : Shown)
 	{
 		INFO(FSettingsPages::Title(Page));
 		CHECK(Width(FSettingsPages::Title(Page)) <= ValueRight - LabelX);
-		for (int32 Row = 0; Row < FSettingsPages::RowCount(Page, WideDisplay); ++Row)
+		for (int32 Row = 0; Row < FSettingsPages::RowCount(Page, Context); ++Row)
 		{
 			for (const FPlayerSettings* From : {&Settings, &Original})
 			{
 				// Each of the row's choices: four steps reach every one.
-				FPlayerSettings Shown = *From;
+				FPlayerSettings Stepped = *From;
 				for (int32 Step = 0; Step < 5; ++Step)
 				{
 					bool bCustomPicked = false;
-					if (Step > 0 && !FSettingsPages::Step(Page, Row, 1, Shown, bCustomPicked, WideDisplay))
+					if (Step > 0 && !FSettingsPages::Step(Page, Row, 1, Stepped, bCustomPicked, Context))
 					{
 						break;
 					}
-					const FSettingsRow Words = FSettingsPages::Row(Page, Row, Shown, bCustomPicked, WideDisplay);
+					const FSettingsRow Words = FSettingsPages::Row(Page, Row, Stepped, bCustomPicked, Context);
 					INFO(std::string(Words.Label) + " = " + Words.Value);
 					CHECK(LabelX + Width(Words.Label) + Gap <= ValueRight - Width(Words.Value));
 					for (const std::string_view Line : Words.Help)

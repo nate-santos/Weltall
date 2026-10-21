@@ -93,6 +93,7 @@ namespace Weltall
 		Services.BattleKeep = Program->Keep.get();
 		Services.Sound = &Session.Sound().WorldMapMusic();
 		Services.Options = Session.Settings().Fixes.WorldMap;
+		Services.bMirroredSpritePartsPlacedByArt = Session.Settings().Fixes.Field.bSpriteFramesAligned;
 		Services.EncounterRate = Session.Settings().Balance.Encounters;
 		Program->SettingsSeen = Session.SettingsRevision();
 		Services.GearLock = Session.Kernel().Field.bGearsLocked ? 1 : 0;
@@ -167,6 +168,7 @@ namespace Weltall
 			// A fix the player changed in the menu holds from the map's next tick, as do how the gears are drawn and how
 			// often battles come.
 			MapRuntime->Context().Options = Session.Settings().Fixes.WorldMap;
+			MapRuntime->Context().Sprites.bMirroredPartsPlacedByArt = Session.Settings().Fixes.Field.bSpriteFramesAligned;
 			MapRuntime->Context().Encounters.Rate = Session.Settings().Balance.Encounters;
 			Presenter->SetGearStandIns(Session.Settings().Field.GearModels);
 			SettingsSeen = Session.SettingsRevision();

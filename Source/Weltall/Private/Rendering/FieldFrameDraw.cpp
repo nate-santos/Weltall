@@ -134,15 +134,15 @@ void UnroundFieldSceneView(FFieldSceneDraw& Draw, const Weltall::FFieldFrame& La
 	MoveFieldSceneObjects(Draw, Move);
 }
 
-void MoveFieldSceneView(FFieldSceneDraw& Draw, const Weltall::FGteMatrix& From, const Weltall::FGteMatrix& To)
+void MoveFieldSceneView(FFieldSceneDraw& Draw, const Weltall::FAffine& From, const Weltall::FAffine& To)
 {
-	const FMatrix44f FromMatrix = RowVectorMatrix(Weltall::FAffine::From(From));
+	const FMatrix44f FromMatrix = RowVectorMatrix(From);
 	if (FMath::Abs(FromMatrix.Determinant()) < UE_SMALL_NUMBER)
 	{
 		return;
 	}
 	// A view-space point back to the world, then into To's view.
-	MoveFieldSceneObjects(Draw, FromMatrix.Inverse() * RowVectorMatrix(Weltall::FAffine::From(To)));
+	MoveFieldSceneObjects(Draw, FromMatrix.Inverse() * RowVectorMatrix(To));
 }
 
 namespace
@@ -229,7 +229,7 @@ namespace
 }
 
 bool BuildFieldFrameDraw(const Weltall::FFieldScene& Scene, const Weltall::FFieldFrame& Latest, const Weltall::FFieldFrame* Previous, float Alpha,
-	const FFieldSceneMesh& Mesh, const FFieldRenderOptions& Options, FFieldSceneDraw& Draw)
+	const FFieldSceneMesh& Mesh, const FFieldRenderOptions& Options, FFieldSceneDraw& Draw, Weltall::FTexelKindCache* TexelKinds)
 {
 	Draw.Objects.Reset();
 	Draw.Colors.Reset();
@@ -305,7 +305,7 @@ bool BuildFieldFrameDraw(const Weltall::FFieldScene& Scene, const Weltall::FFiel
 	AddGearObjects(Latest, Before, Alpha, Draw);
 	AddGearCloths(Latest, Before, Alpha, Mesh, Draw);
 	AddFieldPictureStretch(Scene, Latest, Before, Alpha, Mesh, Draw);
-	FFieldDrawBuilder Builder(Scene, Latest.Scenery, Latest.Characters, Latest.Quads, Latest.Particles, Mesh, Draw, &Latest.Gears, &Latest.SpriteModels);
+	FFieldDrawBuilder Builder(Scene, Latest.Scenery, Latest.Characters, Latest.Quads, Latest.Particles, Mesh, Draw, &Latest.Gears, &Latest.SpriteModels, TexelKinds);
 	std::span<const Weltall::FFieldDrawItem> Order = Latest.Order;
 	std::size_t Waved = Order.size();
 	if (Latest.bScreenWave)

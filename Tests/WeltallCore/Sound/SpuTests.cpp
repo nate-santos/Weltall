@@ -296,3 +296,40 @@ TEST_CASE("The SPU's main volume also scales the reverb's output", "[Sound]")
 	const std::span<const uint8> Ram = std::as_const(Spu).Ram();
 	CHECK(std::any_of(Ram.begin() + 0xE000 * 8, Ram.end(), [](uint8 Byte) { return Byte != 0; }));
 }
+
+TEST_CASE("The player's gains scale a voice and the CD input as they join the mix, and change nothing at full", "[Sound]")
+{
+	const auto Played = [](int32 VoiceGain, int32 CdGain)
+	{
+		FSpu Spu;
+		PutBlock(Spu, 0x200, 0x00, 0x07, 0x77);
+		SetUp(Spu, 0x200, 0x1000, 0x00FF, 0x1FC0);
+		Spu.Write(Control, 0xC001);
+		Spu.Write(0x1B0, 0x7FFF);
+		Spu.Write(0x1B2, 0x7FFF);
+		Spu.SetVoiceGain(0, VoiceGain);
+		Spu.SetCdGain(CdGain);
+		Spu.Write(KeyOn, 1);
+		Render(Spu, 40);
+		const std::vector<int16> Voice = Render(Spu, 1);
+		Spu.Write(KeyOff, 1);
+		Spu.Write(VoiceBase(0) + Volume, 0);
+		Spu.Write(VoiceBase(0) + Volume + 2, 0);
+		Render(Spu, 4);
+		Spu.QueueCdInput(std::vector<int16>{8000, -8000});
+		const std::vector<int16> Cd = Render(Spu, 1);
+		return std::array<int32, 3>{Voice[0], Cd[0], Cd[1]};
+	};
+	const std::array<int32, 3> Full = Played(FSpu::FullGain, FSpu::FullGain);
+	REQUIRE(Full[0] > 0x200);
+	// 8000 * 7FFFh >> 15 = 7999, then the main volume's 7FFEh; -8000 stays -8000 as the shifts round down.
+	CHECK(Full[1] == 7998);
+	CHECK(Full[2] == -8000);
+	const std::array<int32, 3> Half = Played(FSpu::FullGain / 2, FSpu::FullGain / 4);
+	CHECK(std::abs(Half[0] - Full[0] / 2) <= 1);
+	// 7999 * 2000h >> 15 = 1999, then 7FFEh: 1998.
+	CHECK(Half[1] == 1998);
+	CHECK(Half[2] == -2000);
+	const std::array<int32, 3> Silent = Played(0, 0);
+	CHECK(Silent == std::array<int32, 3>{});
+}

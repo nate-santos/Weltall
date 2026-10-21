@@ -58,6 +58,16 @@ namespace Weltall
 		/** Drops what the CD input holds, as when the drive stops. */
 		WELTALLCORE_API void ClearCdInput();
 
+		/** The player's volume as gains: 8000h hears a voice or the CD input as made, 0 silences it. */
+		static constexpr int32 FullGain = 0x8000;
+		/**
+		 * The player's volume for a voice, applied as its sound joins the mix and the reverb's input; the next voice's
+		 * pitch modulation still takes its sound as made. The console has no such control: no register reaches it.
+		 */
+		WELTALLCORE_API void SetVoiceGain(int32 Voice, int32 Gain);
+		/** The player's volume for the CD input (the movies' sound), as SetVoiceGain's. */
+		WELTALLCORE_API void SetCdGain(int32 Gain);
+
 	private:
 		struct FState;
 		std::unique_ptr<FState> State;

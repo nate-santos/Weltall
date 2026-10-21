@@ -29,6 +29,7 @@ namespace Weltall
 		FDisplayModes DisplayModes() const override { return Owner.DisplayModes ? Owner.DisplayModes() : FDisplayModes{}; }
 		IMenuAssets* Assets() const override { return Owner.Assets; }
 		FMenuMods Mods() const override { return Owner.Mods; }
+		FSoundSources SoundSources() const override { return Session.SoundSources(); }
 
 	private:
 		FMenuGameMenus& Owner;

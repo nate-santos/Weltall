@@ -17,29 +17,6 @@ namespace Weltall
 		constexpr uint8 NoCharacter = FGameState::EmptySlot;
 		constexpr uint8 NoGear = 0xFF;
 		constexpr uint8 PilotPlaces[FGameState::CharacterCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 2, 6};
-
-		/** A part's x in an unpacked file, moved where the frame's unmirrored twin puts it: only while it holds what the disc's does. */
-		struct FFramePatch
-		{
-			int32 File = 0;
-			std::size_t At = 0;
-			int8 Was = 0;
-			int8 Is = 0;
-		};
-
-		/** Billy's head shake: the last part of frames 6 and 8, a lock of hair, sits two texels right of his head. */
-		constexpr std::array<FFramePatch, 2> FramePatches{{{4, 0x4EB, 6, 4}, {4, 0x54F, 7, 5}}};
-
-		void AlignFrames(int32 File, std::vector<uint8>& Bytes)
-		{
-			for (const FFramePatch& Patch : FramePatches)
-			{
-				if (Patch.File == File && Patch.At < Bytes.size() && static_cast<int8>(Bytes[Patch.At]) == Patch.Was)
-				{
-					Bytes[Patch.At] = static_cast<uint8>(Patch.Is);
-				}
-			}
-		}
 	}
 
 	std::optional<int32> PilotSpriteFile(int32 Character, int32 Base)
@@ -88,10 +65,6 @@ namespace Weltall
 		if (!Unpacked)
 		{
 			return MakeError(Name + ": " + Unpacked.Error().Message);
-		}
-		if (bFramesAligned)
-		{
-			AlignFrames(File, *Unpacked);
 		}
 		if (Unpacked->size() > BufferSize)
 		{

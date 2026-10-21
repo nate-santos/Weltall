@@ -1,6 +1,7 @@
 #include "Mods/PerfectWorks.h"
 
 #include "Foundation/Sha1.h"
+#include "Media/PsxExecutable.h"
 
 #include <algorithm>
 #include <array>
@@ -86,17 +87,22 @@ namespace Weltall
 		 */
 		constexpr std::pair<int32, int32> BattleScenes = {2617, 2768};
 
-		template <std::size_t Count>
-		bool IsKnownCode(const std::filesystem::path& File, const std::array<std::string_view, Count>& Known)
+		/** A file's bytes; none where it cannot be read. */
+		std::optional<std::vector<uint8>> ReadWhole(const std::filesystem::path& File)
 		{
 			std::ifstream In(File, std::ios::binary);
 			if (!In)
 			{
-				return false;
+				return std::nullopt;
 			}
-			const std::vector<uint8> Bytes{std::istreambuf_iterator<char>(In), std::istreambuf_iterator<char>()};
-			const std::string Digest = FSha1::ToHex(FSha1::Hash(Bytes));
-			return std::find(Known.begin(), Known.end(), Digest) != Known.end();
+			return std::vector<uint8>{std::istreambuf_iterator<char>(In), std::istreambuf_iterator<char>()};
+		}
+
+		template <std::size_t Count>
+		bool IsKnownCode(const std::filesystem::path& File, const std::array<std::string_view, Count>& Known)
+		{
+			const std::optional<std::vector<uint8>> Bytes = ReadWhole(File);
+			return Bytes && std::find(Known.begin(), Known.end(), FSha1::ToHex(FSha1::Hash(*Bytes))) != Known.end();
 		}
 
 		bool IsKnownBattleEventCode(const std::filesystem::path& File)
@@ -177,6 +183,66 @@ namespace Weltall
 		{
 			AddFolder(Folder, Files, [](int32) { return false; });
 		}
+
+		/** The first file of Folder; none where it has none. */
+		std::optional<std::filesystem::path> FirstFile(const std::filesystem::path& Folder)
+		{
+			std::error_code Error;
+			for (const std::filesystem::directory_entry& Entry : std::filesystem::directory_iterator(Folder, Error))
+			{
+				if (Entry.is_regular_file(Error))
+				{
+					return Entry.path();
+				}
+			}
+			return std::nullopt;
+		}
+	}
+
+	std::optional<FPerfectWorksSubtitles> FPerfectWorksSubtitles::Find(const std::filesystem::path& GameFiles, int32 Disc)
+	{
+		const std::string Number = std::to_string(Disc);
+		const std::optional<std::filesystem::path> Boot = FirstFile(GameFiles / "sub_executable" / ("disc" + Number));
+		std::optional<std::vector<uint8>> Bytes = Boot ? ReadWhole(*Boot) : std::nullopt;
+		if (!Bytes)
+		{
+			return std::nullopt;
+		}
+		const TResult<FPsxExecutable> Executable = FPsxExecutable::Parse(std::move(*Bytes));
+		if (!Executable || !FMovieSubtitleTable::HasUndubCode(*Executable))
+		{
+			return std::nullopt;
+		}
+		FPerfectWorksSubtitles Subtitles;
+		Subtitles.Movies = FMovieSubtitleTable::Read(*Executable);
+		std::map<int32, FModFile> Pictures;
+		AddFolder(GameFiles / ("fmv" + Number), Pictures);
+		for (const FMovieSubtitleEntry& Entry : Subtitles.Movies.Entries())
+		{
+			const int32 Record = static_cast<int32>(Entry.Record) + (Disc == 2 ? FDiscModFiles::SecondDiscShift : 0);
+			const auto Picture = Pictures.find(Record);
+			if (Picture == Pictures.end())
+			{
+				return std::nullopt;
+			}
+			Subtitles.Files[Entry.Record] = Picture->second.Path;
+		}
+		if (Subtitles.Files.empty())
+		{
+			return std::nullopt;
+		}
+		return Subtitles;
+	}
+
+	TResult<FMovieSubtitles> FPerfectWorksSubtitles::Load(const FMovieSubtitleEntry& Entry) const
+	{
+		const auto Found = Files.find(Entry.Record);
+		const std::optional<std::vector<uint8>> Bytes = Found != Files.end() ? ReadWhole(Found->second) : std::nullopt;
+		if (!Bytes)
+		{
+			return MakeError("Perfect Works Build's subtitles of movie " + std::to_string(Entry.Movie) + " cannot be read");
+		}
+		return FMovieSubtitles::FromFile(*Bytes, Entry.Lines);
 	}
 
 	std::optional<FPerfectWorksRelease> FPerfectWorksRelease::Find(const std::filesystem::path& Folder)
@@ -198,6 +264,7 @@ namespace Weltall
 									   IsKnownCode(RecordFile(GameFiles / ArenaFolders[0][1], BattlingCode), KnownBasicScriptBattling)},
 			{IsKnownCode(RecordFile(GameFiles / ArenaFolders[1][0], BattlingCode), KnownExpertBattling),
 				IsKnownCode(RecordFile(GameFiles / ArenaFolders[1][1], BattlingCode), KnownExpertScriptBattling)}}};
+		Release.Subtitles = {FPerfectWorksSubtitles::Find(GameFiles, 1), FPerfectWorksSubtitles::Find(GameFiles, 2)};
 		return Release;
 	}
 

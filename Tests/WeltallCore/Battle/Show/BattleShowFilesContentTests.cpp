@@ -161,6 +161,9 @@ TEST_CASE("Every battle sprite file parses: the party's, their attacks, the effe
 		REQUIRE(Sprite);
 		auto Attacks = Files->ReadAttacks(Character);
 		REQUIRE(Attacks);
+		// The attack file's bank is the character's recorded voice; the sprite file has no bank.
+		CHECK(Attacks->HoldsVoices());
+		CHECK_FALSE(Sprite->HoldsVoices());
 		for (const FBattleSpriteSection& Section : Attacks->Sections())
 		{
 			++Sections[Section.Kind];
@@ -180,6 +183,7 @@ TEST_CASE("Every battle sprite file parses: the party's, their attacks, the effe
 			continue;
 		}
 		++Extensions[File->Extension()];
+		CHECK_FALSE(File->HoldsVoices());
 		for (const FBattleSpriteSection& Section : File->Sections())
 		{
 			++Sections[Section.Kind];
