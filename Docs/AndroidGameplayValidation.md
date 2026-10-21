@@ -4,7 +4,13 @@ This is the acceptance record for milestones 1–5 of [AndroidPortPlan.md](Andro
 
 Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pairs. Compare PC and Android using the same source revision, settings and save inputs. Keep saves, logs, captures, extracted data and detailed story-sweep output under ignored `out/`; this tracked document contains authored procedure and outcome summaries only.
 
-## Latest continuation: shared native reference driver
+## Latest continuation: scripted native boss victory and PC original disc handoff
+
+The shared driver now completes600 seconds of ordinary Moto loading/healing/walking/boss combat/results and continuing story on3a90d0b. One native case succeeds without warnings/failures; all11 sampled transitions/times match PC. Reviewed rewards480, following-scene520 and bridge600 frames support this route's battle victory/continuation; all52 player files and source/isolated save bytes remain unchanged. This extends representative gameplay coverage, not physical input or every battle. Both runners also pass an isolated normal Disc2 checkpoint load. A harness-only menu difference (Options omitted without its temporary callback) is corrected in9fa14c9 and passes another clean native70 replay with the matching menu and unchanged preferences.
+
+PC completes the original Disc1→Disc2 handoff through normal save-choice and disc-confirmation input, entering disc2/field617 at2522 and continuing through617/670 to2800; source/isolated saves remain exact. The corresponding2,800-second Moto run and its bounded30-minute observer are active. Their result is unassessed. A short observer smoke captures1,287 valid CPU/GPU rows and21.585 summed seconds with completion metadata and no overnight gap; it cannot establish sustained performance. See AndroidHandoff.md for exact active sessions, APK/source identities and artifacts. M4/M5 and alpha readiness remain incomplete.
+
+## Previous continuation: shared native reference driver
 
 The PC and Development-only Android runners now share normal input/reader/route code. The native runner uses the actual renderer/audio and a separate app-private save store, records installed APK hashes/captures/trace, and checks every normal save/settings file. Its70-second Moto replay passes one case without warnings/failures, retains all52 protected files and all source/isolated save bytes, and produces the same five sampled program/field/disc/movie transitions at identical times to PC70. The reviewed final image shows the expected hangar. The shared PC replay remains byte-identical to its preceding reference. All42 Python tooling and16 guard cases pass; the new inspected both-disc APK installs as a signed update. The original host transport stall is retained as a failed attempt before native gameplay; binary exec-in and read-back checks correct it. See AndroidHandoff.md for artifact identities.
 
