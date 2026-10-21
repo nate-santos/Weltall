@@ -61,6 +61,8 @@ Each run creates a unique `files/Weltall/Testing/GameplayReference/<run-id>` ins
 
 The host records the actual installed APK hashes and all normal save/settings file hashes before and after. It uploads and verifies inputs in the new test directory, uses a temporary launch override only when none exists, and removes its own override on exit. It never clears application data. The source save, staged input and isolated load slot must all remain unchanged. A completed, warning-free automation report, retained player files, final capture and trace are required for tool success. `summary.json` still leaves gameplay acceptance unassessed.
 
+Binary upload uses `exec-in`, followed by exact byte verification. Its remote writer can still be finishing when that command returns: the verifier makes at most20 reads while the result is a correct incomplete prefix, with0.1-second gaps. Any wrong byte is rejected immediately, and persistent truncation still fails. This never repeats a write or starts gameplay with unverified input; mismatch sizes/hashes remain in the transport log.
+
 Results stay in `out/testing/android-game-reference/<run-id>`, including the native test report, `device/trace.log`, periodic game captures, final image and before/after fingerprints. The transition summary uses the same PC review format. Review relevant frames and compare the PC result before accepting a battle, movie or disc handoff. Missing prompts, timeouts, background holds and test failures are preserved, never silently retried. The default wall timeout is three times the requested duration plus three minutes.
 
 

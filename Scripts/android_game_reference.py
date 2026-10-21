@@ -100,8 +100,20 @@ class Device:
         # exec-in both closes stdin at EOF and selects binary mode on Windows.
         # exec-out is read-only; shell stdin can treat 0x1a as end-of-file there.
         self.run(["exec-in", "run-as", PACKAGE, "sh", "-c", "cat >" + shlex.quote(path)], data=data)
-        if self.read(path).stdout != data:
-            raise RuntimeError("the private reference input did not verify after upload")
+        # exec-in can close before remote cat finishes. Wait only for a correct
+        # prefix to become complete; never retry a wrong byte or repeat a write.
+        for attempt in range(20):
+            received = self.read(path).stdout
+            if received == data:
+                return
+            self.log.write(f"Upload verification {attempt + 1}: expected {len(data)} bytes, read {len(received)}, "
+                           f"sha256={hashlib.sha256(received).hexdigest()}\n")
+            self.log.flush()
+            if not data.startswith(received):
+                break
+            if attempt < 19:
+                time.sleep(0.1)
+        raise RuntimeError("the private reference input did not verify after upload")
 
     def player_snapshot(self):
         # Includes every normal save, LastSaved, preferences and any pending temporaries.

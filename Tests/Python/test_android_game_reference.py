@@ -6,6 +6,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Scripts"))
@@ -23,6 +24,20 @@ class AndroidGameReferenceTests(unittest.TestCase):
         self.assertEqual(calls[0][0][0], "exec-in")
         self.assertEqual(calls[0][1]["data"], data)
         device.read = lambda path: SimpleNamespace(stdout=data[:26])
+        with patch.object(reference.time, "sleep"), self.assertRaises(RuntimeError):
+            device.stage("files/Weltall/Testing/generated.bin", data)
+
+    def test_pending_remote_write_must_finish_exactly_without_another_upload(self):
+        device = reference.Device("unused", "unused", io.StringIO())
+        data = bytes(range(256)) * 32
+        calls = []
+        device.run = lambda args, **kwargs: calls.append((args, kwargs))
+        reads = iter((b"", data[:4096], data))
+        device.read = lambda path: SimpleNamespace(stdout=next(reads))
+        with patch.object(reference.time, "sleep"):
+            device.stage("files/Weltall/Testing/generated.bin", data)
+        self.assertEqual(len(calls), 1)
+        device.read = lambda path: SimpleNamespace(stdout=b"wrong" + data[5:])
         with self.assertRaises(RuntimeError):
             device.stage("files/Weltall/Testing/generated.bin", data)
 
