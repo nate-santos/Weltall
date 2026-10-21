@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#if WITH_DEV_AUTOMATION_TESTS
+
 #include "Game/GameProgram.h"
 #include "Input/PadState.h"
 
@@ -17,7 +19,7 @@ class FGameLoopScreen;
  * come as they would.
  * -RouteAt=S starts the route at simulated second S, leaving earlier scripted input (such as a normal save load) alone.
  */
-class FRenderRoute
+class WELTALL_API FRenderRoute
 {
 public:
 	/** Reads -Route, if given; false, with the reason logged, where it does not read as a route. */
@@ -46,3 +48,5 @@ private:
 	TOptional<Weltall::EGameProgram> PointProgram;
 	int32 PointMap = -1;
 };
+
+#endif

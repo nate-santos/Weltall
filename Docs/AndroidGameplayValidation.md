@@ -4,7 +4,13 @@ This is the acceptance record for milestones 1–5 of [AndroidPortPlan.md](Andro
 
 Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pairs. Compare PC and Android using the same source revision, settings and save inputs. Keep saves, logs, captures, extracted data and detailed story-sweep output under ignored `out/`; this tracked document contains authored procedure and outcome summaries only.
 
-## Latest continuation: reference automation and scoped performance evidence
+## Latest continuation: shared native reference driver
+
+The PC and Development-only Android runners now share normal input/reader/route code. The native runner uses the actual renderer/audio and a separate app-private save store, records installed APK hashes/captures/trace, and checks every normal save/settings file. Its70-second Moto replay passes one case without warnings/failures, retains all52 protected files and all source/isolated save bytes, and produces the same five sampled program/field/disc/movie transitions at identical times to PC70. The reviewed final image shows the expected hangar. The shared PC replay remains byte-identical to its preceding reference. All42 Python tooling and16 guard cases pass; the new inspected both-disc APK installs as a signed update. The original host transport stall is retained as a failed attempt before native gameplay; binary exec-in and read-back checks correct it. See AndroidHandoff.md for artifact identities.
+
+A PC2700 run now reaches the reviewed original INSERT DISC2 prompt through normal story progression, retaining both save copies and exiting cleanly. The next PC run confirms that prompt, while a600-second Moto run applies the same successful PC healing/battle/result sequence; both are active. Their outcomes remain unassessed. Tool success alone grants no battle, movie, original disc handoff, physical-input or extended-play acceptance. M4/M5 remain open and alpha readiness unproven.
+
+## Previous continuation: reference automation and scoped performance evidence
 
 Editor-only `-PadFile` support retains ordinary controller timing beyond Unreal's command-line length limit, and optional traces now identify field movies and the active disc. The new local reference tool automates isolated loading, timed actions, captures and transition review; it never grants gameplay acceptance. All37 Python tooling cases pass, the editor builds, a70-second file-input replay retains both saves and produces the exact PNG of the preceding inline-input reference, and three actual invalid-input commandlet checks reject before gameplay. See [automation instructions](AndroidGameplayAutomation.md) and AndroidHandoff.md for artifacts. Installed Android runtime stays76182bc; no broad core/GPU rerun is implied.
 

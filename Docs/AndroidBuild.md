@@ -122,7 +122,7 @@ The first runner checks temporary-file failures and stale-file recovery. The sec
 
 ## Required device checks
 
-For repeatable PC comparisons beside phone testing, see [local gameplay reference automation](AndroidGameplayAutomation.md). It loads an isolated copy of a native save, reads explicitly selected local discs and controller actions, and summarizes transitions for review. Its `-PadFile` support allows late story inputs without shortening controller timing to fit Unreal's command-line limit. This supplements the physical-device checks below.
+For repeatable PC/phone comparisons, see [local gameplay reference automation](AndroidGameplayAutomation.md). The PC runner and Development-only Android runner share normal controller/reader/route code, load an isolated copy of a native save and summarize transitions for review. Android uses the installed discs and retains all normal saves/settings, recording actual APK and player-file hashes. PC `-PadFile` support allows late story inputs without shortening controller timing to fit Unreal's command-line limit. These tools supplement the physical-device checks below.
 
 Mobile renderer settings live in `Config/DefaultEngine.ini`, including HDR, forward local lights, the no-static-lighting CSM branch and mobile DBuffer/shading path. The Windows cooker initializes global render caches from its own engine config; Android-only overrides can therefore disagree with shader decisions made during cooking. Keep compile-time mobile choices shared between cooker and runtime. Startup validation remains required after changing them; successful cooking alone does not prove that runtime materials are complete.
 

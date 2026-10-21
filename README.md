@@ -206,6 +206,9 @@ dependencies installed. This branch has been built with UE 5.8.4, Android SDK 36
 NDK r27c and JDK 21. Android packaging uses `Scripts/android_package.py`, separately from the desktop
 packager above. See [AndroidBuild.md](Docs/AndroidBuild.md) for additional setup and test details.
 
+Development builds also support [scripted PC/phone gameplay comparisons](Docs/AndroidGameplayAutomation.md)
+using isolated save copies, automatic captures and transition summaries.
+
 1. Check out the `android-port` branch and run the following commands from the repository root.
    Commit any source changes you want to build: the packager exports committed `HEAD`, not uncommitted
    edits. You can select another commit or branch with `--revision`.

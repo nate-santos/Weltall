@@ -1,4 +1,6 @@
-#include "RenderRoute.h"
+#include "Reference/RenderRoute.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
 
 #include "Field/EventContext.h"
 #include "Game/FieldProgram.h"
@@ -19,11 +21,11 @@ namespace
 	using Weltall::EPadButton;
 	using Weltall::FPadState;
 
-	constexpr uint16 Up = FPadState::Bit(EPadButton::Up);
-	constexpr uint16 Right = FPadState::Bit(EPadButton::Right);
-	constexpr uint16 Down = FPadState::Bit(EPadButton::Down);
-	constexpr uint16 Left = FPadState::Bit(EPadButton::Left);
-	constexpr uint16 Cross = FPadState::Bit(EPadButton::Cross);
+	constexpr uint16 RoutePadUp = FPadState::Bit(EPadButton::Up);
+	constexpr uint16 RoutePadRight = FPadState::Bit(EPadButton::Right);
+	constexpr uint16 RoutePadDown = FPadState::Bit(EPadButton::Down);
+	constexpr uint16 RoutePadLeft = FPadState::Bit(EPadButton::Left);
+	constexpr uint16 RoutePadCross = FPadState::Bit(EPadButton::Cross);
 	/** How near a point the leader stands to have reached it: the field's units, the world's. */
 	constexpr double FieldNear = 12.0;
 	constexpr double WorldNear = 24.0;
@@ -121,7 +123,7 @@ FPadState FRenderRoute::Step(FGameLoopScreen& Game, double Elapsed)
 		}
 		// The field walks the cosine and the negated sine of a direction: each button's own (right 0, down a quarter
 		// turn on) less the view's yaw.
-		static constexpr std::array<uint16, 8> ByEighth = {Right, Right | Down, Down, Down | Left, Left, Left | Up, Up, Up | Right};
+		static constexpr std::array<uint16, 8> ByEighth = {RoutePadRight, RoutePadRight | RoutePadDown, RoutePadDown, RoutePadDown | RoutePadLeft, RoutePadLeft, RoutePadLeft | RoutePadUp, RoutePadUp, RoutePadUp | RoutePadRight};
 		const Weltall::FFieldPoint& At = Context.States[Context.LeaderActor].Position;
 		const int32 Dx = Point.X - (At[0] >> 16);
 		const int32 Dz = Point.Z - (At[2] >> 16);
@@ -142,7 +144,7 @@ FPadState FRenderRoute::Step(FGameLoopScreen& Game, double Elapsed)
 		}
 		// The world map walks the sine and the negated cosine of a heading: up along the view's yaw, right a quarter
 		// turn on.
-		static constexpr std::array<uint16, 8> ByEighth = {Up, Up | Right, Right, Right | Down, Down, Down | Left, Left, Left | Up};
+		static constexpr std::array<uint16, 8> ByEighth = {RoutePadUp, RoutePadUp | RoutePadRight, RoutePadRight, RoutePadRight | RoutePadDown, RoutePadDown, RoutePadDown | RoutePadLeft, RoutePadLeft, RoutePadLeft | RoutePadUp};
 		const Weltall::FWorldMapVector& At = Context.Tasks[Weltall::FWorldMapContext::LeaderSlot].Position;
 		const int32 Dx = Point.X - (At.X >> 12);
 		const int32 Dz = Point.Z - (At.Z >> 12);
@@ -164,6 +166,8 @@ FPadState FRenderRoute::Step(FGameLoopScreen& Game, double Elapsed)
 		return FPadState{Toward};
 	}
 	// At a confirm point: on toward it while still far, the button pressed and let go the while.
-	const uint16 Press = Frame % (2 * PressFrames) < PressFrames ? Cross : 0;
+	const uint16 Press = Frame % (2 * PressFrames) < PressFrames ? RoutePadCross : 0;
 	return FPadState{static_cast<uint16>((Distance > (Field != nullptr ? FieldNear : WorldNear) ? Toward : 0) | Press)};
 }
+
+#endif

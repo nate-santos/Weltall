@@ -3,6 +3,8 @@
 Reviewed 17 October 2026, upstream commit `7e81074bcdb385eb0300450a5023a7f2a21058ec` (0.8.1).
 Fork: https://github.com/nate-santos/Weltall
 
+Continuation October21: upstream0.8.3 is merged. Development-only scripted PC/Moto comparisons now share normal input, use isolated save copies and collect captures/transition summaries automatically. A70-second native replay passes without warnings, matches the PC's sampled transitions exactly and retains all52 normal save/settings files. The shared PC replay remains byte-identical to its preceding reference. A longer native battle comparison and the PC original-disc-handoff confirmation are in progress; no M4/M5 or alpha-completion claim follows from the tool check. See the current AndroidHandoff.md and AndroidGameplayValidation.md before resuming. Only the Moto is available; second GPU-family coverage remains untested.
+
 Continuation October 19: upstream `687b2ffc1ff59150177ba59df1968ee1f6074f75` (0.8.2) is merged into `android-port`, and the updated both-disc APK is installed on the Moto. The original source-review details below describe 0.8.1; current validation and remaining work are recorded at the end and in AndroidHandoff.md.
 
 Updated requirements: both USA discs are supplied locally as BIN/CUE pairs in `../bin/`. The game must remain horizontal and rotate between both landscape directions as the phone is turned. Touch controls must support transparency and minimize obstruction. Development is on the `android-port` branch and source changes are pushed to the fork as they pass review. The first device is a Moto G Stylus 2025 connected over USB (Android 16, ARM64, Adreno).

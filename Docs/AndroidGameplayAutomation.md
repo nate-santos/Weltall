@@ -46,3 +46,19 @@ Run the generated-input checks without an engine or game data:
 ```text
 python -m unittest discover -s Tests/Python -p "test_*.py" -v
 ```
+
+## Matching on-device references
+
+`Scripts/android_game_reference.py` runs the same normal-load script, explicit actions, dialogue reader and route on a connected Android phone. Build/install the current **Development** APK with both discs first. The shared reference code and `Weltall.Android.GameplayReference` test are excluded from Shipping builds. The tool restarts only Weltall, leaves volume alone and leaves the app stopped when finished; reopen it normally afterward.
+
+```text
+python Scripts/android_game_reference.py --save out/private/checkpoint.sav --actions out/private/actions.json --seconds 70 --every 20 --serial YOUR_ADB_SERIAL --label normal-load
+```
+
+Use `--load-disc 2`, `--reader`, `--route` and `--route-at` as with the PC runner. The phone reads its already installed discs. It uses the current phone preferences without changing them; its private output includes `player-settings.txt` for the matching PC `--settings` argument. `--prepare-only` validates and writes local inputs without accessing the phone. A single authorized device is selected automatically unless `--serial` specifies one.
+
+Each run creates a unique `files/Weltall/Testing/GameplayReference/<run-id>` inside this app. Only an identical copy of the supplied save is placed in that run's own `Saves/Card1/No01.sav`; normal save slots and LastSaved are never used. The test powers on normally with the production renderer/audio and samples the shared input at 60 Hz, advancing only with foreground game time. It installs no settings-save, camera-save, import/export or quit callbacks. Scripted input replaces physical input during the reference, so it supplies no touch/controller acceptance by itself.
+
+The host records the actual installed APK hashes and all normal save/settings file hashes before and after. It uploads and verifies inputs in the new test directory, uses a temporary launch override only when none exists, and removes its own override on exit. It never clears application data. The source save, staged input and isolated load slot must all remain unchanged. A completed, warning-free automation report, retained player files, final capture and trace are required for tool success. `summary.json` still leaves gameplay acceptance unassessed.
+
+Results stay in `out/testing/android-game-reference/<run-id>`, including the native test report, `device/trace.log`, periodic game captures, final image and before/after fingerprints. The transition summary uses the same PC review format. Review relevant frames and compare the PC result before accepting a battle, movie or disc handoff. Missing prompts, timeouts, background holds and test failures are preserved, never silently retried. The default wall timeout is three times the requested duration plus three minutes.
