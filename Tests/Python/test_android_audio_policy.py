@@ -15,6 +15,12 @@ def report(warnings=()):
 
 
 class AudioPolicyReportTests(unittest.TestCase):
+    def test_delayed_case_must_match_its_exact_requested_identity(self):
+        value = report()
+        value["tests"][0]["fullTestPath"] = policy.DELAYED_TEST
+        self.assertFalse(policy.assess_report(value)[0])
+        self.assertTrue(policy.assess_report(value, policy.DELAYED_TEST)[0])
+
     def test_only_reviewed_engine_warnings_are_retained_and_accepted(self):
         messages = ["LogAudioMixer: AudioMixerPlatformInterface Timeout [ 5 Seconds] waiting for h/w. InstanceID=1"]
         self.assertEqual(policy.assess_report(report(messages)), (True, messages))

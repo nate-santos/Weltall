@@ -294,6 +294,37 @@
             android.util.Log.i("WeltallAudioPolicyProbe", text);
         }, 8000));
     }
+
+    public void AndroidThunkJava_WeltallProbeDelayedAudio(final String run) {
+        if (run == null || !run.matches("[A-Za-z0-9_-]{1,64}")) return;
+        runOnUiThread(() -> {
+            java.io.File folder = new java.io.File(getFilesDir(), "Weltall/Testing/AudioPolicy/" + run);
+            java.io.File result = new java.io.File(folder, "result.txt");
+            if (!folder.isDirectory() || result.exists()) return;
+            android.app.ActivityManager.RunningAppProcessInfo process = new android.app.ActivityManager.RunningAppProcessInfo();
+            android.app.ActivityManager.getMyMemoryState(process);
+            final boolean focused = getWindow().getDecorView().hasWindowFocus();
+            int requestResult = -1, state = -1;
+            boolean eligible;
+            synchronized (weltallAudioLock) {
+                eligible = focused && weltallAudioActive;
+                if (eligible) {
+                    // A real foreground retry while the host owns a registered focus lock.
+                    // Replacing the waiting request also exercises stale-listener generation guards.
+                    requestResult = weltallRequestAudioFocus();
+                    state = weltallAudioState;
+                }
+            }
+            String text = "eligible=" + eligible + "\nfocused=" + focused + "\nimportance="
+                + process.importance + "\nstate=" + state + "\nrequest_result=" + requestResult + "\n";
+            try (java.io.FileOutputStream output = new java.io.FileOutputStream(result)) {
+                output.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (java.io.IOException error) {
+                android.util.Log.e("WeltallAudioPolicyProbe", "Cannot save delayed policy result", error);
+            }
+            android.util.Log.i("WeltallAudioPolicyProbe", text);
+        });
+    }
                 ]]></insert>
             </true>
         </if>

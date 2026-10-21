@@ -78,3 +78,14 @@ This test is named separately from `Weltall.Android.AudioFocus`, whose six self-
 
 
 The audio-policy report retains expected engine warnings. Its host verifier accepts only three explicitly reviewed messages after all native assertions pass: duplicate Android suspend notification, OpenSL's five-second wait while its hardware player is intentionally paused, and this Moto's Vulkan swapchain minimum-count message. OpenSL's platform inherits the no-op base `RequestDeviceSwap`; the paused hardware does not perform the generic worker's suggested device swap. The PCM callback assertions verify continued consumption after resume. Other warnings, errors, wrong/partial tests, changed processes or changed player files reject the run. `passed_with_reviewed_engine_warnings` distinguishes this from a warning-free native report. Earlier failed attempts and reports remain intact; do not relabel them as clean passes.
+
+
+## Locked focus and automatic delayed gain
+
+```text
+python Scripts/android_audio_policy.py --case delayed --serial YOUR_ADB_SERIAL
+```
+
+This case requires a Development APK containing `Weltall.Android.HostDrivenAudioPolicy.LockedDelayedGrant`, Android SDK36/build-tools36.0.0 and a JDK configured in local.env. The host compiles the authored `Scripts/Android/WeltallAudioFocusLock.java` into its ignored run directory, then runs it through app_process as the existing debug shell. An empty registered audio policy locks only its own audio-focus client; it creates no playback, microphone access, phone call, phone-call identity, route or setting change. Existing shell routing/query privileges are used; the game receives no new permissions. The helper checks that Weltall owns focus first, signals its actual granted lock, and has a20-second release deadline plus finally-abandon/unregister cleanup.
+
+After native readiness, the host locks focus, sends Home for two seconds and returns the same game processes while the lock remains held. The production foreground request must enter Waiting. A Development-only foreground re-request records Android's actual return2/state4 and exercises replacement of a waiting request without accepting its stale listener. The native case holds simulation/audio/PCM for a measured window, verifies user input cannot steal the lock or become a queued game action, then tells the host to release its own lock. Android must automatically grant the waiting request, with no resume tap, and native updates and PCM callbacks must restart without a time jump. Player-file hashes, helper cleanup, installed APK hashes and all engine warnings remain in the normal policy report. An unavailable shell API/permission or an ungranted lock fails this setup; it is never relabelled as delayed-focus coverage.
