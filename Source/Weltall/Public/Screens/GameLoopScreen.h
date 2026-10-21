@@ -82,10 +82,11 @@ public:
 	/**
 	 * The game powered on with a disc and the player's settings, the game's other disc beside it when
 	 * the player has it (its movies play once the game asks for it); the discs must outlive the screen.
+	 * bAtTitle starts a fresh recovery session at the ordinary title instead of replaying the opening movie.
 	 * The reason when it cannot start.
 	 */
 	static Weltall::TResult<TSharedRef<FGameLoopScreen>> PowerOn(const Weltall::FIso9660& Disc, FStartSound StartSound,
-		const Weltall::FPlayerSettings& Settings, const Weltall::FIso9660* OtherDisc = nullptr);
+		const Weltall::FPlayerSettings& Settings, const Weltall::FIso9660* OtherDisc = nullptr, bool bAtTitle = false);
 
 	/** For the tools that stage a scene: changes a new game before the field map is entered with it. */
 	using FStateStaged = TFunction<void(Weltall::FGameSession&)>;

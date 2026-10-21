@@ -13,6 +13,7 @@
 #include "Game/BattleGameProgram.h"
 #include "Game/BattlingGameProgram.h"
 #include "Game/BootNotice.h"
+#include "Game/KernelState.h"
 #include "Game/FieldProgram.h"
 #include "Game/GameLoop.h"
 #include "Game/GamePace.h"
@@ -226,10 +227,11 @@ void FGameLoopScreen::RefreshVoiceDiscs()
 }
 
 Weltall::TResult<TSharedRef<FGameLoopScreen>> FGameLoopScreen::PowerOn(const Weltall::FIso9660& Disc, FStartSound StartSound,
-	const Weltall::FPlayerSettings& Settings, const Weltall::FIso9660* OtherDisc)
+	const Weltall::FPlayerSettings& Settings, const Weltall::FIso9660* OtherDisc, bool bAtTitle)
 {
 	TSharedRef<FGameLoopScreen> Screen = MakeShared<FGameLoopScreen>(Disc, MoveTemp(StartSound), Settings, OtherDisc);
-	if (std::optional<Weltall::FError> Error = Screen->Start(std::nullopt))
+	// Recovery starts a fresh session at the game's ordinary title map, with both discs still attached.
+	if (std::optional<Weltall::FError> Error = Screen->Start(bAtTitle ? std::optional<uint16>(Weltall::FKernelState::TitleMap) : std::nullopt))
 	{
 		return MoveTemp(*Error);
 	}

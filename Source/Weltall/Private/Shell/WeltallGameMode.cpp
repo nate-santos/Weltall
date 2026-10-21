@@ -27,6 +27,10 @@
 #include <filesystem>
 #include <string>
 
+#if PLATFORM_ANDROID
+#include "Android/AndroidApplication.h"
+#endif
+
 AWeltallGameMode::AWeltallGameMode()
 {
 	PlayerControllerClass = AWeltallPlayerController::StaticClass();
@@ -155,7 +159,22 @@ bool AWeltallGameMode::StartGame()
 	// Disc 2 is read beside disc 1 when the player has it, so the disc change's "INSERT DISC 2" is only confirmed;
 	// without it the Games folder is looked in again as the game asks for it, as it is for disc 1 when the game
 	// starts from disc 2 (its New Game and disc 1's saves ask for disc 1).
-	auto Started = FGameLoopScreen::PowerOn(*Disc, MoveTemp(StartSound), Settings->Settings(), FirstDisc != nullptr ? SecondDisc : nullptr);
+	bool bRecoveredLaunch = false;
+#if PLATFORM_ANDROID
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+	{
+		if (jobject Activity = FAndroidApplication::GetGameActivityThis())
+		{
+			jclass Class = Env->GetObjectClass(Activity);
+			jmethodID Consume = Env->GetMethodID(Class, "AndroidThunkJava_WeltallConsumeRecoveryLaunch", "()Z");
+			if (Consume && !Env->ExceptionCheck()) bRecoveredLaunch = Env->CallBooleanMethod(Activity, Consume) == JNI_TRUE;
+			if (Env->ExceptionCheck()) { Env->ExceptionClear(); bRecoveredLaunch = false; }
+			Env->DeleteLocalRef(Class);
+		}
+	}
+	if (bRecoveredLaunch) UE_LOG(LogWeltall, Display, TEXT("Activity recovery: starting a fresh session at the title screen"));
+#endif
+	auto Started = FGameLoopScreen::PowerOn(*Disc, MoveTemp(StartSound), Settings->Settings(), FirstDisc != nullptr ? SecondDisc : nullptr, bRecoveredLaunch);
 	if (!Started)
 	{
 		UE_LOG(LogWeltall, Error, TEXT("The game cannot start: %hs"), Started.Error().Message.c_str());

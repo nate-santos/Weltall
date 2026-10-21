@@ -3,7 +3,9 @@
 #if PLATFORM_ANDROID && WITH_DEV_AUTOMATION_TESTS
 
 #include "Android/AndroidApplication.h"
+#include "Algo/AllOf.h"
 #include "Audio/GameSoundSubsystem.h"
+#include "Audio/GameSoundWave.h"
 #include "Components/AudioComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -13,6 +15,12 @@
 #include "Input/WeltallPlayerController.h"
 #include "InputKeyEventArgs.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/CommandLine.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "HAL/FileManager.h"
+#include "Shell/AndroidAudioFocus.h"
+#include "Shell/PlayerFolders.h"
 #include "Shell/GameWindowSubsystem.h"
 #include "Screens/GameScreenSubsystem.h"
 #include "Screens/GameScreen.h"
@@ -25,6 +33,11 @@ public:
 	static bool HasOutput(UGameSoundSubsystem& Sound) { return Sound.Output != nullptr; }
 	static bool AudioPaused(UGameSoundSubsystem& Sound) { return Sound.bHeld && Sound.Output && Sound.Output->bIsPaused; }
 	static bool AudioPlaying(UGameSoundSubsystem& Sound) { return !Sound.bHeld && Sound.Output && !Sound.Output->bIsPaused; }
+	static uint64 GeneratedSamples(UGameSoundSubsystem& Sound)
+	{
+		const UGameSoundWave* Wave = Sound.Output ? Cast<UGameSoundWave>(Sound.Output->Sound) : nullptr;
+		return Wave ? Wave->GeneratedSamples.load(std::memory_order_relaxed) : 0;
+	}
 	static TSharedPtr<SWeltallTouchControls> Touch(AWeltallPlayerController& Controller) { return Controller.TouchControls; }
 	static Weltall::FTouchPoint ControlPoint(SWeltallTouchControls& Touch, Weltall::ETouchControl Control)
 	{
@@ -124,6 +137,148 @@ namespace
 	};
 
 	enum class EResumeInput { Native, Panel, Control, Hardware };
+
+	/** Separately named because a host must press Home and return after the actual policy result. */
+	class FDeniedAudioPolicyCommand final : public IAutomationLatentCommand
+	{
+	public:
+		explicit FDeniedAudioPolicyCommand(FAutomationTestBase& InTest) : Test(InTest) {}
+		~FDeniedAudioPolicyCommand()
+		{
+			if (Window.IsValid()) Window->ResumeAudioIfNeeded();
+			if (Controller.IsValid()) Controller->ResetAllInput();
+			if (Screens.IsValid() && Counter) Screens->Show(Counter->Previous);
+		}
+		bool Update() override
+		{
+			const double Now = FPlatformTime::Seconds();
+			if (Now - Started > 75.0)
+			{
+				Test.AddError(TEXT("Host-driven background denial/resume did not finish within 75 seconds"));
+				return true;
+			}
+			if (Phase == 0)
+			{
+				FString Run;
+				FParse::Value(FCommandLine::Get(), TEXT("WeltallAudioPolicy="), Run);
+				if (Run.IsEmpty() || Run.Len() > 64 || !Algo::AllOf(Run, [](TCHAR C) { return FChar::IsAlnum(C) || C == '-' || C == '_'; }))
+				{
+					Test.AddError(TEXT("Use the host audio-policy runner with a unique -WeltallAudioPolicy identifier"));
+					return true;
+				}
+				if (GEngine) for (const FWorldContext& Context : GEngine->GetWorldContexts())
+				{
+					UWorld* World = Context.World();
+					UGameInstance* Game = World ? World->GetGameInstance() : nullptr;
+					if (!Game) continue;
+					Window = Game->GetSubsystem<UGameWindowSubsystem>();
+					Screens = Game->GetSubsystem<UGameScreenSubsystem>();
+					Sound = Game->GetSubsystem<UGameSoundSubsystem>();
+					Controller = Cast<AWeltallPlayerController>(Game->GetFirstLocalPlayerController());
+					if (Window.IsValid()) break;
+				}
+				if (Controller.IsValid()) Touch = FWeltallAudioFocusTestAccess::Touch(*Controller);
+				if (!Window.IsValid() || Window->IsHeldInBackground() || !Screens.IsValid() || !Sound.IsValid()
+					|| !Controller.IsValid() || !Touch || Touch->GetCachedGeometry().GetLocalSize().X < 100.0f
+					|| !FWeltallAudioFocusTestAccess::HasOutput(*Sound) || !FWeltallAudioFocusTestAccess::Screen(*Screens)) return false;
+				Root = FPaths::Combine(PlayerDataFolder(), TEXT("Testing/AudioPolicy"), Run);
+				if (IFileManager::Get().DirectoryExists(*Root) || !IFileManager::Get().MakeDirectory(*Root, true))
+				{
+					Test.AddError(TEXT("Audio-policy identifier must name a new private test directory"));
+					return true;
+				}
+				Counter = MakeShared<FFocusCountingScreen>(FWeltallAudioFocusTestAccess::Screen(*Screens).ToSharedRef());
+				Screens->Show(Counter.ToSharedRef());
+				Controller->ResetAllInput();
+				const auto Down = FWeltallAudioFocusTestAccess::ControlPoint(*Touch, Weltall::ETouchControl::DPad);
+				Test.TestTrue(TEXT("Touch Down is held before background policy denial"), FWeltallAudioFocusTestAccess::Pointer(*Touch, Down, true));
+				JNIEnv* Env = FAndroidApplication::GetJavaEnv();
+				jobject Activity = FAndroidApplication::GetGameActivityThis();
+				jclass Class = Env->GetObjectClass(Activity);
+				jmethodID Method = Env->GetMethodID(Class, "AndroidThunkJava_WeltallProbeDeniedAudio", "(Ljava/lang/String;)V");
+				if (Env->ExceptionCheck() || !Method)
+				{
+					Env->ExceptionClear(); Env->DeleteLocalRef(Class);
+					Test.AddError(TEXT("Development Java policy probe is unavailable")); return true;
+				}
+				jstring Id = Env->NewStringUTF(TCHAR_TO_UTF8(*Run));
+				Env->CallVoidMethod(Activity, Method, Id);
+				Env->DeleteLocalRef(Id); Env->DeleteLocalRef(Class);
+				if (Env->ExceptionCheck())
+				{
+					Env->ExceptionClear(); Test.AddError(TEXT("Cannot schedule actual background focus request")); return true;
+				}
+				if (!FFileHelper::SaveStringToFile(TEXT("Press Home; return after result.txt appears.\n"), *FPaths::Combine(Root, TEXT("ready.txt"))))
+				{
+					Test.AddError(TEXT("Cannot notify host to background the game")); return true;
+				}
+				Phase = 1;
+				return false;
+			}
+			if (!Window.IsValid() || !Screens.IsValid() || !Sound.IsValid() || !Controller.IsValid())
+			{
+				Test.AddError(TEXT("Game subsystems disappeared during denied-focus test")); return true;
+			}
+			if (Phase == 1)
+			{
+				FString Result;
+				if (!IFileManager::Get().FileExists(*FPaths::Combine(Root, TEXT("result.txt")))) return false;
+				if (!FFileHelper::LoadFileToString(Result, *FPaths::Combine(Root, TEXT("result.txt")))) return false;
+				if (Window->IsHeldInBackground() && !Window->IsHeldForAudio()) return false;
+				Test.AddInfo(TEXT("Actual background policy request: ") + Result);
+				if (!Test.TestTrue(TEXT("Android actually rejects a background request without a foreground service"), Result.Contains(TEXT("eligible=true\n"))
+					&& Result.Contains(TEXT("state=5\n")) && Result.Contains(TEXT("request_result=0\n"))
+					&& ReadAndroidAudioFocus().State == EWeltallAudioFocus::Denied)) return true;
+				Test.TestTrue(TEXT("Foreground game offers explicit resume after denial"), Window->CanResumeAudio());
+				Test.TestTrue(TEXT("Denied focus pauses the actual audio component"), FWeltallAudioFocusTestAccess::AudioPaused(*Sound));
+				HeldSamples = FWeltallAudioFocusTestAccess::GeneratedSamples(*Sound);
+				Test.TestEqual(TEXT("Background/denial clears previously held input"), Controller->HeldPad().Buttons, static_cast<uint16>(0));
+				Counter->SeenButtons = 0; HeldUpdates = Counter->Updates; HeldElapsed = Counter->Elapsed;
+				PhaseAt = Now; Phase = 2; return false;
+			}
+			if (Phase == 2)
+			{
+				if (Now - PhaseAt < 1.0) return false;
+				Test.TestEqual(TEXT("No simulation updates while foreground focus remains denied"), Counter->Updates, HeldUpdates);
+				Test.TestEqual(TEXT("No simulated time advances while denied"), Counter->Elapsed, HeldElapsed);
+				Test.TestEqual(TEXT("No new PCM is requested from the paused game wave"), FWeltallAudioFocusTestAccess::GeneratedSamples(*Sound), HeldSamples);
+				const auto Point = FWeltallAudioFocusTestAccess::ResumePoint(*Touch);
+				Test.TestTrue(TEXT("Real resume panel accepts explicit focus retry"), FWeltallAudioFocusTestAccess::Pointer(*Touch, Point, true));
+				FWeltallAudioFocusTestAccess::Pointer(*Touch, Point, false);
+				RetryAt = PhaseAt = Now; Phase = 3; return false;
+			}
+			if (Now - PhaseAt < 0.75) return false;
+			if (Phase == 3)
+			{
+				ResumedSamples = FWeltallAudioFocusTestAccess::GeneratedSamples(*Sound);
+				Test.TestTrue(TEXT("Real audio render callbacks restart after foreground retry"), ResumedSamples > HeldSamples);
+				Phase = 4; PhaseAt = Now; return false;
+			}
+			Test.TestTrue(TEXT("Android grants the foreground retry"), ReadAndroidAudioFocus().State == EWeltallAudioFocus::Granted);
+			Test.TestFalse(TEXT("Denied-focus recovery releases the simulation hold"), Window->IsHeldInBackground());
+			Test.TestTrue(TEXT("Real screen updates and audio resume"), Counter->Updates > HeldUpdates && FWeltallAudioFocusTestAccess::AudioPlaying(*Sound));
+			Test.TestTrue(TEXT("PCM callbacks continue beyond the initial queued buffers"), FWeltallAudioFocusTestAccess::GeneratedSamples(*Sound) > ResumedSamples);
+			Test.AddInfo(FString::Printf(TEXT("Actual PCM samples: held=%llu, first resumed window=%llu, second=%llu"),
+				static_cast<unsigned long long>(HeldSamples), static_cast<unsigned long long>(ResumedSamples),
+				static_cast<unsigned long long>(FWeltallAudioFocusTestAccess::GeneratedSamples(*Sound))));
+			Test.TestEqual(TEXT("Neither stale input nor resume tap reaches gameplay"), Counter->SeenButtons, static_cast<uint16>(0));
+			Test.TestTrue(TEXT("Retry discards interrupted elapsed time"), Counter->Elapsed - HeldElapsed <= Now - RetryAt + 0.15);
+			return true;
+		}
+	private:
+		FAutomationTestBase& Test;
+		TWeakObjectPtr<UGameWindowSubsystem> Window;
+		TWeakObjectPtr<UGameScreenSubsystem> Screens;
+		TWeakObjectPtr<UGameSoundSubsystem> Sound;
+		TWeakObjectPtr<AWeltallPlayerController> Controller;
+		TSharedPtr<SWeltallTouchControls> Touch;
+		TSharedPtr<FFocusCountingScreen> Counter;
+		FString Root;
+		double Started = FPlatformTime::Seconds(), PhaseAt = 0, RetryAt = 0, HeldElapsed = 0;
+		uint64 HeldUpdates = 0;
+		uint64 HeldSamples = 0, ResumedSamples = 0;
+		int32 Phase = 0;
+	};
 
 	class FAudioFocusInterruptionCommand final : public IAutomationLatentCommand
 	{
@@ -324,6 +479,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidAudioHardwareResumeTest, "Weltall.Andro
 bool FAndroidAudioHardwareResumeTest::RunTest(const FString&)
 {
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FAudioFocusInterruptionCommand>(*this, 1, EResumeInput::Hardware));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAndroidDeniedAudioPolicyTest, "Weltall.Android.HostDrivenAudioPolicy.BackgroundDenialAndPanelRetry",
+	EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FAndroidDeniedAudioPolicyTest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShared<FDeniedAudioPolicyCommand>(*this));
 	return true;
 }
 

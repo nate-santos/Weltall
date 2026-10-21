@@ -33,7 +33,8 @@ class AndroidGameReferenceTests(unittest.TestCase):
         for route in ("0,0 -Staging=1", "../Saves", "0,0\n-Quit", "nan,2"):
             with self.subTest(route=route), self.assertRaises(ValueError):
                 reference.request_text(70, 20, route=route)
-        for seconds, every, at in ((39, 20, 36), (7201, 20, 36), (70, float("nan"), 36), (70, 0, 36), (70, 20, 70)):
+        self.assertEqual(reference.request_text(70, 0), "-Seconds=70 -Every=0\n")
+        for seconds, every, at in ((39, 20, 36), (7201, 20, 36), (70, float("nan"), 36), (70, -1, 36), (70, 0.5, 36), (70, 20, 70)):
             with self.assertRaises(ValueError):
                 reference.request_text(seconds, every, route_at=at)
 

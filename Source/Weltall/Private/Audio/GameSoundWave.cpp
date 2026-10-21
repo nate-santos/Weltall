@@ -21,6 +21,9 @@ void UGameSoundWave::SetSound(std::shared_ptr<Weltall::IGameSound> InSound)
 
 int32 UGameSoundWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples)
 {
+#if PLATFORM_ANDROID && WITH_DEV_AUTOMATION_TESTS
+	GeneratedSamples.fetch_add(static_cast<uint64>(NumSamples), std::memory_order_relaxed);
+#endif
 	OutAudio.Reset();
 	OutAudio.AddZeroed(NumSamples * sizeof(int16));
 	if (Sound)

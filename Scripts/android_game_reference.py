@@ -35,8 +35,8 @@ TEST = "Weltall.Android.GameplayReference"
 
 
 def request_text(seconds, every, reader=False, route=None, route_at=36):
-    if not 40 <= seconds <= 7200 or not math.isfinite(every) or not 1 <= every <= 60:
-        raise ValueError("use 40–7,200 seconds and a capture interval from 1 to 60 seconds")
+    if not 40 <= seconds <= 7200 or not math.isfinite(every) or not (every == 0 or 1 <= every <= 60):
+        raise ValueError("use 40–7,200 seconds and capture interval 0 (final only) or 1–60 seconds")
     if not math.isfinite(route_at) or not 36 <= route_at < seconds:
         raise ValueError("route start must be at/after 36 seconds and before the reference ends")
     text = f"-Seconds={seconds} -Every={every}"
@@ -118,7 +118,7 @@ def main():
     parser.add_argument("--actions", type=Path, help="same timed JSON controller actions as the PC runner")
     parser.add_argument("--load-disc", type=int, choices=(1, 2), default=1)
     parser.add_argument("--seconds", type=int, default=70)
-    parser.add_argument("--every", type=float, default=20)
+    parser.add_argument("--every", type=float, default=20, help="periodic capture seconds; 0 retains only the final image for profiling")
     parser.add_argument("--reader", action="store_true")
     parser.add_argument("--route")
     parser.add_argument("--route-at", type=float, default=36)

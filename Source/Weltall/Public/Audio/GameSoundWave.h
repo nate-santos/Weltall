@@ -4,6 +4,7 @@
 #include "Sound/SoundWaveProcedural.h"
 
 #include <memory>
+#include <atomic>
 
 #include "GameSoundWave.generated.h"
 
@@ -30,5 +31,9 @@ public:
 	virtual int32 OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples) override;
 
 private:
+#if PLATFORM_ANDROID && WITH_DEV_AUTOMATION_TESTS
+	friend class FWeltallAudioFocusTestAccess;
+	std::atomic<uint64> GeneratedSamples{0};
+#endif
 	std::shared_ptr<Weltall::IGameSound> Sound;
 };

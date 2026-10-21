@@ -6,10 +6,18 @@
     <androidManifestUpdates>
         <addAttribute tag="application" name="android:fullBackupContent" value="@xml/weltall_backup_rules" />
         <addAttribute tag="application" name="android:dataExtractionRules" value="@xml/weltall_data_extraction_rules" />
+        <addElements tag="application">
+            <activity android:name="org.weltall.game.WeltallRecoveryActivity"
+                android:exported="false" android:process=":recovery"
+                android:screenOrientation="sensorLandscape"
+                android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale|locale|layoutDirection|smallestScreenSize|navigation|keyboard|touchscreen|colorMode"
+                android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+        </addElements>
     </androidManifestUpdates>
     <resourceCopies>
         <copyFile src="$S(PluginDir)/res/xml/weltall_backup_rules.xml" dst="$S(BuildDir)/res/xml/weltall_backup_rules.xml" />
         <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
+        <copyFile src="$S(PluginDir)/src/org/weltall/game/WeltallRecoveryActivity.java" dst="$S(BuildDir)/src/org/weltall/game/WeltallRecoveryActivity.java" />
     </resourceCopies>
     <gameActivityClassAdditions>
         <insert><![CDATA[
@@ -32,8 +40,30 @@
     private int weltallAudioState = 0;
     private long weltallAudioGeneration = 0;
     private long weltallAudioLosses = 0;
+    private boolean weltallRecoveryRequested = false;
+    private volatile boolean weltallRecoveredLaunch = false;
 
-    private void weltallRequestAudioFocus() {
+    public synchronized boolean AndroidThunkJava_WeltallConsumeRecoveryLaunch() {
+        boolean recovered = weltallRecoveredLaunch;
+        weltallRecoveredLaunch = false;
+        return recovered;
+    }
+
+    private void weltallRecoverRecreatedActivity() {
+        if (!isChangingConfigurations() || isFinishing() || weltallRecoveryRequested) return;
+        weltallRecoveryRequested = true;
+        Intent recovery = new Intent().setClassName(getPackageName(), "org.weltall.game.WeltallRecoveryActivity");
+        recovery.putExtra("oldPid", android.os.Process.myPid());
+        try {
+            // A foreground activity keeps this restart visible across Unreal's unconditional System.exit.
+            startActivity(recovery);
+            android.util.Log.i("WeltallRecovery", "Configuration recreation: handing off process " + android.os.Process.myPid());
+        } catch (RuntimeException error) {
+            android.util.Log.e("WeltallRecovery", "Cannot begin configuration recovery", error);
+        }
+    }
+
+    private int weltallRequestAudioFocus() {
         final long generation = ++weltallAudioGeneration;
         weltallAudioState = 4;
         try {
@@ -60,8 +90,10 @@
             int result = audio.requestAudioFocus(weltallAudioRequest);
             weltallAudioState = result == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED ? 1
                 : result == android.media.AudioManager.AUDIOFOCUS_REQUEST_DELAYED ? 4 : 5;
+            return result;
         } catch (RuntimeException error) {
             weltallAudioState = 5;
+            return -1;
         }
     }
 
@@ -224,6 +256,47 @@
         }, "WeltallSaveDocument").start();
     }
         ]]></insert>
+        <if condition="WeltallDevelopmentBuild">
+            <true>
+                <insert><![CDATA[
+    // Host-coordinated Android 15+ policy test. Calls the real requester while Home is foreground.
+    // No broadcast receiver, fake focus callback, sound, or Shipping entry point is introduced.
+    public void AndroidThunkJava_WeltallProbeDeniedAudio(final String run) {
+        if (run == null || !run.matches("[A-Za-z0-9_-]{1,64}")) return;
+        runOnUiThread(() -> new android.os.Handler(getMainLooper()).postDelayed(() -> {
+            java.io.File folder = new java.io.File(getFilesDir(), "Weltall/Testing/AudioPolicy/" + run);
+            java.io.File result = new java.io.File(folder, "result.txt");
+            if (!folder.isDirectory() || result.exists()) return;
+            android.app.ActivityManager.RunningAppProcessInfo process = new android.app.ActivityManager.RunningAppProcessInfo();
+            android.app.ActivityManager.getMyMemoryState(process);
+            final boolean focused = getWindow().getDecorView().hasWindowFocus();
+            final boolean eligible = android.os.Build.VERSION.SDK_INT >= 35
+                && getApplicationInfo().targetSdkVersion >= 35 && !focused
+                && process.importance > android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+            int state = -1;
+            int requestResult = -1;
+            if (eligible) {
+                synchronized (weltallAudioLock) {
+                    // Reproduce an actual request racing with backgrounding, without assigning a denial.
+                    weltallAudioActive = true;
+                    ++weltallAudioLosses;
+                    requestResult = weltallRequestAudioFocus();
+                    state = weltallAudioState;
+                }
+            }
+            String text = "eligible=" + eligible + "\nfocused=" + focused + "\nimportance="
+                + process.importance + "\nstate=" + state + "\nrequest_result=" + requestResult + "\n";
+            try (java.io.FileOutputStream output = new java.io.FileOutputStream(result)) {
+                output.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (java.io.IOException error) {
+                android.util.Log.e("WeltallAudioPolicyProbe", "Cannot save policy result", error);
+            }
+            android.util.Log.i("WeltallAudioPolicyProbe", text);
+        }, 8000));
+    }
+                ]]></insert>
+            </true>
+        </if>
     </gameActivityClassAdditions>
     <gameActivityOnNewIntentAdditions>
         <if condition="WeltallDevelopmentBuild">
@@ -242,6 +315,13 @@
         </if>
     </gameActivityOnNewIntentAdditions>
     <gameActivityOnCreateAdditions>
+        <insert><![CDATA[
+        weltallRecoveredLaunch = getIntent().getBooleanExtra("weltallRecoveredActivity", false);
+        if (weltallRecoveredLaunch) {
+            android.widget.Toast.makeText(this, "Game restarted. Load a saved game to continue.", android.widget.Toast.LENGTH_LONG).show();
+            getIntent().removeExtra("weltallRecoveredActivity");
+        }
+        ]]></insert>
         <if condition="WeltallDevelopmentBuild">
             <true>
                 <insert><![CDATA[
@@ -259,6 +339,7 @@
     </gameActivityOnActivityResultAdditions>
     <gameActivityOnDestroyAdditions>
         <insert><![CDATA[
+        weltallRecoverRecreatedActivity();
         AndroidThunkJava_WeltallCancelSaveDocument();
         AndroidThunkJava_WeltallSetAudioActive(false);
         ]]></insert>

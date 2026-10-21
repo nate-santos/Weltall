@@ -48,7 +48,7 @@ public:
 		FParse::Value(*Params, TEXT("Seconds="), Duration);
 		FParse::Value(*Params, TEXT("Every="), Every);
 		if (!FMath::IsFinite(Duration) || Duration < 40.0 || Duration > 7200.0
-			|| !FMath::IsFinite(Every) || Every < 1.0 || Every > 60.0) return false;
+			|| !FMath::IsFinite(Every) || (Every != 0.0 && Every < 1.0) || Every > 60.0) return false;
 		NextShot = Every;
 		// The caller cannot redirect a parser's file access or disable encounters through a route.
 		const FString ScriptParams = FString::Printf(TEXT("-PadFile=\"%s\" -PadStep=0.1"), *FPaths::Combine(Root, TEXT("controller.txt")));
@@ -84,7 +84,8 @@ public:
 			if (Game->HasStopped()) { bFailed = bFinished = true; break; }
 		}
 		if (Elapsed + TickSeconds / 2 >= Duration) bFinished = true;
-		if (Elapsed >= NextShot || bFinished)
+		// A profiling control can omit periodic GPU readbacks while retaining the required final image.
+		if ((Every > 0.0 && Elapsed >= NextShot) || bFinished)
 		{
 			const FString Name = bFinished ? TEXT("frame.png") : FString::Printf(TEXT("frame-%06.2f.png"), NextShot);
 			FScreenshotRequest::RequestScreenshot(FPaths::Combine(Root, Name), false, false);
