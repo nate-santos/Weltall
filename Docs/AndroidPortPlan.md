@@ -38,6 +38,8 @@ Unreal's normal scene renderer is bypassed. Nanite, Lumen and many heavyweight s
 
 Engineering target, not a measured minimum: ARM64, Android 12 or newer, 6–8 GB RAM, Vulkan-capable GPU, landscape orientation. Start on one recent midrange device, then validate both Adreno and Mali/Immortalis GPU families. Choose OS minimum and SDK/NDK versions compatible with the actual UE 5.8 checkout; pin versions rather than independently installing the newest tools.
 
+Hardware availability update, 21 October 2026: the user confirms only the Moto G Stylus 2025 is available. Continue gameplay and lifecycle validation on its Adreno 710; the second GPU-family check remains untested. Do not infer Mali/Immortalis compatibility from the Moto results.
+
 Start with roughly 720p internal rendering, a 60 Hz presentation target and an optional 30 Hz battery mode. Preserve the core's simulation timing separately from presentation rate. Disable supersampling and expensive upscaling initially. Measure sustained performance over at least 30 minutes; do not promise 60 fps before profiling.
 
 ## Landscape orientation and touch-control design

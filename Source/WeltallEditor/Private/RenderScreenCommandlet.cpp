@@ -4,6 +4,7 @@
 #include "Battle/BattleRuntime.h"
 #include "Game/BattleGameProgram.h"
 #include "Game/FieldProgram.h"
+#include "Game/FieldMovie.h"
 #include "Game/GameLoop.h"
 #include "Game/GameSession.h"
 #include "Game/PlayerSettings.h"
@@ -63,8 +64,15 @@ namespace
 			if (Context.LeaderActor < Context.States.size())
 			{
 				const auto& At = Context.States[Context.LeaderActor].Position;
-				UE_LOG(LogRenderScreen, Display, TEXT("GameTrace field map=%d leader=%d position=%d,%d,%d lock=%04X yaw=%d"),
-					Context.RunningMap, Context.LeaderActor, At[0] >> 16, At[1] >> 16, At[2] >> 16, Context.PlayerLock, Context.Camera.GoalViewYaw);
+				const Weltall::FFieldMovie* Movie = Field->Movie();
+				UE_LOG(LogRenderScreen, Display, TEXT("GameTrace field map=%d leader=%d position=%d,%d,%d lock=%04X yaw=%d disc=%d movie=%d"),
+					Context.RunningMap, Context.LeaderActor, At[0] >> 16, At[1] >> 16, At[2] >> 16, Context.PlayerLock, Context.Camera.GoalViewYaw,
+					Context.Disc, Movie ? static_cast<int32>(Movie->Request().Movie) : -1);
+				if (Movie)
+				{
+					UE_LOG(LogRenderScreen, Display, TEXT("GameTrace field movie picture=%u view=%d"),
+						Movie->Player().PictureNumber(), static_cast<int32>(Movie->View()));
+				}
 			}
 		}
 		if (const Weltall::FBattleGameProgram* Battle = Loop->Battle())
@@ -629,21 +637,35 @@ namespace
 	}
 
 	/**
-	 * -Pad=a,b,... the buttons held through each step of play (-PadStep=S seconds, 1 by default),
+	 * -Pad=a,b,... or -PadFile=Path: the buttons held through each step of play (-PadStep=S seconds, 1 by default),
 	 * each step's buttons joined by '+' and empty for none; nothing is held after the last step.
+	 * A file contains the same script, letting long references retain their timing without filling the command line.
 	 */
 	bool ParsePadScript(const FString& Params, TArray<FPadStep>& Script, double& Step)
 	{
 		Step = 1.0;
 		FParse::Value(*Params, TEXT("PadStep="), Step);
 		FString Text;
-		if (!FParse::Value(*Params, TEXT("Pad="), Text, false))
+		const bool bInline = FParse::Value(*Params, TEXT("Pad="), Text, false);
+		FString File;
+		const bool bFile = FParse::Value(*Params, TEXT("PadFile="), File, false);
+		if (bInline && bFile)
+		{
+			UE_LOG(LogRenderScreen, Error, TEXT("Use either -Pad or -PadFile"));
+			return false;
+		}
+		if (bFile && !FFileHelper::LoadFileToString(Text, *File))
+		{
+			UE_LOG(LogRenderScreen, Error, TEXT("Cannot read the controller script %s"), *File);
+			return false;
+		}
+		if (!bInline && !bFile)
 		{
 			return true;
 		}
-		if (!(Step > 0.0))
+		if (!FMath::IsFinite(Step) || !(Step > 0.0))
 		{
-			UE_LOG(LogRenderScreen, Error, TEXT("-PadStep must be positive"));
+			UE_LOG(LogRenderScreen, Error, TEXT("-PadStep must be finite and positive"));
 			return false;
 		}
 		TArray<FString> Steps;
@@ -759,7 +781,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 			TEXT("-AA=None|MSAA|SSAA -Cull=Original|InRange -ViewZoom=Z -ViewTilt=D -ViewTurn=D] [-Story=N -Location=N -Entrance=N -Yaw=N -Scene=N -Party=a,b,c -Gears ")
 			TEXT("-Vehicle=x,y,z,h -VehicleFlags=N -Cull=Original|InRange|Extended] [-State=Full|Weak|Strong|Rising] [-Menu=Mode,Parameter -MenuAt=S] [-Battle=Formation,Kind -BattleAt=S -BattleEvery=S -Party=a,b,c -Ride=a,b,c -GearOf=c:g] [-Arena=From,Kind,Gear1,Gear2,Wins,Level -ArenaAt=S] ")
 			TEXT("[-FieldStory=N -FieldEntrance=K -FieldParty=a,b,c -FieldGears=g,h,... -FieldCards=Folder -StoryFolder=Folder -StoryMode=Original|Expanded] [-Disc=1|2 [-Undub]] [-Card=Chapter[,Subtitle] -CardAt=S] [-MenuArea=Screen|Wide] [-Icons=Set] [-Saves=Folder] [-Keys=a,b] [-MenuAssets] [-Setting=key=value;...] ")
-			TEXT("[-Pad=a,b+c,... -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] [-Mods=Folder] [-Assets=Folder] [-Games=Folder] -Seconds=S [-Every=S] [-Profile=Hz [-ProfileGpuAt=S]] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] [-Crt=Off|Monitor|TV|Custom] -Out=path.png"));
+			TEXT("[-Pad=a,b+c,...|-PadFile=Path -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] [-Mods=Folder] [-Assets=Folder] [-Games=Folder] -Seconds=S [-Every=S] [-Profile=Hz [-ProfileGpuAt=S]] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] [-Crt=Off|Monitor|TV|Custom] -Out=path.png"));
 		return 1;
 	}
 	const FIntPoint Size(FCString::Atoi(*WidthText), FCString::Atoi(*HeightText));
