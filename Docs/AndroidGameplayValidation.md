@@ -4,7 +4,13 @@ This is the acceptance record for milestones 1–5 of [AndroidPortPlan.md](Andro
 
 Target: Moto G Stylus 2025, Android 16, Adreno 710, both supplied USA BIN/CUE pairs. Compare PC and Android using the same source revision, settings and save inputs. Keep saves, logs, captures, extracted data and detailed story-sweep output under ignored `out/`; this tracked document contains authored procedure and outcome summaries only.
 
-## Latest continuation: optional battle-menu reference input
+## Latest continuation: native normal-menu battle/story replay
+
+Installed source8a65fbd's both-disc APK passes actual package integrity/signature/alignment checks and a signed update preserving all53 normal files. Three focused native input-driver tests pass without warnings/failures. A600-second normal-load/field/battle/AP/Combo/story run then completes one native case without warnings/failures, returns to the unlocked map213 bedroom and retains source/staged/isolated saves and all normal player files. The PC reference has matching source context, save/settings/controller bytes and sampled state sequence; timestamps are deliberately excluded. Actual battle effects/HP/AP and final room are reviewed across different viewports. No competitive-arena or physical-control acceptance follows from the scripted helper.
+
+Normal startup afterward loads the existing Card8No03 Disc2 save and its expected party/gold through touch, with responsive menu return. All51 saves, LastSaved108 and preferences remain exact. The app is left at the normal save-point field, with no testing override and media muted. Exact package/test/reference/retention records and the still-unconfirmed PC bed/rest route are in AndroidHandoff.md. Broader M4/M5 remain incomplete; small reader offsets are explicitly non-blocking.
+
+## Previous continuation: optional battle-menu reference input
 
 Both reference runners accept `--battle-driver StoreCombo` for a Development build containing the new shared driver. It observes the normal on-foot command menus and emits pad input to retain unused AP and use the Combo menu; it does not change HP/story/save state, dismiss results or establish touch/controller acceptance. It is off by default, does not play Gear battles or provide a general combat strategy, and does not grant gameplay acceptance. The Android runner rejects a requested driver if the installed APK lacks its readiness marker.
 
