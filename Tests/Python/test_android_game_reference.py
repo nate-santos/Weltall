@@ -14,6 +14,16 @@ import android_game_reference as reference
 
 
 class AndroidGameReferenceTests(unittest.TestCase):
+    def test_battle_driver_is_explicit_and_requires_installed_support(self):
+        self.assertNotIn("BattleDriver", reference.request_text(70, 0))
+        self.assertIn("-BattleDriver=StoreCombo", reference.request_text(70, 0, battle_driver="StoreCombo"))
+        with self.assertRaises(ValueError):
+            reference.request_text(70, 0, battle_driver="StoreCombo -State=1")
+        self.assertTrue(reference.battle_driver_available("", None))
+        self.assertFalse(reference.battle_driver_available("ordinary older trace", "StoreCombo"))
+        self.assertFalse(reference.battle_driver_available("BattleDriver ready=Another", "StoreCombo"))
+        self.assertTrue(reference.battle_driver_available("BattleDriver ready=StoreCombo\n", "StoreCombo"))
+
     def test_binary_upload_uses_exec_in_and_rejects_truncated_readback(self):
         device = reference.Device("unused", "unused", io.StringIO())
         data = bytes(range(256)) * 32  # Includes Windows stdin's special 0x1a byte.

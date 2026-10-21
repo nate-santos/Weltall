@@ -124,6 +124,7 @@ def main():
     parser.add_argument("--every", type=float, default=30, help="capture interval in simulated seconds")
     parser.add_argument("--size", default="1600x1200")
     parser.add_argument("--reader", action="store_true", help="confirm waiting dialogue; not choices, saves or battle results")
+    parser.add_argument("--battle-driver", choices=("StoreCombo",), help="Development-only on-foot menu input; saves AP, then uses Combo")
     parser.add_argument("--route", help="normal field walking route in RenderScreen x,z;!x,z format")
     parser.add_argument("--route-at", type=float, default=36)
     parser.add_argument("--audio", action="store_true", help="retain a potentially large WAV; otherwise sound still advances")
@@ -173,6 +174,8 @@ def main():
                f"-Out={folder/'frame.png'}", f"-abslog={folder/'editor.log'}", "-RenderOffscreen", "-unattended", "-NoSound", "-nosplash", "-NoP4"]
     if args.reader:
         command.append("-Reader=0.5,0.02")
+    if args.battle_driver:
+        command.append(f"-BattleDriver={args.battle_driver}")
     if args.route:
         command.extend([f"-Route={args.route}", f"-RouteAt={args.route_at}", "-RouteBattles"])
     if args.audio:

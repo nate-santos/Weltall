@@ -34,7 +34,7 @@ COMMAND_FILE = EXTERNAL + "/UECommandLine.txt"
 TEST = "Weltall.Android.GameplayReference"
 
 
-def request_text(seconds, every, reader=False, route=None, route_at=36):
+def request_text(seconds, every, reader=False, route=None, route_at=36, battle_driver=None):
     if not 40 <= seconds <= 7200 or not math.isfinite(every) or not (every == 0 or 1 <= every <= 60):
         raise ValueError("use 40–7,200 seconds and capture interval 0 (final only) or 1–60 seconds")
     if not math.isfinite(route_at) or not 36 <= route_at < seconds:
@@ -42,11 +42,19 @@ def request_text(seconds, every, reader=False, route=None, route_at=36):
     text = f"-Seconds={seconds} -Every={every}"
     if reader:
         text += " -Reader=0.5,0.02"
+    if battle_driver is not None:
+        if battle_driver != "StoreCombo":
+            raise ValueError("battle driver must be StoreCombo")
+        text += " -BattleDriver=StoreCombo"
     if route:
         if not re.fullmatch(r"!?-?\d+,-?\d+(;!?-?\d+,-?\d+)*", route):
             raise ValueError("route must contain integer x,z or !x,z points joined by ';'")
         text += f" -Route={route} -RouteAt={route_at}"
     return text + "\n"
+
+
+def battle_driver_available(trace, mode):
+    return mode is None or f"BattleDriver ready={mode}" in trace.splitlines()
 
 
 def report_passed(report):
@@ -132,6 +140,7 @@ def main():
     parser.add_argument("--seconds", type=int, default=70)
     parser.add_argument("--every", type=float, default=20, help="periodic capture seconds; 0 retains only the final image for profiling")
     parser.add_argument("--reader", action="store_true")
+    parser.add_argument("--battle-driver", choices=("StoreCombo",), help="requires the Development reference battle driver in the installed build")
     parser.add_argument("--route")
     parser.add_argument("--route-at", type=float, default=36)
     parser.add_argument("--serial")
@@ -142,7 +151,7 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.label):
         raise ValueError("use a short letters/digits/dashes label")
-    params = request_text(args.seconds, args.every, args.reader, args.route, args.route_at)
+    params = request_text(args.seconds, args.every, args.reader, args.route, args.route_at, args.battle_driver)
     data = args.save.read_bytes()
     if len(data) != 7936 or sum(data[:-1]) % 256 != data[-1]:
         raise ValueError("the source must be a checksum-valid 7,936-byte native save")
@@ -268,11 +277,14 @@ def main():
             summary["source_save_unchanged"] = args.save.read_bytes() == data
             summary["elapsed_wall_seconds"] = time.monotonic() - started
             trace = folder/"device/trace.log"
+            summary["battle_driver_available"] = battle_driver_available(
+                trace.read_text(encoding="utf-8-sig") if trace.is_file() else "", args.battle_driver)
             if trace.is_file():
                 summary.update(summarize_log(trace, folder/"device"))
             summary["final_frame_present"] = (folder/"device/frame.png").is_file()
             (folder/"summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    passed = (not summary.get("error") and summary.get("automation_passed") and summary.get("normal_player_files_unchanged")
+    passed = (not summary.get("error") and summary.get("automation_passed") and summary.get("battle_driver_available")
+              and summary.get("normal_player_files_unchanged")
               and summary["source_save_unchanged"] and summary["launch_override_absent"] and summary["final_frame_present"]
               and not summary.get("stopped_program") and not summary.get("logged_errors"))
     print(json.dumps({key: value for key, value in summary.items() if key not in {"transitions", "logged_errors"}}, indent=2), flush=True)

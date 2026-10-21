@@ -20,6 +20,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Reference/ReferenceInput.h"
+#include "Reference/ReferenceBattleDriver.h"
 #include "Reference/RenderRoute.h"
 #include "Screens/GameScreenSubsystem.h"
 #include "Shell/GameDiscsSubsystem.h"
@@ -52,8 +53,10 @@ public:
 		NextShot = Every;
 		// The caller cannot redirect a parser's file access or disable encounters through a route.
 		const FString ScriptParams = FString::Printf(TEXT("-PadFile=\"%s\" -PadStep=0.1"), *FPaths::Combine(Root, TEXT("controller.txt")));
-		return WeltallReference::ParsePadScript(ScriptParams, Script, PadStep) && Reader.Parse(Params)
-			&& FRenderRoute::Parse(Params + TEXT(" -RouteBattles"), Route);
+		if (!WeltallReference::ParsePadScript(ScriptParams, Script, PadStep) || !Reader.Parse(Params) || !BattleDriver.Parse(Params)
+			|| !FRenderRoute::Parse(Params + TEXT(" -RouteBattles"), Route)) return false;
+		if (BattleDriver.IsEnabled()) Write(TEXT("BattleDriver ready=StoreCombo"));
+		return !bFailed;
 	}
 
 	void Update(double Delta, Weltall::FPadState) override
@@ -66,6 +69,8 @@ public:
 			const int32 Index = static_cast<int32>(Elapsed / PadStep);
 			WeltallReference::FPadStep Step = Script.IsValidIndex(Index) ? Script[Index] : WeltallReference::FPadStep{};
 			Step.Held.Buttons |= Route.Step(*Game, Elapsed).Buttons;
+			const Weltall::FBattleGameProgram* Battle = Game->Loop() ? Game->Loop()->Battle() : nullptr;
+			Step.Held.Buttons |= BattleDriver.Step(Battle ? &Battle->Runtime().Context() : nullptr, TickSeconds).Buttons;
 			if (Reader.bReads && Reader.Holds(*Game, TickSeconds))
 			{
 				Step.Held.Buttons |= Weltall::FPadState::Bit(Weltall::EPadButton::Cross);
@@ -159,6 +164,7 @@ private:
 	TSharedRef<FGameLoopScreen> Game;
 	TArray<WeltallReference::FPadStep> Script;
 	WeltallReference::FRenderReader Reader;
+	WeltallReference::FReferenceBattleDriver BattleDriver;
 	FRenderRoute Route;
 	double PadStep = 0.1, Duration = 70.0, Every = 20.0;
 	double Elapsed = 0.0, Owed = 0.0, NextTrace = 0.0, NextShot = 20.0;

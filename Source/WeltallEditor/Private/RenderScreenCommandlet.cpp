@@ -27,6 +27,7 @@
 #include "OffscreenRender.h"
 #include "MenuIconSheet.h"
 #include "Reference/ReferenceInput.h"
+#include "Reference/ReferenceBattleDriver.h"
 #include "Reference/RenderRoute.h"
 #include "RenderStaging.h"
 #include "RenderingThread.h"
@@ -613,7 +614,7 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 			TEXT("-AA=None|MSAA|SSAA -Cull=Original|InRange -ViewZoom=Z -ViewTilt=D -ViewTurn=D] [-Story=N -Location=N -Entrance=N -Yaw=N -Scene=N -Party=a,b,c -Gears ")
 			TEXT("-Vehicle=x,y,z,h -VehicleFlags=N -Cull=Original|InRange|Extended] [-State=Full|Weak|Strong|Rising] [-Menu=Mode,Parameter -MenuAt=S] [-Battle=Formation,Kind -BattleAt=S -BattleEvery=S -Party=a,b,c -Ride=a,b,c -GearOf=c:g] [-Arena=From,Kind,Gear1,Gear2,Wins,Level -ArenaAt=S] ")
 			TEXT("[-FieldStory=N -FieldEntrance=K -FieldParty=a,b,c -FieldGears=g,h,... -FieldCards=Folder -StoryFolder=Folder -StoryMode=Original|Expanded] [-Disc=1|2 [-Undub]] [-Card=Chapter[,Subtitle] -CardAt=S] [-MenuArea=Screen|Wide] [-Icons=Set] [-Saves=Folder] [-Keys=a,b] [-MenuAssets] [-Setting=key=value;...] ")
-			TEXT("[-Pad=a,b+c,...|-PadFile=Path -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] [-Mods=Folder] [-Assets=Folder] [-Games=Folder] -Seconds=S [-Every=S] [-Profile=Hz [-ProfileGpuAt=S]] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] [-Crt=Off|Monitor|TV|Custom] -Out=path.png"));
+			TEXT("[-Pad=a,b+c,...|-PadFile=Path -PadStep=S] [-Route=x,z;!x,z;... [-RouteAt=S] [-RouteBattles]] [-Reader=Base,PerGlyph] [-BattleDriver=StoreCombo] [-GameTrace=S] [-SoundOut=path.wav] [-BattleSpeed=Normal|2x|4x] [-TextSpeed=Normal|2x|4x|Instant] [-Textures=Folder] [-Mods=Folder] [-Assets=Folder] [-Games=Folder] -Seconds=S [-Every=S] [-Profile=Hz [-ProfileGpuAt=S]] [-From=S] -Size=WxH [-Aspect=Window|16:9|4:3] [-Crt=Off|Monitor|TV|Custom] -Out=path.png"));
 		return 1;
 	}
 	const FIntPoint Size(FCString::Atoi(*WidthText), FCString::Atoi(*HeightText));
@@ -705,8 +706,10 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 	double PadStep = 1.0;
 	FRenderStaging Staging;
 	FRenderReader Reader;
+	WeltallReference::FReferenceBattleDriver BattleDriver;
 	FRenderRoute Route;
-	if (!ParsePadScript(Params, PadScript, PadStep) || !FRenderStaging::Parse(Params, Staging) || !Reader.Parse(Params) || !FRenderRoute::Parse(Params, Route))
+	if (!ParsePadScript(Params, PadScript, PadStep) || !FRenderStaging::Parse(Params, Staging) || !Reader.Parse(Params)
+		|| !BattleDriver.Parse(Params) || !FRenderRoute::Parse(Params, Route))
 	{
 		return 1;
 	}
@@ -779,6 +782,8 @@ int32 URenderScreenCommandlet::Main(const FString& Params)
 		{
 			Staging.Advance(*Game, Elapsed);
 			Step.Held.Buttons |= Route.Step(*Game, Elapsed).Buttons;
+			const Weltall::FBattleGameProgram* Battle = Game->Loop() ? Game->Loop()->Battle() : nullptr;
+			Step.Held.Buttons |= BattleDriver.Step(Battle ? &Battle->Runtime().Context() : nullptr, DisplaySeconds).Buttons;
 			if (Reader.bReads && Reader.Holds(*Game, DisplaySeconds))
 			{
 				Step.Held.Buttons |= Weltall::FPadState::Bit(Weltall::EPadButton::Cross);

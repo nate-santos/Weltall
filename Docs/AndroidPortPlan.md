@@ -1,5 +1,7 @@
 # Weltall Android port: source review and implementation plan
 
+User priority October21: the small dialogue-reader timing differences are not a concern. Keep the recorded measurements as a non-blocking observation and focus on gameplay, controls, progression and saves. Do not spend further time investigating those small offsets unless a meaningful gameplay problem appears.
+
 Reviewed 17 October 2026, upstream commit `7e81074bcdb385eb0300450a5023a7f2a21058ec` (0.8.1).
 Fork: https://github.com/nate-santos/Weltall
 
@@ -140,7 +142,7 @@ Exit: reliable controls and lifecycle behavior during real field navigation, dia
 - Import existing saves to reach later scenarios rapidly. Compare Android regressions with upstream behavior before changing gameplay.
 - Complete long sessions and both-disc coverage, including suspend/resume during gameplay and save writes.
 
-Exit: documented local gameplay matrix covering both discs, no save corruption, and no unexplained platform-specific differences. Include an extended playthrough in addition to automated sweeps and sampled saves; upstream's completeness claims alone are not Android validation.
+Exit: documented local gameplay matrix covering both discs, no save corruption, and no unexplained platform-specific differences affecting gameplay. The user accepts the recorded small dialogue-reader timing offsets. Include an extended playthrough in addition to automated sweeps and sampled saves; upstream's completeness claims alone are not Android validation.
 
 ### 6. Optimize and distribute a beta (1–2 weeks)
 
