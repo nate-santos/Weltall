@@ -226,7 +226,7 @@ bool FFieldParticlesRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFieldTexelKindsRenderingTest, "Weltall.Rendering.FieldLeavesOutPassesWithNoTexelsToDraw",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FFieldTexelKindsRenderingTest::RunTest(const FString&)
 {

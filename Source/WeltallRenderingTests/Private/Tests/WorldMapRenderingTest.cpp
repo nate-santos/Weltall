@@ -137,7 +137,7 @@ bool FWorldMapRenderingTest::RunTest(const FString&)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWorldMapTexelKindsRenderingTest, "Weltall.Rendering.WorldMapLeavesOutPassesWithNoTexelsToDraw",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
 bool FWorldMapTexelKindsRenderingTest::RunTest(const FString&)
 {
