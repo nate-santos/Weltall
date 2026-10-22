@@ -5,11 +5,14 @@
 #include "FieldSceneShaders.h"
 #include "PipelineStateCache.h"
 #include "PixelShaderUtils.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "RHIStaticStates.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "Rendering/FieldPictureRendering.h"
 #include "Rendering/VramTexture.h"
+
+CSV_DEFINE_CATEGORY(WeltallScene, true);
 
 namespace
 {
@@ -292,6 +295,7 @@ namespace
 	{
 		static const TElement Empty{};
 		const uint32 Count = static_cast<uint32>(Data.Num());
+		CSV_CUSTOM_STAT(WeltallScene, QueuedDynamicBytes, sizeof(TElement) * static_cast<double>(FMath::Max(Count, 1u)), ECsvCustomStatOp::Accumulate);
 		return GraphBuilder.CreateSRV(CreateStructuredBuffer(GraphBuilder, Name, sizeof(TElement), FMath::Max(Count, 1u), Count > 0 ? Data.GetData() : &Empty,
 			sizeof(TElement) * FMath::Max(Count, 1u)));
 	}
@@ -411,6 +415,8 @@ namespace
 				VertexParameters.ProjectionScale = ProjectionScale;
 				VertexParameters.NearPlane = NearPlane;
 				VertexParameters.FloorUp = FloorUp;
+				CSV_SCOPED_TIMING_STAT(WeltallScene, Submit);
+				uint32 SubmittedDraws = 0;
 				for (const FFieldDrawRun& Run : *Runs)
 				{
 					FRunDepthStates Depth;
@@ -455,8 +461,10 @@ namespace
 						PixelParameters.SampleCount = Samples;
 						SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), PixelParameters);
 						RHICmdList.DrawPrimitive(0, Run.VertexCount / 3, 1);
+						++SubmittedDraws;
 					}
 				}
+				CSV_CUSTOM_STAT(WeltallScene, Draws, static_cast<double>(SubmittedDraws), ECsvCustomStatOp::Accumulate);
 			});
 	}
 

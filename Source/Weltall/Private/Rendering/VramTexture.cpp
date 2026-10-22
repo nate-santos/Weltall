@@ -7,11 +7,16 @@
 #include "Graphics/TextureRegion.h"
 #include "Graphics/TextureUpscale.h"
 #include "PixelShaderUtils.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "RHICommandList.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "RenderingThread.h"
 #include "ShaderParameterStruct.h"
+
+#include <bit>
+
+CSV_DEFINE_CATEGORY(WeltallVram, true);
 
 namespace
 {
@@ -116,6 +121,7 @@ bool FVramTexture::Follow(const Weltall::FVram& Vram)
 		return false;
 	}
 	TSharedRef<FCopy>* Free = Staging.FindByPredicate([](const TSharedRef<FCopy>& Candidate) { return Candidate.IsUnique(); });
+	CSV_SCOPED_TIMING_STAT(WeltallVram, StageCopy);
 	TSharedRef<FCopy> Copy = Free != nullptr ? *Free : Staging.Add_GetRef(MakeShared<FCopy>());
 	if (bSameLineage && Vram.Revision() >= SentRevision && !bSendAll)
 	{
@@ -144,6 +150,15 @@ bool FVramTexture::Follow(const Weltall::FVram& Vram)
 	}
 	ENQUEUE_RENDER_COMMAND(FollowVram)([this, Copy](FRHICommandListImmediate& RHICmdList)
 	{
+		CSV_SCOPED_TIMING_STAT(WeltallVram, SubmitUpload);
+		CSV_CUSTOM_STAT(WeltallVram, Updates, 1, ECsvCustomStatOp::Accumulate);
+		CSV_CUSTOM_STAT(WeltallVram, QueuedTextureBytes, Copy->Units.Num() * static_cast<double>(sizeof(uint16)) + Copy->Edges.Num(), ECsvCustomStatOp::Accumulate);
+		int32 ChangedTiles = 0;
+		for (uint64 Row : Copy->Changed)
+		{
+			ChangedTiles += std::popcount(Row);
+		}
+		CSV_CUSTOM_STAT(WeltallVram, ChangedTiles, ChangedTiles, ECsvCustomStatOp::Accumulate);
 		const FUpdateTextureRegion2D Region(0, 0, 0, 0, Weltall::FVram::Width, Weltall::FVram::Rows);
 		RHICmdList.UpdateTexture2D(Units, 0, Region, Weltall::FVram::Width * sizeof(uint16), reinterpret_cast<const uint8*>(Copy->Units.GetData()));
 		if (!Copy->Edges.IsEmpty())

@@ -4,12 +4,15 @@
 #include "DrawListShaders.h"
 #include "Menu/MenuButtonIcons.h"
 #include "PipelineStateCache.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "Presentation/DrawList.h"
 #include "RHIStaticStates.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "Rendering/DrawListTextures.h"
 #include "Rendering/VramTexture.h"
+
+CSV_DEFINE_CATEGORY(WeltallDrawList, true);
 
 namespace
 {
@@ -235,6 +238,7 @@ namespace
 
 		FRDGBufferRef VertexBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("ScreenDrawVertices"), sizeof(FScreenDrawVertex), Written, Vertices,
 			Written * sizeof(FScreenDrawVertex), ERDGInitialDataFlags::NoCopy);
+		CSV_CUSTOM_STAT(WeltallDrawList, QueuedVertexBytes, static_cast<double>(Written) * sizeof(FScreenDrawVertex), ECsvCustomStatOp::Accumulate);
 		FScreenDrawPassParameters* PassParameters = GraphBuilder.AllocParameters<FScreenDrawPassParameters>();
 		PassParameters->Vertices = GraphBuilder.CreateSRV(VertexBuffer);
 		PassParameters->RenderTargets[0] = FRenderTargetBinding(Output, ERenderTargetLoadAction::ELoad);
@@ -255,6 +259,8 @@ namespace
 			[PassParameters, &Runs, VertexShader, PixelShader, TargetSize, Placement, ScreenSize, TextureArray, VramUnits, Replacements](FRDGAsyncTask, FRHICommandList& RHICmdList)
 			{
 				RHICmdList.SetViewport(0.0f, 0.0f, 0.0f, static_cast<float>(TargetSize.X), static_cast<float>(TargetSize.Y), 1.0f);
+				CSV_SCOPED_TIMING_STAT(WeltallDrawList, Submit);
+				CSV_CUSTOM_STAT(WeltallDrawList, Draws, Runs.Num(), ECsvCustomStatOp::Accumulate);
 				FScreenDrawListVS::FParameters VertexParameters;
 				VertexParameters.Vertices = PassParameters->Vertices;
 				VertexParameters.ScreenRect = Placement;
