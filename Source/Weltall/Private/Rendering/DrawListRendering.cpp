@@ -2,6 +2,7 @@
 
 #include "CommonRenderResources.h"
 #include "DrawListShaders.h"
+#include "HAL/IConsoleManager.h"
 #include "Menu/MenuButtonIcons.h"
 #include "PipelineStateCache.h"
 #include "ProfilingDebugging/CsvProfiler.h"
@@ -16,6 +17,9 @@ CSV_DEFINE_CATEGORY(WeltallDrawList, true);
 
 namespace
 {
+	TAutoConsoleVariable<int32> CVarBatchSeparateTranslucent(TEXT("weltall.BatchSeparateTranslucent"), 1,
+		TEXT("Combine the two passes of consecutive non-overlapping translucent primitives. Zero retains individual draws for comparisons."), ECVF_RenderThreadSafe);
+
 	/** Which pixels a draw keeps; the values match ScreenDrawList.usf. */
 	enum class EDrawPass : uint32
 	{
@@ -36,8 +40,8 @@ namespace
 		EDrawPass Pass = EDrawPass::Opaque;
 		Weltall::EBlendMode Mode = Weltall::EBlendMode::Average;
 		/**
-		 * The two draws of a semi-transparent textured primitive stay on their own: joining them to
-		 * their neighbors' would change which pixels land over which.
+		 * Split translucent primitives cannot join ordinary runs. Their two passes may be combined
+		 * only while their screen bounds are disjoint, preserving the ordering of overlapping pixels.
 		 */
 		bool bJoinable = true;
 	};
@@ -178,6 +182,9 @@ namespace
 		const FVector4f Display(ToScreen(0, ScreenRect.Min.X, ScreenRect.Width(), Screen.Width), ToScreen(0, ScreenRect.Min.Y, ScreenRect.Height(), Screen.Height),
 			ToScreen(Extent.X, ScreenRect.Min.X, ScreenRect.Width(), Screen.Width), ToScreen(Extent.Y, ScreenRect.Min.Y, ScreenRect.Height(), Screen.Height));
 		FDrawRuns& Runs = *GraphBuilder.AllocObject<FDrawRuns>();
+		int32 SplitFirst = INDEX_NONE;
+		FVector4f SplitBounds(0, 0, 0, 0);
+		const bool bBatchSeparate = CVarBatchSeparateTranslucent.GetValueOnAnyThread() != 0;
 		uint32 Written = 0;
 		for (std::size_t Index = First; Index < End; ++Index)
 		{
@@ -215,19 +222,48 @@ namespace
 			const uint32 Count = Written - FirstVertex;
 			if (Primitive.Blend == Weltall::EDrawBlend::Opaque)
 			{
+				SplitFirst = INDEX_NONE;
 				AddRun(Runs, FirstVertex, Count, EDrawPass::Opaque, Weltall::EBlendMode::Average, true);
 			}
 			else if (Primitive.Texture && Primitive.Blend == Weltall::EDrawBlend::SemiTransparentAll)
 			{
+				SplitFirst = INDEX_NONE;
 				AddRun(Runs, FirstVertex, Count, EDrawPass::BlendAll, Primitive.Texture->Page.Blend, true);
 			}
 			else if (Primitive.Texture)
 			{
+				// Use the actual interpolated geometry, including display-spanning primitives. Clipping
+				// can only reduce these bounds. A disjoint union means no reordered fragment overlaps.
+				const FVector2f Start = Vertices[FirstVertex].Position;
+				FVector4f Bounds(Start.X, Start.Y, Start.X, Start.Y);
+				bool bFinite = true;
+				for (uint32 Vertex = FirstVertex; Vertex < Written; ++Vertex)
+				{
+					const FVector2f Position = Vertices[Vertex].Position;
+					bFinite &= FMath::IsFinite(Position.X) && FMath::IsFinite(Position.Y);
+					Bounds.X = FMath::Min(Bounds.X, Position.X);
+					Bounds.Y = FMath::Min(Bounds.Y, Position.Y);
+					Bounds.Z = FMath::Max(Bounds.Z, Position.X);
+					Bounds.W = FMath::Max(Bounds.W, Position.Y);
+				}
+				const bool bApart = Bounds.Z <= SplitBounds.X || SplitBounds.Z <= Bounds.X || Bounds.W <= SplitBounds.Y || SplitBounds.W <= Bounds.Y;
+				if (bBatchSeparate && bFinite && SplitFirst != INDEX_NONE && Runs.Num() == SplitFirst + 2 && bApart &&
+					Runs[SplitFirst].Mode == Primitive.Texture->Page.Blend && Runs[SplitFirst].FirstVertex + Runs[SplitFirst].VertexCount == FirstVertex)
+				{
+					Runs[SplitFirst].VertexCount += Count;
+					Runs[SplitFirst + 1].VertexCount += Count;
+					SplitBounds = FVector4f(FMath::Min(SplitBounds.X, Bounds.X), FMath::Min(SplitBounds.Y, Bounds.Y),
+						FMath::Max(SplitBounds.Z, Bounds.Z), FMath::Max(SplitBounds.W, Bounds.W));
+					continue;
+				}
+				SplitFirst = bFinite ? Runs.Num() : INDEX_NONE;
+				SplitBounds = Bounds;
 				AddRun(Runs, FirstVertex, Count, EDrawPass::PlainTexels, Primitive.Texture->Page.Blend, false);
 				AddRun(Runs, FirstVertex, Count, EDrawPass::SemiTransparentTexels, Primitive.Texture->Page.Blend, false);
 			}
 			else
 			{
+				SplitFirst = INDEX_NONE;
 				AddRun(Runs, FirstVertex, Count, EDrawPass::BlendAll, Primitive.UntexturedBlend, true);
 			}
 		}
