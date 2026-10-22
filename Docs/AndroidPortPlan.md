@@ -148,7 +148,7 @@ Exit: documented local gameplay matrix covering both discs, no save corruption, 
 
 ### 6. Optimize and distribute a beta (1–2 weeks)
 
-Thermal work is now active; follow [AndroidThermal.md](AndroidThermal.md). The initial five-minute Moto warm-up observation has live skin24.503→26.327°C, battery22–23°C and no sampled throttling, with all53 player files retained. It does not establish equilibrium. Complete sustained matched-workload temperature/frame-time comparisons before assigning low/default/high presets or changing renderer defaults. The existing limited alpha remains the fallback.
+Thermal work is now active; follow [AndroidThermal.md](AndroidThermal.md). A20-minute original-build Moto battle-render baseline completes with live skin26.853→28.922°C, battery24–26°C, no sampled throttling and all53 player files retained. Actual57,824-frame capture averages48.088fps with no>100ms frames. This is sustained rendering/menu waiting, not continuous progression or all-area qualification. An optional picture-scale candidate now passes a retained-data signed update and native GPU test; default resolution stays unchanged. Complete matched-workload temperature/frame-time comparisons before assigning low/default/high presets. The frozen limited alpha APK remains the fallback.
 
 - The user explicitly accepts the current APK-bundled plus extracted disc copies for alpha. Defer deduplication/compressed-disc or direct-package access changes until beta optimization. The measured roughly 1.41 GB of user data is principally the two extracted BIN/CUE pairs; changing Development to Shipping does not remove that working copy.
 - Tune custom-pass resolution, uploads, draw batching, render-target reuse and upscaling based on profiling.

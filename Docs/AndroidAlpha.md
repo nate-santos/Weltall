@@ -1,6 +1,6 @@
 # Limited Moto alpha 1 — October 21, 2026
 
-The installed both-disc Development build is ready for private user testing on the Moto G Stylus 2025. This freezes the current tested build; it does not declare the full M4/M5 plan complete. Per the user's bounded-testing decision, broader progression and a normal competitive Battling match move into alpha testing instead of delaying user play.
+The frozen both-disc Development build is available for private user testing on the Moto G Stylus 2025. This does not declare the full M4/M5 plan complete. Per the user's bounded-testing decision, broader progression and a normal competitive Battling match move into alpha testing instead of delaying user play. Milestone6 experiments may install a newer comparison build; the current installed identity and live tests are recorded in [AndroidHandoff.md](AndroidHandoff.md). The APK identified below remains the alpha1 fallback.
 
 Runtime source: `8a65fbd06d3820d755a531928ea53b438a9c1824`, based on upstream 0.8.3. Documentation commits do not change this APK. Local APK: `out/android/packages/Development/20261021T204335Z-11e67ca4/Weltall-arm64.apk`. SHA-256: `33126f8be7df989bfcc7c739a0d3c2a52d01e89dcf2063b9a19a599234392221`.
 
