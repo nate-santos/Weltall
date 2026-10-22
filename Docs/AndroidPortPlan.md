@@ -1,5 +1,7 @@
 # Weltall Android port: source review and implementation plan
 
+October21 scope decision: the user requests bounded final checks and transition to user testing. Limited private Moto alpha1 now freezes installed source8a65fbd after the focused arena core smoke and actual Disc2 Gear-battle touch/Home/resume check. See [AndroidAlpha.md](AndroidAlpha.md). Full M4/M5 exit conditions remain the broader validation target; normal competitive arena completion, wider Disc2 progression and additional device coverage continue during alpha. Do not repeat long arena navigation or minor timing investigations before user testing. Historical checkpoint status below is superseded for this limited-alpha decision.
+
 User priority October21: the small dialogue-reader timing differences are not a concern. Keep the recorded measurements as a non-blocking observation and focus on gameplay, controls, progression and saves. Do not spend further time investigating those small offsets unless a meaningful gameplay problem appears.
 
 Reviewed 17 October 2026, upstream commit `7e81074bcdb385eb0300450a5023a7f2a21058ec` (0.8.1).

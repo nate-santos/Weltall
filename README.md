@@ -5,9 +5,10 @@ make the game feel like a modern PC release while keeping the original gameplay 
 
 This fork extends [Roman215's Weltall](https://github.com/Roman215/Weltall) with an **experimental
 Android port** for ARM64 phones, including configurable on-screen controls and hardware controller
-support. It stays in landscape and rotates between both landscape directions. Android testing is
-in progress on a Moto G Stylus 2025 with a Bluetooth Stadia controller; complete both-disc playthrough
-and broader controller/lifecycle testing remain unfinished. See the
+support. It stays in landscape and rotates between both landscape directions. The current build is
+available as a **limited private Moto alpha** on the tested Moto G Stylus 2025 with a Bluetooth
+Stadia controller. Start with the [alpha testing guide](Docs/AndroidAlpha.md). A complete both-disc
+playthrough, normal competitive arena match and broader device coverage remain unfinished. See the
 [Android validation record](Docs/AndroidGameplayValidation.md) for current coverage.
 
 You'll need your own copy of the USA release or a supported English undub. Weltall doesn't include

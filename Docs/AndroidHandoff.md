@@ -1,6 +1,14 @@
 # Android port continuation
 
-## Current continuation: Android battle driver and ordinary restart verified
+## Current: limited Moto alpha1, bounded checks closed
+
+The user explicitly requested only quick arena and remaining tests. Stop automated expansion and hand over the installed source8a65fbd APK for private play; [AndroidAlpha.md](AndroidAlpha.md) defines the freeze and reporting workflow. No runtime source changed, so the verified package/source/signature facts below remain current. Full M4/M5 are not declared complete.
+
+Focused existing PC arena fight/menus/winner tests pass3cases/315assertions in4.6host seconds (`out/testing/arena-alpha-quick.log`). Latest normal PC route `20261021T213931Z-34e40587-arena-story111-north-gate-normal` ends on196 after300sim/121.484wall, noerrors/stoppedloop, unchanged saves, reviewed street frame. A normal competitive bout/results is still unverified; do not spend more time navigating there before alpha feedback.
+
+Final actual Moto check: protected Disc2 field→ordinary random Gear battle, Home to Motorola launcher, same-process foreground return, normal touch attacks/damage afterward. Reviewed images and `resume.json` prove the scoped case. All53 normal files retain exact hashes after every step; no launch override exists, music stays muted. Evidence `out/testing/android-app/alpha-bounded-final`. No new victory/extended progression/multitouch claim. Existing longer story/handoff and previous character/Gear victories remain valid. The phone is left in that live battle with ordinary controls, no automation; user may continue or reload. Preserve51 saves, Card8No02/No03, LastSaved108 and5898-byte settings. Next work follows user alpha reports, with wider progression/arena/device coverage recorded as open rather than blocking this limited alpha. No build/replay/profiler remains active.
+
+## Previous continuation: Android battle driver and ordinary restart verified
 
 Installed source is now `8a65fbd06d3820d755a531928ea53b438a9c1824`. The both-disc APK is `out/android/packages/Development/20261021T204335Z-11e67ca4/Weltall-arm64.apk`,1,573,111,463 bytes, SHA `33126f8be7df989bfcc7c739a0d3c2a52d01e89dcf2063b9a19a599234392221`. BuildCookRun203.07seconds/AutomationTool3m33 succeeds. Actual embedded PAK integrity/both-disc listing, signature/same signer, ZIP16KiB and seven ARM64 ELF alignments pass (`out/testing/apk/battle-driver-v1/inspection.json`). Thirteen authored export sources match the committed source after line-ending normalization (archive `committed-source-check.json`). Unstripped ARM64 build ID is `c8c7cf8d7975d4c180d80b112b849a65a2353bfe`; older debugger addresses require fresh symbol/instruction verification. Signed update retains all53 normal files and verifies the installed APK SHA (`out/testing/android-app/battle-driver-v1-install`).
 
