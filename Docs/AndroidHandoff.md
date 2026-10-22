@@ -1,6 +1,14 @@
 # Android port continuation
 
-## Current: limited Moto alpha1, bounded checks closed
+## Current: milestone6 thermal measurement started
+
+The active objective now follows milestone6 optimization, prioritizing phone heat; the limited alpha remains installed and available. `Scripts/android_thermal.py` records live HAL temperatures (never stale cached values), battery/charging state, device/settings identity, focus/process continuity and player-file retention. It fails incomplete observations/limit crossings and optionally sends Home at a limit. `Docs/AndroidThermal.md` defines the measurement protocol and open optimization scope. Five focused parser/limit tests and11 reference-host tests pass.
+
+First actual five-minute baseline completes21samples/300.594sec: skin24.503→26.327°C, battery22–23°C, CPU29.3–37.7°C, GPU28.3–36.0°C, all sampled Android/sensor statuses0, same foreground processes, no limit crossing, all53normalfiles exact. Normal Disc2 load/field/movement/random Gear encounter/touch attacks are reviewed; this is a short warm-up/render observation, not equilibrium or continuous gameplay. Paths: `out/testing/thermal/20261022T022539Z-4c56ed7d-disc2-default-render`, `out/testing/android-app/thermal-default-workload`. Final recorder metadata smoke15seconds passes separately (`20261022T023013Z-a0e898f2-metadata-smoke`). Data cable present, Android reports AC-powered but not charging at80% with adaptive charge disabled; media remains muted. Ambient/case unknown.
+
+No runtime/APK/settings changes yet. Preserve51saves/Card8No02/No03/LastSaved108/current5898bytepreferences. Next: sustained live skin-temperature observation and actual frame timings, then controlled low/default/high comparisons before selecting rendering changes. General engine screen percentage does not necessarily affect this custom viewport; inspect actual extents. Wider milestone6 work, including optimized signed candidate/retention and beta storage choices, is not complete. Consult ignored `out/android/CONTINUE.md` for any freshly started live observer handle before resuming; do not restart a live observation merely because a prior turn ended.
+
+## Previous: limited Moto alpha1, bounded checks closed
 
 The user explicitly requested only quick arena and remaining tests. Stop automated expansion and hand over the installed source8a65fbd APK for private play; [AndroidAlpha.md](AndroidAlpha.md) defines the freeze and reporting workflow. No runtime source changed, so the verified package/source/signature facts below remain current. Full M4/M5 are not declared complete.
 
