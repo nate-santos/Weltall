@@ -14,6 +14,10 @@ import android_game_reference as reference
 
 
 class AndroidGameReferenceTests(unittest.TestCase):
+    def test_csv_profile_is_explicit(self):
+        self.assertNotIn("-Profile", reference.request_text(100, 0))
+        self.assertIn("-Profile", reference.request_text(100, 0, profile=True))
+
     def test_battle_driver_is_explicit_and_requires_installed_support(self):
         self.assertNotIn("BattleDriver", reference.request_text(70, 0))
         self.assertIn("-BattleDriver=StoreCombo", reference.request_text(70, 0, battle_driver="StoreCombo"))

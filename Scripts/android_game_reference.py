@@ -34,12 +34,14 @@ COMMAND_FILE = EXTERNAL + "/UECommandLine.txt"
 TEST = "Weltall.Android.GameplayReference"
 
 
-def request_text(seconds, every, reader=False, route=None, route_at=36, battle_driver=None):
+def request_text(seconds, every, reader=False, route=None, route_at=36, battle_driver=None, profile=False):
     if not 40 <= seconds <= 7200 or not math.isfinite(every) or not (every == 0 or 1 <= every <= 60):
         raise ValueError("use 40–7,200 seconds and capture interval 0 (final only) or 1–60 seconds")
     if not math.isfinite(route_at) or not 36 <= route_at < seconds:
         raise ValueError("route start must be at/after 36 seconds and before the reference ends")
     text = f"-Seconds={seconds} -Every={every}"
+    if profile:
+        text += " -Profile"
     if reader:
         text += " -Reader=0.5,0.02"
     if battle_driver is not None:
@@ -138,6 +140,7 @@ def main():
     parser.add_argument("--actions", type=Path, help="same timed JSON controller actions as the PC runner")
     parser.add_argument("--load-disc", type=int, choices=(1, 2), default=1)
     parser.add_argument("--disc-reader", choices=("extracted", "packaged"), help="Development-only storage comparison; retains existing disc copies")
+    parser.add_argument("--profile", action="store_true", help="capture frame/IO CSV after normal loading, before the final screenshot")
     parser.add_argument("--seconds", type=int, default=70)
     parser.add_argument("--every", type=float, default=20, help="periodic capture seconds; 0 retains only the final image for profiling")
     parser.add_argument("--reader", action="store_true")
@@ -152,7 +155,7 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.label):
         raise ValueError("use a short letters/digits/dashes label")
-    params = request_text(args.seconds, args.every, args.reader, args.route, args.route_at, args.battle_driver)
+    params = request_text(args.seconds, args.every, args.reader, args.route, args.route_at, args.battle_driver, args.profile)
     data = args.save.read_bytes()
     if len(data) != 7936 or sum(data[:-1]) % 256 != data[-1]:
         raise ValueError("the source must be a checksum-valid 7,936-byte native save")
@@ -285,11 +288,13 @@ def main():
             if trace.is_file():
                 summary.update(summarize_log(trace, folder/"device"))
             summary["final_frame_present"] = (folder/"device/frame.png").is_file()
+            summary["csv_capture_present"] = (folder/"device/profile.csv").is_file()
             (folder/"summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     passed = (not summary.get("error") and summary.get("automation_passed") and summary.get("battle_driver_available")
               and summary.get("normal_player_files_unchanged")
               and summary["source_save_unchanged"] and summary["launch_override_absent"] and summary["final_frame_present"]
               and not summary.get("stopped_program") and not summary.get("logged_errors"))
+    passed = passed and (not args.profile or summary["csv_capture_present"])
     print(json.dumps({key: value for key, value in summary.items() if key not in {"transitions", "logged_errors"}}, indent=2), flush=True)
     return int(not passed)
 

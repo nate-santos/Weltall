@@ -19,6 +19,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "Reference/ReferenceInput.h"
 #include "Reference/ReferenceBattleDriver.h"
 #include "Reference/RenderRoute.h"
@@ -46,6 +47,8 @@ public:
 
 	bool Configure(const FString& Params)
 	{
+		bProfile = FParse::Param(*Params, TEXT("Profile"));
+		if (bProfile && FCsvProfiler::IsCapturing()) return false;
 		FParse::Value(*Params, TEXT("Seconds="), Duration);
 		FParse::Value(*Params, TEXT("Every="), Every);
 		if (!FMath::IsFinite(Duration) || Duration < 40.0 || Duration > 7200.0
@@ -62,6 +65,11 @@ public:
 	void Update(double Delta, Weltall::FPadState) override
 	{
 		if (bFinished) return;
+		if (bProfile && !bProfileStarted && Elapsed >= 36.0)
+		{
+			FCsvProfiler::Get()->BeginCapture(-1, Root, TEXT("profile.csv"));
+			bProfileStarted = true;
+		}
 		Owed += Delta;
 		// The same 60 Hz input sampling as RenderScreen, retaining real foreground time.
 		while (Owed + 1e-9 >= TickSeconds && Elapsed + TickSeconds / 2 < Duration)
@@ -89,6 +97,7 @@ public:
 			if (Game->HasStopped()) { bFailed = bFinished = true; break; }
 		}
 		if (Elapsed + TickSeconds / 2 >= Duration) bFinished = true;
+		if (bFinished && bProfileStarted) ProfileFile = FCsvProfiler::Get()->EndCapture();
 		// A profiling control can omit periodic GPU readbacks while retaining the required final image.
 		if ((Every > 0.0 && Elapsed >= NextShot) || bFinished)
 		{
@@ -104,6 +113,7 @@ public:
 	// This tool therefore supplies no touch/gamepad acceptance by itself.
 	bool Finished() const { return bFinished; }
 	bool Failed() const { return bFailed; }
+	bool ProfileReady() const { return !bProfile || (ProfileFile.IsValid() && ProfileFile.IsReady()); }
 	double Seconds() const { return Elapsed; }
 	double Limit() const { return Duration; }
 	Weltall::FSaveStore& Saves() { return *Store; }
@@ -169,6 +179,8 @@ private:
 	double PadStep = 0.1, Duration = 70.0, Every = 20.0;
 	double Elapsed = 0.0, Owed = 0.0, NextTrace = 0.0, NextShot = 20.0;
 	bool bFinished = false, bFailed = false;
+	bool bProfile = false, bProfileStarted = false;
+	TSharedFuture<FString> ProfileFile;
 };
 
 class FReferenceCommand final : public IAutomationLatentCommand
@@ -236,6 +248,11 @@ public:
 			Test.AddError(TEXT("Scripted reference exceeded the wall timeout; inspect focus/progress before retrying")); return true;
 		}
 		if (FinishedAt == 0.0) FinishedAt = Now;
+		if (!Screen->ProfileReady())
+		{
+			if (Now - FinishedAt < 15.0) return false;
+			Test.AddError(TEXT("Reference CSV capture did not finish writing")); return true;
+		}
 		if (Now - FinishedAt < 2.0) return false; // Let the real viewport finish writing its final capture.
 		Test.TestFalse(TEXT("No stopped loop or failed trace write"), Screen->Failed());
 		TArray<uint8> Source;
