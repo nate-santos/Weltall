@@ -15,7 +15,7 @@ tasks.configureEach { task ->
                 def archive = new File(rootProject.projectDir, 'weltall-symbols/' + library.parentFile.name + '/' + library.name)
                 archive.parentFile.mkdirs()
                 java.nio.file.Files.copy(library.toPath(), archive.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                project.exec { commandLine tool.absolutePath, '--strip-unneeded', library.absolutePath }
+                project.exec { commandLine tool.absolutePath, '--strip-unneeded', '--remove-section=.gnu_debugdata', library.absolutePath }
             }
         }
     }
