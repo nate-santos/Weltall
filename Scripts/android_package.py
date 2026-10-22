@@ -353,7 +353,8 @@ def main(argv=None):
             raise ValueError("refusing to replace a packaging directory outside out/android/project")
         if args.clean_export and destination.exists():
             shutil.rmtree(destination)
-        refresh_project(args.revision, destination)
+        revision = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", args.revision], text=True).strip()
+        refresh_project(revision, destination)
         if inputs:
             stage_discs(inputs, destination / "Content" / "BundledDiscs")
             configure_local_discs(destination)
@@ -374,7 +375,6 @@ def main(argv=None):
         apks = sorted(archive.rglob("*.apk"))
         if not apks:
             raise ValueError("Unreal reported success but the archive contains no APK")
-        revision = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", args.revision], text=True).strip()
         ndk = setting("NDKROOT") or setting("NDK_ROOT") or setting("ANDROID_NDK_HOME")
         if not ndk:
             raise ValueError("NDKROOT is required to verify archived native symbols")

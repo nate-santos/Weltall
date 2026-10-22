@@ -76,13 +76,17 @@ class Elf:
             source.seek(section[4] + 12 + ((names + 3) & ~3))
             return source.read(length).hex()
 
-    def function_address(self):
+    def function_address(self, name_contains=None):
         symbols = self.sections['.symtab']
-        with self.path.open('rb') as source:
+        with self.path.open('rb') as source, self.path.open('rb') as names:
             source.seek(symbols[4])
             for _ in range(symbols[5] // 24):
                 name, info, _, index, value, size = struct.unpack('<IBBHQQ', source.read(24))
                 if info & 15 == 2 and index and value and size and name:
+                    if name_contains:
+                        names.seek(self.sections['.strtab'][4] + name)
+                        if name_contains not in names.read(1024).split(b'\0', 1)[0]:
+                            continue
                     return value
         raise ValueError('no symbolication probe function')
 
@@ -127,7 +131,7 @@ def verify_apk(apk, project, archive, revision, ndk):
                           symbols=str(retained.relative_to(archive)))
             if parts[2] == 'libUnreal.so':
                 tool = Path(ndk) / 'toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-symbolizer.exe'
-                address = Elf(retained).function_address()
+                address = Elf(retained).function_address(b'FGameLibrary')
                 probe = subprocess.check_output([str(tool), '--obj=' + str(retained), hex(address)], text=True)
                 if not probe.strip() or probe.splitlines()[0] == '??':
                     raise ValueError('offline symbolication failed')
