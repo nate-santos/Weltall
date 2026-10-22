@@ -15,6 +15,8 @@
 #include "Misc/CoreDelegates.h"
 #include "Shell/PlayerSettingsSubsystem.h"
 #include "Shell/GameWindowSubsystem.h"
+#include "Shell/AndroidDiagnostics.h"
+#include "Shell/GameVersion.h"
 #include "Widgets/Layout/SSafeZone.h"
 
 Weltall::FPadState AWeltallPlayerController::HeldPad() const
@@ -127,6 +129,8 @@ void AWeltallPlayerController::BeginPlay()
 		[
 			SAssignNew(TouchControls, SWeltallTouchControls)
 			.Options(Settings->Settings().Touch)
+			.BuildLabel(GameVersion())
+			.OnExportDiagnostics_Lambda([] { return ExportAndroidDiagnostics(); })
 			.AudioPaused_Lambda([Weak = TWeakObjectPtr<UGameInstance>(GetGameInstance())]()
 			{
 				UGameInstance* Game = Weak.Get();

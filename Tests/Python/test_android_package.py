@@ -23,6 +23,32 @@ class AndroidPackageTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
+    def test_build_identity_is_staged_as_small_ufs_text(self):
+        project = self.root/'identity-project'
+        package.stage_build_identity(project, '1234567890abcdef')
+        self.assertEqual((project/'Content/AndroidBuild/Revision.txt').read_text(), '1234567890ab\n')
+        self.assertIn('AndroidBuild', (project/'Config/Android/AndroidGame.ini').read_text())
+
+    def test_distribution_signing_keeps_key_external_and_strips_config_secrets(self):
+        project = self.root/'signed-project'
+        project.mkdir()
+        key = self.root/'private-fixture.keystore'
+        key.write_bytes(b'synthetic-key-fixture')
+        values = {'WELTALL_RELEASE_KEYSTORE': str(key), 'WELTALL_RELEASE_KEY_ALIAS': 'fixture',
+                  'WELTALL_RELEASE_STORE_PASSWORD': 'fixture-password', 'WELTALL_RELEASE_KEY_PASSWORD': 'fixture-password'}
+        with mock.patch.object(package, 'setting', side_effect=values.get):
+            package.configure_distribution(project)
+        self.assertFalse(list(project.rglob('*.keystore')))
+        denylist = (project/'Config/Android/AndroidGame.ini').read_text()
+        self.assertIn('+IniKeyDenylist=KeyStorePassword', denylist)
+        self.assertIn('+IniKeyDenylist=KeyPassword', denylist)
+        self.assertIn('-distribution', package.uat_command(self.root, project, self.root/'archive', 'Shipping', True))
+
+    def test_distribution_signing_rejects_incomplete_local_settings(self):
+        with mock.patch.object(package, 'setting', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'configure local'):
+                package.configure_distribution(self.root/'project')
+
     def discs(self, nested=False):
         source = self.root / "inputs"
         for number in (1, 2):

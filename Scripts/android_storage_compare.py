@@ -5,6 +5,7 @@ default reader or reclaim disc copies; gameplay images/transitions need review.
 """
 import argparse
 import csv
+import hashlib
 from datetime import datetime, timezone
 import json
 import math
@@ -25,13 +26,19 @@ def analyze(path):
     columns = ['FrameTime', 'GameThreadTime', 'RenderThreadTime', 'RHIThreadTime', 'GPUTime']
     frames = []
     io = {}
+    # Unreal appends newly observed counters, then writes the complete header at
+    # the end. Resolve that schema first; earlier short rows mean zero for new counters.
+    with Path(path).open(encoding='utf-8-sig', newline='') as stream:
+        headers = [row for row in csv.reader(stream) if all(key in row for key in columns)]
+    if not headers or any(row != headers[-1][:len(row)] for row in headers):
+        raise ValueError('missing or incompatible CSV header schemas')
+    header = headers[-1]
     with Path(path).open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.reader(stream)
-        header = next(reader)
         indexes = {key: header.index(key) for key in columns}
         io_indexes = {key: i for i, key in enumerate(header) if 'WeltallDiscIO/' in key}
         for raw in reader:
-            if not raw or raw == header or raw[0].startswith('['):
+            if not raw or all(key in raw for key in columns) or raw[0].startswith('['):
                 continue
             try:
                 frame = {key: float(raw[i]) for key, i in indexes.items()}
@@ -41,7 +48,7 @@ def analyze(path):
                 raise ValueError('invalid CSV frame metric')
             frames.append(frame)
             for key, i in io_indexes.items():
-                value = float(raw[i])
+                value = float(raw[i]) if i < len(raw) else 0.0
                 if not math.isfinite(value) or value < 0:
                     raise ValueError('invalid disc IO counter')
                 io.setdefault(key, []).append(value)
@@ -69,20 +76,25 @@ def main():
     parser.add_argument('--seconds', type=int, default=100)
     parser.add_argument('--serial')
     parser.add_argument('--adb', default=default_adb())
+    parser.add_argument('--resume', type=Path, help='reuse completed phases in an existing local comparison folder')
     args = parser.parse_args()
     if not 96 <= args.seconds <= 180:
         parser.error('use 96–180 seconds: normal loading followed by at least 60 profiled seconds')
     serial = choose_device(subprocess.check_output([str(args.adb), 'devices'], text=True), args.serial)
     run_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
-    folder = REPO / 'out/testing/storage' / ('comparison-' + run_id)
-    folder.mkdir(parents=True, exist_ok=False)
+    folder = args.resume.resolve() if args.resume else REPO / 'out/testing/storage' / ('comparison-' + run_id)
+    if args.resume:
+        if not folder.is_relative_to((REPO/'out/testing/storage').resolve()) or not folder.name.startswith('comparison-'):
+            parser.error('resume must name an existing comparison under out/testing/storage')
+        run_id = folder.name.removeprefix('comparison-')
+    folder.mkdir(parents=True, exist_ok=bool(args.resume))
     print(json.dumps({'folder': str(folder)}), flush=True)
     phases = []
     with (folder/'transport.log').open('w', encoding='utf-8') as log:
         device = Device(args.adb, serial, log)
         for index, reader in enumerate(('extracted', 'packaged', 'extracted', 'packaged')):
             phase = folder / str(index)
-            phase.mkdir()
+            phase.mkdir(exist_ok=bool(args.resume))
             command = [sys.executable, '-X', 'utf8', str(REPO/'Scripts/android_game_reference.py'),
                        '--save', str(args.save.resolve()), '--actions', str(args.actions.resolve()),
                        '--load-disc', str(args.load_disc), '--seconds', str(args.seconds), '--every', '0',
@@ -90,27 +102,34 @@ def main():
                        '--label', 'storage-' + run_id + '-' + str(index), '--timeout', str(args.seconds*3+180)]
             samples = []
             stop = None
-            with (phase/'host.txt').open('w', encoding='utf-8') as output:
-                with subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT) as process:
-                    next_sample = 0
-                    try:
-                        while process.poll() is None:
-                            if time.monotonic() >= next_sample:
-                                thermal = parse_thermal(device.run(['shell', 'dumpsys', 'thermalservice']).stdout.decode())
-                                samples.append(thermal)
-                                stop = stop or limit_reason(thermal, 38)
-                                memory = device.run(['shell', 'dumpsys', 'meminfo', PACKAGE], check=False).stdout
-                                (phase/('memory-' + str(len(samples)) + '.txt')).write_bytes(memory)
-                                next_sample = time.monotonic() + 20
-                            time.sleep(1)
-                    except BaseException:
-                        owned = device.run(['exec-out', 'cat', COMMAND_FILE], check=False).stdout
-                        if run_id.encode() in owned:
-                            device.run(['shell', 'am', 'force-stop', PACKAGE], check=False)
-                            device.run(['shell', 'rm', '-f', COMMAND_FILE], check=False)
-                        process.terminate()
-                        raise
-                    status = process.returncode
+            status = 0
+            if args.resume and (phase/'host.txt').is_file():
+                samples = json.loads((phase/'thermal.json').read_text()) if (phase/'thermal.json').is_file() else []
+            else:
+                with (phase/'host.txt').open('w', encoding='utf-8') as output:
+                    with subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT) as process:
+                        next_sample = 0
+                        try:
+                            while process.poll() is None:
+                                if time.monotonic() >= next_sample:
+                                    thermal = parse_thermal(device.run(['shell', 'dumpsys', 'thermalservice']).stdout.decode())
+                                    samples.append(thermal)
+                                    (phase/'thermal.json').write_text(json.dumps(samples, indent=2))
+                                    stop = stop or limit_reason(thermal, 38)
+                                    memory = device.run(['shell', 'dumpsys', 'meminfo', PACKAGE], check=False).stdout
+                                    (phase/('memory-' + str(len(samples)) + '.txt')).write_bytes(memory)
+                                    next_sample = time.monotonic() + 20
+                                time.sleep(1)
+                        except BaseException:
+                            try:
+                                owned = device.run(['exec-out', 'cat', COMMAND_FILE], check=False).stdout
+                                if run_id.encode() in owned:
+                                    device.run(['shell', 'am', 'force-stop', PACKAGE], check=False)
+                                    device.run(['shell', 'rm', '-f', COMMAND_FILE], check=False)
+                            finally:
+                                process.terminate()
+                            raise
+                        status = process.returncode
             lines = (phase/'host.txt').read_text(encoding='utf-8-sig').splitlines()
             reference = Path(json.loads(next(line for line in lines if line.startswith('{"folder":')))['folder'])
             summary = json.loads((reference/'summary.json').read_text())
@@ -120,6 +139,9 @@ def main():
                 raise RuntimeError('reference retention/cleanup failed')
             metrics = analyze(reference/'device/profile.csv')
             metadata = json.loads((reference/'request.json').read_text())
+            if (summary.get('disc_reader') != reader or metadata['source_save_sha256'] != hashlib.sha256(args.save.read_bytes()).hexdigest()
+                    or metadata['actions'] != json.loads(args.actions.read_text(encoding='utf-8-sig'))):
+                raise RuntimeError('completed phase inputs do not match this comparison')
             phases.append(dict(reader=reader, reference=str(reference), metrics=metrics, thermal=samples,
                                installed_apks=metadata['installed_apks_sha256']))
             (folder/'summary.json').write_text(json.dumps(dict(phases=phases, complete=False), indent=2))

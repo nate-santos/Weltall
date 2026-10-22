@@ -18,6 +18,7 @@
         <copyFile src="$S(PluginDir)/res/xml/weltall_backup_rules.xml" dst="$S(BuildDir)/res/xml/weltall_backup_rules.xml" />
         <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
         <copyFile src="$S(PluginDir)/src/org/weltall/game/WeltallRecoveryActivity.java" dst="$S(BuildDir)/src/org/weltall/game/WeltallRecoveryActivity.java" />
+        <copyFile src="$S(PluginDir)/src/org/weltall/game/WeltallDiagnostics.java" dst="$S(BuildDir)/src/org/weltall/game/WeltallDiagnostics.java" />
     </resourceCopies>
     <gradleCopies>
         <copyFile src="$S(PluginDir)/weltall-native-symbols.gradle" dst="$S(BuildDir)/gradle/app/weltall-native-symbols.gradle" />
@@ -29,6 +30,56 @@ apply from: 'weltall-native-symbols.gradle'
     </buildGradleAdditions>
     <gameActivityClassAdditions>
         <insert><![CDATA[
+    private static final int WELTALL_DIAGNOSTICS_EXPORT = 0x5744;
+    private volatile boolean weltallDiagnosticsBusy = false;
+    private volatile byte[] weltallDiagnosticsBytes = null;
+
+    private void weltallDiagnosticsFinished(final String message) {
+        runOnUiThread(() -> {
+            weltallDiagnosticsBytes = null;
+            weltallDiagnosticsBusy = false;
+            android.widget.Toast.makeText(getApplicationContext(), message, android.widget.Toast.LENGTH_LONG).show();
+        });
+    }
+
+    public synchronized boolean AndroidThunkJava_WeltallExportDiagnostics(final String label, final String logPath) {
+        if (weltallDiagnosticsBusy) return false;
+        weltallDiagnosticsBusy = true;
+        new Thread(() -> {
+            try {
+                weltallDiagnosticsBytes = org.weltall.game.WeltallDiagnostics.create(this, label, logPath);
+                runOnUiThread(() -> {
+                    try {
+                        if (isFinishing() || isDestroyed()) throw new IllegalStateException();
+                        Intent picker = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                        picker.addCategory(Intent.CATEGORY_OPENABLE);
+                        picker.setType("application/json");
+                        picker.putExtra(Intent.EXTRA_TITLE, "Weltall-diagnostics.json");
+                        startActivityForResult(picker, WELTALL_DIAGNOSTICS_EXPORT);
+                    } catch (RuntimeException error) { weltallDiagnosticsFinished("Could not open diagnostic export."); }
+                });
+            } catch (Exception error) { weltallDiagnosticsFinished("Could not prepare diagnostic report."); }
+        }, "WeltallDiagnostics").start();
+        return true;
+    }
+
+    private void weltallDiagnosticsResult(int result, Intent data) {
+        final byte[] bytes = weltallDiagnosticsBytes;
+        if (result != android.app.Activity.RESULT_OK || data == null || data.getData() == null || bytes == null) {
+            weltallDiagnosticsFinished("Diagnostic export cancelled.");
+            return;
+        }
+        final android.net.Uri uri = data.getData();
+        new Thread(() -> {
+            try (java.io.OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                if (output == null) throw new java.io.IOException();
+                output.write(bytes);
+                output.flush();
+                weltallDiagnosticsFinished("Diagnostic report exported.");
+            } catch (java.io.IOException | RuntimeException error) { weltallDiagnosticsFinished("Could not export diagnostic report."); }
+        }, "WeltallDiagnosticExport").start();
+    }
+
     // Save documents use Android's picker and resolver; they never expose a URI as a native filename.
     private static final int WELTALL_SAVE_IMPORT = 0x5749;
     private static final int WELTALL_SAVE_EXPORT = 0x5745;
@@ -371,6 +422,9 @@ apply from: 'weltall-native-symbols.gradle'
     </gameActivityOnCreateAdditions>
     <gameActivityOnActivityResultAdditions>
         <insert><![CDATA[
+        if (requestCode == WELTALL_DIAGNOSTICS_EXPORT) {
+            weltallDiagnosticsResult(resultCode, data);
+        }
         if (requestCode == WELTALL_SAVE_IMPORT || requestCode == WELTALL_SAVE_EXPORT) {
             weltallSaveDocumentResult(requestCode, resultCode, data);
         }

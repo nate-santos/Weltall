@@ -420,15 +420,19 @@ void FBundledDiscsPreparation::Begin()
 	const FString Destination = GamesFolder();
 	const FString Version = HashText(Text);
 	const FString SourceFolder = BundleSource();
-	// Opt in during qualification. Existing extracted copies remain intact for matched comparisons.
+	// Qualified direct reading is the normal Android path. Development comparisons may retain/extract old copies.
+	bDirect = true;
 #if !UE_BUILD_SHIPPING
-	bDirect = FParse::Param(FCommandLine::Get(), TEXT("WeltallDirectDiscs"));
+	bDirect = !FParse::Param(FCommandLine::Get(), TEXT("WeltallExtractedDiscs"));
 #endif
 	if (bDirect)
 	{
 		const FString Marker = PlayerDataFolder() / TEXT("BundledDiscs") / Version / TEXT("DirectVerified.txt");
 		const FString Owner = PlayerDataFolder() / TEXT("BundledDiscs");
-		const bool bReclaim = FParse::Param(FCommandLine::Get(), TEXT("WeltallReclaimDiscCopies"));
+		bool bReclaim = true;
+#if !UE_BUILD_SHIPPING
+		bReclaim = !FParse::Param(FCommandLine::Get(), TEXT("WeltallKeepDiscCopies"));
+#endif
 		Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Version, Marker, Destination, Owner, bReclaim, Shared = Progress.ToSharedRef()]()
 		{
 			if (!OpenPackaged(BundledFiles, SourceFolder, Version, Marker, Shared)) return false;

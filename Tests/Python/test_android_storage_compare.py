@@ -34,6 +34,18 @@ class StorageComparisonTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'invalid CSV'):
                 analyze(path)
 
+    def test_complete_header_at_end_handles_new_counters(self):
+        with tempfile.TemporaryDirectory(dir=self.root) as root:
+            path = Path(root)/'profile.csv'
+            path.write_text('FrameTime,GameThreadTime,RenderThreadTime,RHIThreadTime,GPUTime\n'
+                            '16,1,1,1,0\n200,1,1,1,4,3\n'
+                            'FrameTime,GameThreadTime,RenderThreadTime,RHIThreadTime,GPUTime,WeltallDiscIO/Requests\n'
+                            '[HasHeaderRowAtEnd],1\n')
+            result = analyze(path)
+            self.assertEqual(result['numeric_frames'], 2)
+            self.assertEqual(result['frames_over_100ms'], 1)
+            self.assertEqual(result['io']['WeltallDiscIO/Requests']['total'], 3)
+
 
 if __name__ == '__main__':
     unittest.main()

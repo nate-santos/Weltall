@@ -15,6 +15,8 @@ public:
 		SLATE_ATTRIBUTE(bool, AudioPaused)
 		SLATE_ATTRIBUTE(bool, CanResumeAudio)
 		SLATE_EVENT(TDelegate<bool()>, OnResumeAudio)
+		SLATE_EVENT(TDelegate<bool()>, OnExportDiagnostics)
+		SLATE_ATTRIBUTE(FString, BuildLabel)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& Arguments);
@@ -53,6 +55,8 @@ private:
 	TAttribute<bool> AudioPaused;
 	TAttribute<bool> CanResumeAudio;
 	TDelegate<bool()> OnResumeAudio;
+	TDelegate<bool()> OnExportDiagnostics;
+	TAttribute<FString> BuildLabel;
 	FVector2D Size = FVector2D::ZeroVector;
 	FVector2D Origin = FVector2D::ZeroVector;
 	bool bSettingsOpen = false;

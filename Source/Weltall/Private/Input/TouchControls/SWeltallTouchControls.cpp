@@ -113,6 +113,8 @@ void SWeltallTouchControls::Construct(const FArguments& Arguments)
 	AudioPaused = Arguments._AudioPaused;
 	CanResumeAudio = Arguments._CanResumeAudio;
 	OnResumeAudio = Arguments._OnResumeAudio;
+	OnExportDiagnostics = Arguments._OnExportDiagnostics;
+	BuildLabel = Arguments._BuildLabel;
 }
 
 void SWeltallTouchControls::ApplyOptions(const Weltall::FTouchOptions& InOptions)
@@ -214,12 +216,13 @@ int32 SWeltallTouchControls::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 	{
 		const FTouchRect Panel = SettingsPanel();
 		Fill(Elements, Layer + 4, Geometry, Panel, FLinearColor(0.015f, 0.02f, 0.03f, 0.96f));
-		const float RowHeight = Panel.Height / 7.0f;
-		const TArray<FString> Rows = {TEXT("Touch controls"),
+		const float RowHeight = Panel.Height / (OnExportDiagnostics.IsBound() ? 8.0f : 7.0f);
+		TArray<FString> Rows = {BuildLabel.Get(FString()).IsEmpty() ? TEXT("Touch controls") : TEXT("Weltall ") + BuildLabel.Get(),
 			FString::Printf(TEXT("Idle: %d%% visible"), FMath::RoundToInt(Options.IdleOpacity * 100)),
 			FString::Printf(TEXT("Pressed: %d%% visible"), FMath::RoundToInt(Options.PressedOpacity * 100)),
 			FString::Printf(TEXT("Size: %d%%"), FMath::RoundToInt(Options.Scale * 100)),
 			Options.bReserveSides ? TEXT("Side areas: on") : TEXT("Side areas: off"), TEXT("Move controls"), TEXT("Reset layout and appearance")};
+		if (OnExportDiagnostics.IsBound()) Rows.Add(TEXT("Export diagnostic report"));
 		for (int32 Row = 0; Row < Rows.Num(); ++Row)
 		{
 			const float Y = Panel.Y + RowHeight * (static_cast<float>(Row) + 0.5f);
@@ -257,7 +260,7 @@ bool SWeltallTouchControls::ChangeSetting(Weltall::FTouchPoint Point)
 	{
 		return false;
 	}
-	const float RowHeight = Panel.Height / 7.0f;
+	const float RowHeight = Panel.Height / (OnExportDiagnostics.IsBound() ? 8.0f : 7.0f);
 	const int32 Row = FMath::FloorToInt((Point.Y - Panel.Y) / RowHeight);
 	const float Step = Point.X < Panel.X + RowHeight ? -0.05f : Point.X >= Panel.X + Panel.Width - RowHeight ? 0.05f : 0.0f;
 	switch (Row)
@@ -268,6 +271,7 @@ bool SWeltallTouchControls::ChangeSetting(Weltall::FTouchPoint Point)
 	case 4: Options.bReserveSides = !Options.bReserveSides; break;
 	case 5: bSettingsOpen = false; bEditing = true; break;
 	case 6: Options = Weltall::FTouchOptions{}; break;
+	case 7: if (OnExportDiagnostics.IsBound()) OnExportDiagnostics.Execute(); return true;
 	default: return true;
 	}
 	KeepOptions();

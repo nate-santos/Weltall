@@ -15,7 +15,11 @@ FString GameVersion()
 {
 	FString Version = ProjectVersion();
 	FString Revision;
-	if (FFileHelper::LoadFileToString(Revision, *FPaths::Combine(FPaths::RootDir(), TEXT("Revision.txt"))))
+	if (
+#if PLATFORM_ANDROID
+		FFileHelper::LoadFileToString(Revision, *(FPaths::ProjectContentDir() / TEXT("AndroidBuild/Revision.txt"))) ||
+#endif
+		FFileHelper::LoadFileToString(Revision, *FPaths::Combine(FPaths::RootDir(), TEXT("Revision.txt"))))
 	{
 		Revision.TrimStartAndEndInline();
 		if (!Revision.IsEmpty())

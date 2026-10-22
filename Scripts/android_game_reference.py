@@ -181,7 +181,7 @@ def main():
     serial = choose_device(subprocess.check_output([str(args.adb), "devices"], text=True), args.serial)
     root = "files/Weltall/Testing/GameplayReference/" + run_id
     remote_report = EXTERNAL + "/Saved/Automation/" + run_id
-    reader_flag = {None: "", "packaged": "-WeltallDirectDiscs ", "extracted": "-WeltallExtractedDiscs "}[args.disc_reader]
+    reader_flag = {None: "", "packaged": "-WeltallDirectDiscs -WeltallKeepDiscCopies ", "extracted": "-WeltallExtractedDiscs "}[args.disc_reader]
     command = ('-project="../../../Weltall/Weltall.uproject" '
                + reader_flag +
                f'-ExecCmds="Automation RunTests {TEST}" -WeltallReference={run_id} '

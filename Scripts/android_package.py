@@ -11,9 +11,9 @@ remain under ignored out/android/. No file is ever copied back into the checkout
 
 The default APK contains code and authored content only. --include-discs is an
 explicit local mode: it validates two CUE sheets and their BIN tracks and includes
-those files inside the APK. The first Android launch streams them to private app
-storage for the existing native disc reader. This mode needs space for the APK
-and an additional uncompressed copy on the phone; these APKs stay local.
+those files inside the APK. Android verifies them once, then reads directly from
+packaged data. Byte-verified old extracted copies are reclaimed without touching
+saves/settings. Both-disc APKs and private symbol archives stay local.
 """
 
 import argparse
@@ -253,7 +253,42 @@ def stage_storage_fixtures(project):
                      '+DirectoriesToAlwaysStageAsUFS=(Path="StorageFixtures")\n')
 
 
-def uat_command(ue_root, project, archive, configuration):
+def stage_build_identity(project, revision):
+    folder = project / "Content/AndroidBuild"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder/"Revision.txt").write_text(revision[:12] + "\n", encoding="ascii")
+    config = project / "Config/Android/AndroidGame.ini"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    with config.open("a", encoding="utf-8") as output:
+        output.write('\n[/Script/UnrealEd.ProjectPackagingSettings]\n'
+                     '+DirectoriesToAlwaysStageAsUFS=(Path="AndroidBuild")\n')
+
+
+def configure_distribution(project):
+    """Signing material stays external; only the disposable export receives local credentials."""
+    values = {key: setting("WELTALL_RELEASE_" + key) for key in ("KEYSTORE", "KEY_ALIAS", "STORE_PASSWORD", "KEY_PASSWORD")}
+    if not all(values.values()):
+        raise ValueError("configure local WELTALL_RELEASE_KEYSTORE, KEY_ALIAS, STORE_PASSWORD and KEY_PASSWORD settings")
+    keystore = Path(values["KEYSTORE"]).resolve(strict=True)
+    if not keystore.is_file() or keystore.is_relative_to(project.resolve()):
+        raise ValueError("release keystore must be a private file outside the disposable project export")
+    for key in ("KEY_ALIAS", "STORE_PASSWORD", "KEY_PASSWORD"):
+        if any(char in values[key] for char in "\r\n'\\"):
+            raise ValueError("local signing values cannot contain quotes, backslashes or newlines")
+    config = project / "Config/Android/AndroidEngine.ini"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    with config.open("a", encoding="utf-8") as output:
+        output.write('\n[/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]\n'
+                     f'KeyStore={keystore.as_posix()}\nKeyAlias={values["KEY_ALIAS"]}\n'
+                     f'KeyStorePassword={values["STORE_PASSWORD"]}\nKeyPassword={values["KEY_PASSWORD"]}\n')
+    config = project / "Config/Android/AndroidGame.ini"
+    with config.open("a", encoding="utf-8") as output:
+        output.write('\n[/Script/UnrealEd.ProjectPackagingSettings]\n'
+                     '+IniKeyDenylist=KeyStore\n+IniKeyDenylist=KeyAlias\n'
+                     '+IniKeyDenylist=KeyStorePassword\n+IniKeyDenylist=KeyPassword\n')
+
+
+def uat_command(ue_root, project, archive, configuration, distribution=False):
     launcher = "RunUAT.bat" if os.name == "nt" else "RunUAT.sh"
     return [str(Path(ue_root) / "Engine" / "Build" / "BatchFiles" / launcher), "-WaitForUATMutex", "BuildCookRun",
             f"-project={project / 'Weltall.uproject'}", "-platform=Android", "-cookflavor=ASTC",
@@ -262,7 +297,7 @@ def uat_command(ue_root, project, archive, configuration):
             # must match Android's legacy pak staging rather than UE 5.8's default Zen store.
             "-AdditionalCookerOptions=-SkipZenStore",
             f"-archivedirectory={archive}", "-nodebuginfo", "-SkipCookingEditorContent",
-            "-noP4", "-unattended", "-utf8output"]
+            "-noP4", "-unattended", "-utf8output"] + (["-distribution"] if distribution else [])
 
 
 def toolchain_problems(ue_root):
@@ -318,6 +353,7 @@ def check_export_inputs(inputs, destination):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--configuration", choices=("Development", "Shipping"), default="Development")
+    parser.add_argument("--distribution", action="store_true", help="sign a non-debuggable Shipping APK with private local release settings; no store upload")
     parser.add_argument("--revision", default="HEAD", help="committed revision to export (default: HEAD)")
     parser.add_argument("--include-discs", type=Path, metavar="FOLDER", help="include both local CUE/BIN pairs in the local APK")
     parser.add_argument("--prepare-only", action="store_true", help="prepare local export without Unreal build tools")
@@ -334,6 +370,8 @@ def main(argv=None):
             print("UE 5.8 found. Android SDK/NDK/JDK validation is performed by UE Turnkey at build time.")
         return int(bool(problems))
     try:
+        if args.distribution and args.configuration != "Shipping":
+            raise ValueError("--distribution requires --configuration Shipping")
         inputs = disc_inputs(args.include_discs) if args.include_discs else []
         check_export_inputs(inputs, PROJECT)
         required = sum(path.stat().st_size for _, path in inputs)
@@ -355,11 +393,14 @@ def main(argv=None):
             shutil.rmtree(destination)
         revision = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", args.revision], text=True).strip()
         refresh_project(revision, destination)
+        stage_build_identity(destination, revision)
         if inputs:
             stage_discs(inputs, destination / "Content" / "BundledDiscs")
             configure_local_discs(destination)
         if args.configuration == "Development":
             stage_storage_fixtures(destination)
+        if args.distribution:
+            configure_distribution(destination)
         print("Local export prepared." + (" Both discs will be inside the APK." if inputs else " No discs bundled."))
         if args.prepare_only:
             return 0
@@ -368,7 +409,7 @@ def main(argv=None):
         archive = OUTPUT / "packages" / args.configuration / build_id
         archive.mkdir(parents=True, exist_ok=False)
         log = OUTPUT / "logs" / f"{args.configuration}-{build_id}.log"
-        status = run_build(uat_command(ue_root, destination, archive, args.configuration), log)
+        status = run_build(uat_command(ue_root, destination, archive, args.configuration, args.distribution), log)
         if status:
             print(f"Android build failed ({status}); see {log}", file=sys.stderr)
             return status
