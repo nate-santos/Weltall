@@ -19,6 +19,12 @@
         <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
         <copyFile src="$S(PluginDir)/src/org/weltall/game/WeltallRecoveryActivity.java" dst="$S(BuildDir)/src/org/weltall/game/WeltallRecoveryActivity.java" />
     </resourceCopies>
+    <gradleCopies>
+        <copyFile src="$S(PluginDir)/weltall-native-symbols.gradle" dst="$S(BuildDir)/gradle/app/weltall-native-symbols.gradle" />
+    </gradleCopies>
+    <buildGradleAdditions>
+        <insert>apply from: 'weltall-native-symbols.gradle'</insert>
+    </buildGradleAdditions>
     <gameActivityClassAdditions>
         <insert><![CDATA[
     // Save documents use Android's picker and resolver; they never expose a URI as a native filename.

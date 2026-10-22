@@ -32,6 +32,7 @@ import tempfile
 import uuid
 
 from android_engine_fix import needs_volume_time_fix
+from android_native_symbols import verify_apk
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -352,6 +353,13 @@ def main(argv=None):
         apks = sorted(archive.rglob("*.apk"))
         if not apks:
             raise ValueError("Unreal reported success but the archive contains no APK")
+        revision = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", args.revision], text=True).strip()
+        ndk = setting("NDKROOT") or setting("NDK_ROOT") or setting("ANDROID_NDK_HOME")
+        if not ndk:
+            raise ValueError("NDKROOT is required to verify archived native symbols")
+        for apk in apks:
+            report = verify_apk(apk, destination, apk.parent, revision, ndk)
+            print(f"Verified stripped native libraries: {report['expanded_bytes_saved']:,} expanded bytes removed")
         print("APK generated; device installation and gameplay validation are still required.")
         for apk in apks:
             print(apk)

@@ -1,0 +1,22 @@
+// UE's Gradle fallback may package an unstripped library when NDK discovery fails.
+// Strip merged package copies explicitly; leave compiler outputs intact for debugging.
+tasks.configureEach { task ->
+    if (task.name == 'mergeDebugNativeLibs' || task.name == 'mergeReleaseNativeLibs') {
+        task.inputs.file(file('weltall-native-symbols.gradle'))
+        task.doLast {
+            def host = System.getProperty('os.name').toLowerCase().contains('windows') ? 'windows-x86_64' :
+                (System.getProperty('os.name').toLowerCase().contains('mac') ? 'darwin-x86_64' : 'linux-x86_64')
+            def tool = new File(NDK_PATH, "toolchains/llvm/prebuilt/${host}/bin/llvm-strip" +
+                (host.startsWith('windows') ? '.exe' : ''))
+            if (!tool.isFile()) throw new GradleException('Weltall native stripping tool is missing: ' + tool)
+            def libraries = task.outputs.files.asFileTree.matching { include '**/*.so' }.files
+            if (libraries.isEmpty()) throw new GradleException('Weltall found no merged native libraries to strip')
+            libraries.each { library ->
+                def archive = new File(rootProject.projectDir, 'weltall-symbols/' + library.parentFile.name + '/' + library.name)
+                archive.parentFile.mkdirs()
+                java.nio.file.Files.copy(library.toPath(), archive.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                project.exec { commandLine tool.absolutePath, '--strip-unneeded', library.absolutePath }
+            }
+        }
+    }
+}
