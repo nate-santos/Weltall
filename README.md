@@ -4,12 +4,11 @@ Weltall is a native port of *Xenogears* (PlayStation, 1998), rebuilt in Unreal E
 make the game feel like a modern PC release while keeping the original gameplay intact.
 
 This fork extends [Roman215's Weltall](https://github.com/Roman215/Weltall) with an **experimental
-Android port** for ARM64 phones, including configurable on-screen controls and hardware controller
-support. It stays in landscape and rotates between both landscape directions. The current build is
-available as a **limited private Moto alpha** on the tested Moto G Stylus 2025 with a Bluetooth
-Stadia controller. Start with the [alpha testing guide](Docs/AndroidAlpha.md). A complete both-disc
-playthrough, normal competitive arena match and broader device coverage remain unfinished. See the
-[Android validation record](Docs/AndroidGameplayValidation.md) for current coverage.
+Android beta** for ARM64 phones. Android support is still in development; testing currently covers
+the Moto G Stylus 2025 and a Bluetooth Stadia controller. A complete both-disc playthrough, normal
+competitive arena match and broader device coverage remain unfinished. See the
+[Android validation record](Docs/AndroidGameplayValidation.md) for current coverage and the build
+instructions below to create a local APK.
 
 You'll need your own copy of the USA release or a supported English undub. Weltall doesn't include
 any game data in this repository. For desktop builds, put your disc images in the `Games` folder and
@@ -39,6 +38,25 @@ against the original game's code. The upstream developer reports an ongoing play
 stretches of the story from save to save. The desktop port aims for start-to-finish play, with reported
 issues still being fixed. If something goes wrong, the game displays an error and tells you which log
 to include in a bug report.
+
+## Android changes in this fork
+
+- **Configurable on-screen controls**, with adjustable idle and pressed transparency, size and
+  placement, plus optional side areas to keep buttons away from the picture.
+- **Hardware controller support alongside touch input**, including controller reconnection and
+  cleanup of held inputs when a controller disconnects.
+- **Both landscape orientations**, so the picture and controls rotate together when the phone turns.
+- **Android lifecycle and audio handling**, including background/resume, audio focus and Bluetooth
+  headphone routing, plus keeping the screen awake during play.
+- **Android build and test tools**, including local bundling of both discs from a directory you
+  specify and save-preserving APK updates.
+- **Rendering optimizations** that upload changed texture regions and combine non-overlapping
+  translucent draws while preserving their pixel order.
+
+In repeated comparisons within the same Gear battle on the Moto G Stylus 2025, the draw-batching
+optimization improved average frame rate from **46.9 to 57.5 FPS (about 23%)**, with image quality
+unchanged. This measures one animated battle/menu scene, rather than a whole-game average or a
+promise of 60 FPS everywhere. See the [performance results](Docs/AndroidThermal.md) for the test details.
 
 ## What Weltall adds
 
