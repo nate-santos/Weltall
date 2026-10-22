@@ -10,6 +10,7 @@
 #include "Shell/PlayerFolders.h"
 #include "Shell/PlatformByteSource.h"
 #include "Media/CueSheet.h"
+#include "Foundation/FileByteSource.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "WeltallLog.h"
@@ -146,6 +147,81 @@ namespace
 		std::error_code Error;
 		std::filesystem::rename(NativePath(Path + TEXT(".partial")), NativePath(Path), Error);
 		return !Error;
+	}
+
+	/** No component below the app-owned root may redirect cleanup elsewhere. Missing files are safe to retry. */
+	bool SafeOwnedPath(const FString& Owner, const FString& Target)
+	{
+		const auto Root = NativePath(Owner).lexically_normal();
+		const auto Path = NativePath(Target).lexically_normal();
+		const auto Relative = Path.lexically_relative(Root);
+		if (Relative.empty() || Relative.is_absolute()) return false;
+		for (const auto& Part : Relative) if (Part == ".." || Part == ".") return false;
+		std::error_code Error;
+		auto Current = Root;
+		if (std::filesystem::is_symlink(std::filesystem::symlink_status(Current, Error))) return false;
+		if (Error && Error != std::errc::no_such_file_or_directory) return false;
+		for (const auto& Part : Relative)
+		{
+			Current /= Part;
+			Error.clear();
+			if (std::filesystem::is_symlink(std::filesystem::symlink_status(Current, Error))) return false;
+			if (Error && Error != std::errc::no_such_file_or_directory) return false;
+		}
+		return true;
+	}
+
+	/** Removes only byte-verified old app copies; never removes directories or unknown neighboring files. */
+	bool ReclaimExtracted(const TArray<FBundledFile>& Entries, const FString& Destination, const FString& Owner,
+		const FString& Version, const TSharedRef<FBundledDiscsProgress, ESPMode::ThreadSafe>& Progress)
+	{
+		TArray<FString> Remove;
+		TArray<uint8> Buffer;
+		Buffer.SetNumUninitialized(1024 * 1024);
+		uint64 Bytes = 0;
+		for (const FBundledFile& Entry : Entries)
+		{
+			const FString Path = Destination / Entry.Relative;
+			if (!SafeOwnedPath(Owner, Path) || !SafeOwnedPath(Owner, Path + TEXT(".verified"))) return false;
+			std::error_code Error;
+			const bool bExists = std::filesystem::exists(NativePath(Path), Error);
+			if (Error) return false;
+			const bool bMarker = NativeMarkerMatches(Path + TEXT(".verified"), Entry.Hash);
+			if (bExists)
+			{
+				if (!bMarker || !NativeFileMatches(Path, Entry.Size)) return false;
+				auto Source = Weltall::FFileByteSource::Open(NativePath(Path));
+				if (!Source) return false;
+				FSHA1 Digest;
+				for (uint64 Offset = 0; Offset < Entry.Size;)
+				{
+					if (Progress->Cancelled.load()) return false;
+					const uint32 Take = static_cast<uint32>(FMath::Min<uint64>(Buffer.Num(), Entry.Size - Offset));
+					if (!(*Source)->Read(Offset, std::span<uint8>(Buffer.GetData(), Take))) return false;
+					Digest.Update(Buffer.GetData(), Take);
+					Offset += Take;
+				}
+				Digest.Final();
+				uint8 Hash[FSHA1::DigestSize];
+				Digest.GetHash(Hash);
+				if (BytesToHex(Hash, UE_ARRAY_COUNT(Hash)).ToLower() != Entry.Hash) return false;
+				Remove.Add(Path);
+				Bytes += Entry.Size;
+			}
+			if (bMarker) Remove.Add(Path + TEXT(".verified"));
+		}
+		const FString Stamp = FPaths::GetPath(Destination) / TEXT("Ready.txt");
+		if (!SafeOwnedPath(Owner, Stamp)) return false;
+		if (NativeMarkerMatches(Stamp, Version)) Remove.Add(Stamp);
+		for (const FString& Path : Remove)
+		{
+			if (Progress->Cancelled.load() || !SafeOwnedPath(Owner, Path)) return false;
+			std::error_code Error;
+			std::filesystem::remove(NativePath(Path), Error);
+			if (Error) return false;
+		}
+		UE_LOG(LogWeltall, Log, TEXT("Reclaimed %llu bytes of verified extracted disc copies; player data untouched"), Bytes);
+		return true;
 	}
 
 	/** Validate logical bytes once per manifest, then identify both discs through normal core checks. */
@@ -351,9 +427,14 @@ void FBundledDiscsPreparation::Begin()
 	if (bDirect)
 	{
 		const FString Marker = PlayerDataFolder() / TEXT("BundledDiscs") / Version / TEXT("DirectVerified.txt");
-		Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Version, Marker, Shared = Progress.ToSharedRef()]()
+		const FString Owner = PlayerDataFolder() / TEXT("BundledDiscs");
+		const bool bReclaim = FParse::Param(FCommandLine::Get(), TEXT("WeltallReclaimDiscCopies"));
+		Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Version, Marker, Destination, Owner, bReclaim, Shared = Progress.ToSharedRef()]()
 		{
-			return OpenPackaged(BundledFiles, SourceFolder, Version, Marker, Shared);
+			if (!OpenPackaged(BundledFiles, SourceFolder, Version, Marker, Shared)) return false;
+			if (bReclaim && !ReclaimExtracted(BundledFiles, Destination, Owner, Version, Shared))
+				UE_LOG(LogWeltall, Warning, TEXT("Disc copies retained: cleanup could not verify every owned file/path"));
+			return true;
 		});
 		return;
 	}

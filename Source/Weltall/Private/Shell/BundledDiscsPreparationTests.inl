@@ -342,3 +342,70 @@ bool FBundleCancelledBeforeCopyTest::RunTest(const FString&)
 	TestTrue(TEXT("A fresh job after shutdown can complete"), Fixture.Run(BundleSpace(MAX_uint64)));
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBundleReclaimTest, "Weltall.Storage.BundledDiscs.ReclaimVerifiedCopies", BundleTestFlags)
+bool FBundleReclaimTest::RunTest(const FString&)
+{
+	FBundlePreparationFixture Fixture;
+	if (!Fixture.Add(TEXT("Disc A/Track.bin"), 17, 0x65) || !Fixture.Add(TEXT("Disc B/Track.bin"), 31, 0x42) || !Fixture.Run()) return false;
+	TArray<FBundledFile> Entries;
+	uint64 Total = 0;
+	if (!ParseManifest(Fixture.Text, Entries, Total)) return false;
+	TArray<uint8> UserBytes;
+	UserBytes.Init(0x57, 19);
+	const FString Unknown = Fixture.Games / TEXT("unknown.bin");
+	const FString Asset = FPaths::GetPath(Fixture.Games) / TEXT("Assets/keep.bin");
+	if (!Fixture.Write(Unknown, UserBytes) || !Fixture.Write(Asset, UserBytes)) return false;
+	TestFalse(TEXT("Cleanup rejects traversal outside its owner"), SafeOwnedPath(Fixture.Root, Fixture.Root / TEXT("../outside.bin")));
+	TestTrue(TEXT("Verified copies can be reclaimed"), ReclaimExtracted(Entries, Fixture.Games, Fixture.Root, HashText(Fixture.Text), Fixture.Progress));
+	TestFalse(TEXT("First disc copy removed"), Fixture.Exists(Fixture.Games / Entries[0].Relative));
+	TestFalse(TEXT("Second disc copy removed"), Fixture.Exists(Fixture.Games / Entries[1].Relative));
+	TestFalse(TEXT("Old readiness marker removed"), Fixture.Exists(Fixture.Stamp()));
+	TestTrue(TEXT("Unknown neighbor retained"), Fixture.Matches(Unknown, 19, 0x57));
+	TestTrue(TEXT("Assets neighbor retained"), Fixture.Matches(Asset, 19, 0x57));
+	TestTrue(TEXT("Cleanup can safely repeat"), ReclaimExtracted(Entries, Fixture.Games, Fixture.Root, HashText(Fixture.Text), Fixture.Progress));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBundleReclaimCorruptTest, "Weltall.Storage.BundledDiscs.ReclaimRejectsChangedFiles", BundleTestFlags)
+bool FBundleReclaimCorruptTest::RunTest(const FString&)
+{
+	FBundlePreparationFixture Fixture;
+	if (!Fixture.Add(TEXT("A.bin"), 17, 0x65) || !Fixture.Add(TEXT("B.bin"), 31, 0x42) || !Fixture.Run()) return false;
+	TArray<FBundledFile> Entries;
+	uint64 Total = 0;
+	if (!ParseManifest(Fixture.Text, Entries, Total)) return false;
+	TArray<uint8> Changed;
+	Changed.Init(0x77, 31);
+	if (!Fixture.Write(Fixture.Games / TEXT("B.bin"), Changed)) return false;
+	TestFalse(TEXT("Matching size/old marker does not authorize deleting changed bytes"), ReclaimExtracted(Entries, Fixture.Games, Fixture.Root, HashText(Fixture.Text), Fixture.Progress));
+	TestTrue(TEXT("No earlier verified copy removed before validation completes"), Fixture.Exists(Fixture.Games / TEXT("A.bin")));
+	TestTrue(TEXT("Changed bytes retained"), Fixture.Matches(Fixture.Games / TEXT("B.bin"), 31, 0x77));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBundleReclaimRetryTest, "Weltall.Storage.BundledDiscs.ReclaimInterruptedAndSymlink", BundleTestFlags)
+bool FBundleReclaimRetryTest::RunTest(const FString&)
+{
+	FBundlePreparationFixture Fixture;
+	if (!Fixture.Add(TEXT("A.bin"), 17, 0x65) || !Fixture.Add(TEXT("B.bin"), 31, 0x42) || !Fixture.Run()) return false;
+	TArray<FBundledFile> Entries;
+	uint64 Total = 0;
+	if (!ParseManifest(Fixture.Text, Entries, Total)) return false;
+	std::error_code Error;
+	const FString Link = Fixture.Root / TEXT("linked");
+	std::filesystem::create_directory_symlink(NativePath(Fixture.Source), NativePath(Link), Error);
+	if (!Error)
+	{
+		TestFalse(TEXT("Cleanup rejects a real symlink component"), SafeOwnedPath(Fixture.Root, Link / TEXT("A.bin")));
+		std::filesystem::remove(NativePath(Link), Error);
+	}
+	else AddInfo(TEXT("Host did not permit creating a fixture symlink; exercise this case on Android."));
+	Error.clear();
+	std::filesystem::remove(NativePath(Fixture.Games / TEXT("A.bin")), Error);
+	if (Error) return false;
+	TestTrue(TEXT("Resume after a copy was removed but its marker remains"), ReclaimExtracted(Entries, Fixture.Games, Fixture.Root, HashText(Fixture.Text), Fixture.Progress));
+	TestFalse(TEXT("Orphaned matching marker removed"), Fixture.Exists(Fixture.Games / TEXT("A.bin.verified")));
+	TestFalse(TEXT("Remaining verified disc removed"), Fixture.Exists(Fixture.Games / TEXT("B.bin")));
+	return true;
+}
