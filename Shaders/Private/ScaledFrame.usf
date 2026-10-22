@@ -1,0 +1,11 @@
+#include "/Engine/Public/Platform.ush"
+
+Texture2D Picture;
+SamplerState LinearClamp;
+float2 DisplayMin;
+float2 InverseDisplaySize;
+
+void MainPS(float4 Position : SV_Position, out float4 Color : SV_Target0)
+{
+	Color = Picture.SampleLevel(LinearClamp, (Position.xy - DisplayMin) * InverseDisplaySize, 0);
+}

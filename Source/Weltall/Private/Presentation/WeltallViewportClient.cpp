@@ -1,15 +1,26 @@
 #include "Presentation/WeltallViewportClient.h"
 
 #include "Engine/GameInstance.h"
+#include "HAL/IConsoleManager.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Input/TouchPad.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "RenderingThread.h"
+#include "Rendering/ScaledFrameRendering.h"
 #include "Screens/GameScreen.h"
 #include "Screens/GameScreenSubsystem.h"
 #include "Shell/PlayerSettingsSubsystem.h"
 #include "UnrealClient.h"
+
+#if PLATFORM_ANDROID
+namespace
+{
+	TAutoConsoleVariable<float> CVarMobilePictureScale(TEXT("weltall.MobilePictureScale"), 1.0f,
+		TEXT("Diagnostic picture resolution scale, 0.5 to 1. Native touch UI is unchanged. Default 1 keeps the original path."),
+		ECVF_RenderThreadSafe);
+}
+#endif
 
 void UWeltallViewportClient::Init(FWorldContext& WorldContext, UGameInstance* OwningGameInstance, bool bCreateNewAudioDevice)
 {
@@ -66,7 +77,11 @@ void UWeltallViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 		{
 			AddClearRenderTargetPass(GraphBuilder, Output, FLinearColor::Black);
 		}
+#if PLATFORM_ANDROID
+		AddScaledDisplayFramePasses(GraphBuilder, Output, Picture, Options, Frame.Get(), CVarMobilePictureScale.GetValueOnRenderThread());
+#else
 		AddDisplayFramePasses(GraphBuilder, Output, Picture, Options, Frame.Get());
+#endif
 		GraphBuilder.Execute();
 	});
 }
