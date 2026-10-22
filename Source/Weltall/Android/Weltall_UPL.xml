@@ -23,7 +23,9 @@
         <copyFile src="$S(PluginDir)/weltall-native-symbols.gradle" dst="$S(BuildDir)/gradle/app/weltall-native-symbols.gradle" />
     </gradleCopies>
     <buildGradleAdditions>
-        <insert>apply from: 'weltall-native-symbols.gradle'</insert>
+        <insert><![CDATA[
+apply from: 'weltall-native-symbols.gradle'
+        ]]></insert>
     </buildGradleAdditions>
     <gameActivityClassAdditions>
         <insert><![CDATA[
