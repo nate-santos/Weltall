@@ -105,6 +105,7 @@ namespace Weltall
 	void FVram::UploadToPortRows(const FVramImage& Image)
 	{
 		++Uploads;
+		++PortUploads;
 		const int32 RectWidth = Image.Rect.Width;
 		const int32 RectHeight = Image.Rect.Height;
 		for (int32 Row = 0; Row < RectHeight; ++Row)

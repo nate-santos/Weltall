@@ -133,6 +133,8 @@ namespace Weltall
 
 		/** How many uploads the VRAM has taken: whatever was decoded from it at another count is out of date. */
 		uint32 Revision() const { return Uploads; }
+		/** Uploads into the extra port rows, which the console tile mask does not cover. */
+		uint32 PortRevision() const { return PortUploads; }
 
 		/**
 		 * Which VRAM this is: the same for a copy of it, another for each VRAM made. Revisions count one VRAM's
@@ -183,6 +185,7 @@ namespace Weltall
 		std::vector<uint16> Units;
 		std::vector<uint8> Edges;
 		uint32 Uploads = 0;
+		uint32 PortUploads = 0;
 		uint32 LineageNumber = 0;
 		/** Per tile, row by row, the revision of the latest upload that wrote into it. */
 		std::vector<uint32> TileRevisions;

@@ -1,5 +1,13 @@
 # Android thermal and performance work
 
+## Current: partial texture uploads implemented; phone validation pending
+
+The renderer now bounds GPU uploads to the changed console tiles when the extra port rows are unchanged. A separate copied port revision forces complete synchronization for extra-row changes; initial uploads, different lineage, rollback and upscaler activation retain the complete path. CPU snapshot staging is still complete. Development diagnostic `weltall.PartialVramUploads 0/1` permits a same-binary full/partial comparison (default1); preserve picture scale1 and restore partial1 afterward. No measured Android performance gain is claimed yet, and the installed APK remains de0ff72 below.
+
+Validation:109 core graphics cases/8460 assertions pass, including the new port revision case. Final editor rebuild succeeds. PC rendering suite68 successes (67 clean plus the existing invalid-texture-fixture case with exactly two source-reviewed expected warnings), zero failures/unrun;4.653 test/46.704 host seconds. New GPU test compares incremental output with fresh complete uploads across offset writes, tile boundaries, palette/port changes, rollback, equal-total/different-port snapshots, lineage replacement and enabling upscaling. Existing texture-upscale refresh coverage also passes. Evidence `out/testing/thermal/partial-upload-gpu-20261022T035636Z/{summary,review}.json`. The strict no-warning host returns1 for those same expected fixture warnings; engine exits0. Do not describe it as warning-free.
+
+Next:package the committed candidate with both local discs, inspect actual signature/payload/ELF and source identity, same-signer update preserving all53 files, then run native GPU checks and a bounded same-battle full0/partial1/full0/partial1 comparison. Private comparison helper `out/testing/thermal/run_partial_upload_comparison.py` is prepared but has NOT run. Preserve51 saves, occupied Card8No02/No03, LastSaved108, preferences and muted volume. No builds/tests remain active at this checkpoint. The measured thermal headroom and poor benefit from reduced resolution support retaining original quality. Compatible draw batching remains a separate candidate; wider milestone6 stays open.
+
 Milestone 6 starts from the limited Moto alpha, runtime source `8a65fbd`. Measure before changing rendering defaults. A cool five-minute sample does not prove equilibrium, all-area behavior, or how the phone feels in a warm room.
 
 ## Measured Moto baselines — October 21 local time

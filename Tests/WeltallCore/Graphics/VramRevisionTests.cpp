@@ -4,6 +4,23 @@
 
 using namespace Weltall;
 
+TEST_CASE("Port VRAM revisions distinguish extra-row writes from console tile changes", "[Graphics][Vram]")
+{
+	FVram Vram;
+	CHECK(Vram.PortRevision() == 0);
+	Vram.Upload({{0, 0, 1, 1}, {1}});
+	CHECK(Vram.PortRevision() == 0);
+	const auto ConsoleRevision = Vram.Revision();
+	Vram.UploadToPortRows({{0, 512, 1, 1}, {2}});
+	CHECK(Vram.PortRevision() == 1);
+	CHECK(Vram.TilesChangedSince(ConsoleRevision) == FVramTiles{});
+	FVram Snapshot = Vram;
+	Vram.UploadToPortRows({{1023, 1023, 1, 1}, {3}});
+	CHECK(Vram.PortRevision() == 2);
+	CHECK(Snapshot.PortRevision() == 1);
+	CHECK(Snapshot.Lineage() == Vram.Lineage());
+}
+
 TEST_CASE("Texture page revisions ignore unrelated VRAM uploads and include changed palettes", "[Graphics][Vram]")
 {
 	FVram Vram;

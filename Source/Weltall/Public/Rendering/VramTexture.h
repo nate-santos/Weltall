@@ -91,6 +91,7 @@ private:
 		TArray<uint16> Units;
 		TArray<uint8> Edges;
 		Weltall::FVramTiles Changed{};
+		FIntRect UploadArea;
 	};
 
 	FTextureRHIRef Units;
@@ -100,6 +101,7 @@ private:
 	std::vector<Weltall::FVramRect> ReplacementExclusions;
 	bool bReplacementsBound = false;
 	uint32 SentRevision = 0;
+	uint32 SentPortRevision = 0;
 	uint32 SentLineage = 0;
 	bool bSent = false;
 	bool bUpscaledOnGameThread = false;
