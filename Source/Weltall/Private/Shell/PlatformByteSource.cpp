@@ -11,6 +11,6 @@ bool FPlatformByteSource::Read(Weltall::uint64 Offset, std::span<Weltall::uint8>
 	CSV_SCOPED_TIMING_STAT(WeltallDiscIO, Read);
 	FScopeLock Lock(&Mutex);
 	CSV_CUSTOM_STAT(WeltallDiscIO, Requests, 1, ECsvCustomStatOp::Accumulate);
-	CSV_CUSTOM_STAT(WeltallDiscIO, RequestedBytes, Destination.size(), ECsvCustomStatOp::Accumulate);
+	CSV_CUSTOM_STAT(WeltallDiscIO, RequestedBytes, static_cast<double>(Destination.size()), ECsvCustomStatOp::Accumulate);
 	return File->Seek(static_cast<int64>(Offset)) && File->Read(Destination.data(), static_cast<int64>(Destination.size()));
 }

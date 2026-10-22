@@ -38,8 +38,8 @@ bool FPlatformDiscReadTest::RunTest(const FString&)
 {
 	const FString Base = FPaths::ProjectSavedDir() / TEXT("Automation/PlatformReads") / FGuid::NewGuid().ToString(EGuidFormats::Digits);
 	const FString Path = Base / TEXT("fixture.bin");
-	IPlatformFile& Files = FPlatformFileManager::Get().GetPlatformFile();
-	if (!Files.CreateDirectoryTree(*Base)) return false;
+	IPlatformFile& PlatformFiles = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFiles.CreateDirectoryTree(*Base)) return false;
 	TArray<uint8> Bytes;
 	Bytes.SetNumUninitialized(3 * 65536 + 17);
 	for (int32 Index = 0; Index < Bytes.Num(); ++Index) Bytes[Index] = static_cast<uint8>(Index % 251);
@@ -72,8 +72,8 @@ bool FPlatformDiscReadTest::RunTest(const FString&)
 	TestTrue(TEXT("Concurrent seeks do not interfere B"), B.Get());
 	Source.reset();
 	TestTrue(TEXT("Reopening succeeds"), static_cast<bool>(FPlatformByteSource::Open(Path)));
-	Files.DeleteFile(*Path);
-	Files.DeleteDirectory(*Base);
+	PlatformFiles.DeleteFile(*Path);
+	PlatformFiles.DeleteDirectory(*Base);
 	return true;
 }
 

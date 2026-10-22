@@ -13,6 +13,30 @@
 
 using namespace Weltall;
 
+TEST_CASE("Source-based library reports reader failures without adding discs", "[Media][PackagedDiscs]")
+{
+	FGameLibrary Library;
+	Library.AddImage("bundled/disc.cue", MakeError("missing packaged track"));
+	CHECK(Library.Releases().empty());
+	REQUIRE(Library.Notes().size() == 1);
+	CHECK(Library.Notes()[0].File == "bundled/disc.cue");
+	CHECK(Library.Notes()[0].Text == "Cannot be read: missing packaged track.");
+}
+
+TEST_CASE("Source-based library retains both original disc identities", "[Media][Content][PackagedDiscs]")
+{
+	REQUIRE_DISC(One, EDiscRelease::UsaDisc1);
+	REQUIRE_DISC(Two, EDiscRelease::UsaDisc2);
+	FGameLibrary Library;
+	Library.AddImage("bundled/disc1.cue", One->Image());
+	Library.AddImage("bundled/disc2.cue", Two->Image());
+	CHECK(Library.PlayableDisc(1) != nullptr);
+	CHECK(Library.PlayableDisc(2) != nullptr);
+	CHECK(Library.FileOf(EDiscRelease::UsaDisc1) == "bundled/disc1.cue");
+	CHECK(Library.FileOf(EDiscRelease::UsaDisc2) == "bundled/disc2.cue");
+	CHECK(Library.Notes().empty());
+}
+
 namespace
 {
 	using FChange = std::function<void(uint32, std::vector<uint8>&)>;

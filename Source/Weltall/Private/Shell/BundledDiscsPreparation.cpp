@@ -391,9 +391,9 @@ FText FBundledDiscsPreparation::Notice() const
 		return FText::FromString(Progress->Error);
 	}
 	const uint64 Percent = Progress->Total ? 100 * Progress->Done.load() / Progress->Total : 0;
-	return FText::FromString(FString::Printf(bDirect
-		? TEXT("Verifying bundled discs: %llu%%\n\nKeep the app open. The game reads its discs without making another copy.")
-		: TEXT("Preparing both game discs: %llu%%\n\nThis happens on the first launch. Keep the app open."), Percent));
+	return FText::FromString(bDirect
+		? FString::Printf(TEXT("Verifying bundled discs: %llu%%\n\nKeep the app open. The game reads its discs without making another copy."), Percent)
+		: FString::Printf(TEXT("Preparing both game discs: %llu%%\n\nThis happens on the first launch. Keep the app open."), Percent));
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
