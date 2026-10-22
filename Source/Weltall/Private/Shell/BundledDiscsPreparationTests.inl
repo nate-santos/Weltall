@@ -4,6 +4,78 @@
 
 #include <algorithm>
 #include <iterator>
+#include <array>
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPackagedDiscFixtureTest, "Weltall.Storage.BundledDiscs.PackagedReadFixtures", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FPackagedDiscFixtureTest::RunTest(const FString&)
+{
+	for (const bool bRaw : {false, true})
+	{
+		const FString Path = FPaths::ProjectContentDir() / TEXT("StorageFixtures") / (bRaw ? TEXT("Raw.bin") : TEXT("Compressed.bin"));
+		auto Source = FPlatformByteSource::Open(Path);
+		if (!TestTrue(TEXT("Generated UFS fixture opens"), static_cast<bool>(Source))) return false;
+		TArray<uint8> Expected;
+		Expected.SetNumUninitialized(3 * 65536 + 17);
+		uint32 State = 1;
+		for (int32 Index = 0; Index < Expected.Num(); ++Index)
+		{
+			State = 1664525u * State + 1013904223u;
+			Expected[Index] = bRaw ? static_cast<uint8>(State >> 24) : static_cast<uint8>(Index % 251);
+		}
+		TestEqual(TEXT("Mounted fixture size matches"), Source->Size(), static_cast<uint64>(Expected.Num()));
+		std::array<uint8, 2352> Data{};
+		for (const uint64 Offset : {uint64(0), uint64(65530), uint64(Expected.Num() - Data.size())})
+		{
+			if (!TestTrue(TEXT("Mounted fixture sector/boundary read"), Source->Read(Offset, Data))) return false;
+			TestTrue(TEXT("Mounted bytes unchanged"), FMemory::Memcmp(Data.data(), Expected.GetData() + Offset, Data.size()) == 0);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPlatformDiscReadTest, "Weltall.Storage.BundledDiscs.PlatformReads", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FPlatformDiscReadTest::RunTest(const FString&)
+{
+	const FString Base = FPaths::ProjectSavedDir() / TEXT("Automation/PlatformReads") / FGuid::NewGuid().ToString(EGuidFormats::Digits);
+	const FString Path = Base / TEXT("fixture.bin");
+	IPlatformFile& Files = FPlatformFileManager::Get().GetPlatformFile();
+	if (!Files.CreateDirectoryTree(*Base)) return false;
+	TArray<uint8> Bytes;
+	Bytes.SetNumUninitialized(3 * 65536 + 17);
+	for (int32 Index = 0; Index < Bytes.Num(); ++Index) Bytes[Index] = static_cast<uint8>(Index % 251);
+	if (!FFileHelper::SaveArrayToFile(Bytes, *Path)) return false;
+	auto Source = FPlatformByteSource::Open(Path);
+	if (!TestTrue(TEXT("Source opens through platform-file stack"), static_cast<bool>(Source))) return false;
+	TestEqual(TEXT("Exact size"), Source->Size(), static_cast<uint64>(Bytes.Num()));
+	TestTrue(TEXT("Empty EOF read"), Source->Read(Source->Size(), {}));
+	std::array<uint8, 64> Read{};
+	TestFalse(TEXT("Past EOF rejected"), Source->Read(Source->Size(), Read));
+	TestFalse(TEXT("Overflow rejected"), Source->Read(MAX_uint64, Read));
+	for (uint64 Offset : {uint64(0), uint64(65520), uint64(Bytes.Num() - 64)})
+	{
+		TestTrue(TEXT("Boundary read succeeds"), Source->Read(Offset, Read));
+		TestTrue(TEXT("Bytes match"), FMemory::Memcmp(Read.data(), Bytes.GetData() + Offset, Read.size()) == 0);
+	}
+	const auto Work = [Source](uint64 Offset)
+	{
+		std::array<uint8, 2352> Data{};
+		for (int32 Attempt = 0; Attempt < 100; ++Attempt)
+		{
+			if (!Source->Read(Offset, Data)) return false;
+			for (size_t Index = 0; Index < Data.size(); ++Index) if (Data[Index] != static_cast<uint8>((Offset + Index) % 251)) return false;
+		}
+		return true;
+	};
+	auto A = Async(EAsyncExecution::ThreadPool, [Work] { return Work(65000); });
+	auto B = Async(EAsyncExecution::ThreadPool, [Work] { return Work(131000); });
+	TestTrue(TEXT("Concurrent seeks do not interfere A"), A.Get());
+	TestTrue(TEXT("Concurrent seeks do not interfere B"), B.Get());
+	Source.reset();
+	TestTrue(TEXT("Reopening succeeds"), static_cast<bool>(FPlatformByteSource::Open(Path)));
+	Files.DeleteFile(*Path);
+	Files.DeleteDirectory(*Base);
+	return true;
+}
 
 namespace
 {

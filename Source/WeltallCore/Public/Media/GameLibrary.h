@@ -33,6 +33,9 @@ namespace Weltall
 		 */
 		WELTALLCORE_API static FGameLibrary Scan(const std::filesystem::path& Folder);
 
+		/** Identifies an opened image through the same checks and release precedence as Scan. Path is its display identity. */
+		WELTALLCORE_API void AddImage(const std::filesystem::path& Path, TResult<FCdImage> Image);
+
 		/** The disc of a release, or null when the folder has none. */
 		WELTALLCORE_API const FIso9660* Find(EDiscRelease Release) const;
 		/**

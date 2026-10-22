@@ -126,6 +126,12 @@ namespace Weltall
 			return File.Error();
 		}
 		std::shared_ptr<const IByteSource> Source = std::move(*File);
+		return OpenSource(std::move(Source), SectorSize, TrackOffset);
+	}
+
+	TResult<FCdImage> FCdImage::OpenSource(std::shared_ptr<const IByteSource> Source, uint32 SectorSize, uint64 TrackOffset)
+	{
+		if (!Source || TrackOffset > Source->Size()) return MakeError("data track lies outside its source");
 		if (SectorSize == 0 && IsChd(*Source))
 		{
 			return OpenChdImage(std::move(Source));
@@ -140,7 +146,7 @@ namespace Weltall
 		}
 		if (SectorSize != CdSector::RawSize && SectorSize != CdSector::CookedSize)
 		{
-			return MakeError(DataPath.string() + ": unsupported sector size " + std::to_string(SectorSize));
+			return MakeError("unsupported sector size " + std::to_string(SectorSize));
 		}
 		return FCdImage(std::move(Source), SectorSize, TrackOffset);
 	}

@@ -9,6 +9,32 @@
 
 using namespace Weltall;
 
+TEST_CASE("Source opening rejects invalid tracks and retains 64-bit offsets", "[Media][PackagedDiscs]")
+{
+	CHECK_FALSE(FCdImage::OpenSource(nullptr));
+	auto Small = std::make_shared<FMemoryByteSource>(std::vector<uint8>(2352));
+	CHECK_FALSE(FCdImage::OpenSource(Small, 2352, 2353));
+	CHECK_FALSE(FCdImage::OpenSource(Small, 17));
+	class FLargeSource final : public IByteSource
+	{
+	public:
+		uint64 Size() const override { return (uint64{1} << 32) + 2 * CdSector::RawSize; }
+		bool Read(uint64 Offset, std::span<uint8> Destination) const override
+		{
+			if (Offset > Size() || Destination.size() > Size() - Offset) return false;
+			for (std::size_t I = 0; I < Destination.size(); ++I) Destination[I] = static_cast<uint8>((Offset + I) % 251);
+			return true;
+		}
+	};
+	auto Image = FCdImage::OpenSource(std::make_shared<FLargeSource>(), 2352, uint64{1} << 32);
+	REQUIRE(Image);
+	CHECK(Image->SectorCount() == 2);
+	const auto Sector = Image->ReadSourceSector(1);
+	REQUIRE(Sector);
+	CHECK((*Sector)[0] == static_cast<uint8>(((uint64{1} << 32) + 2352) % 251));
+	CHECK_FALSE(Image->ReadSourceSector(2));
+}
+
 namespace
 {
 	/** A raw Mode 2 sector whose user data is filled with Value. */
@@ -34,7 +60,9 @@ namespace
 		{
 			Bytes.insert(Bytes.end(), Sector.begin(), Sector.end());
 		}
-		return FCdImage(std::make_shared<FMemoryByteSource>(std::move(Bytes)), CdSector::RawSize, 0);
+		auto Image = FCdImage::OpenSource(std::make_shared<FMemoryByteSource>(std::move(Bytes)), CdSector::RawSize, 0);
+		REQUIRE(Image);
+		return std::move(*Image);
 	}
 }
 

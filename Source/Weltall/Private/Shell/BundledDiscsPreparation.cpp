@@ -8,9 +8,14 @@
 #include "Misc/ScopeLock.h"
 #include "Misc/SecureHash.h"
 #include "Shell/PlayerFolders.h"
+#include "Shell/PlatformByteSource.h"
+#include "Media/CueSheet.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "WeltallLog.h"
 
 #include <atomic>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -22,6 +27,7 @@ struct FBundledDiscsProgress
 	std::atomic<bool> Cancelled{false};
 	FCriticalSection Mutex;
 	FString Error;
+	Weltall::FGameLibrary Library;
 
 	bool Fail(const FString& Message)
 	{
@@ -140,6 +146,69 @@ namespace
 		std::error_code Error;
 		std::filesystem::rename(NativePath(Path + TEXT(".partial")), NativePath(Path), Error);
 		return !Error;
+	}
+
+	/** Validate logical bytes once per manifest, then identify both discs through normal core checks. */
+	bool OpenPackaged(const TArray<FBundledFile>& Entries, const FString& SourceFolder, const FString& Version,
+		const FString& Marker, const TSharedRef<FBundledDiscsProgress, ESPMode::ThreadSafe>& Progress)
+	{
+		const bool bVerified = NativeMarkerMatches(Marker, Version);
+		TMap<FString, std::shared_ptr<const FPlatformByteSource>> Sources;
+		TArray<uint8> Buffer;
+		Buffer.SetNumUninitialized(1024 * 1024);
+		for (const FBundledFile& Entry : Entries)
+		{
+			if (Progress->Cancelled) return false;
+			auto Source = FPlatformByteSource::Open(SourceFolder / Entry.Relative);
+			if (!Source || Source->Size() != Entry.Size) return Progress->Fail(TEXT("A bundled disc is missing or incomplete. Reinstall the APK."));
+			if (!bVerified)
+			{
+				FSHA1 Digest;
+				for (uint64 Offset = 0; Offset < Entry.Size;)
+				{
+					if (Progress->Cancelled) return false;
+					const uint32 Take = static_cast<uint32>(FMath::Min<uint64>(Buffer.Num(), Entry.Size - Offset));
+					if (!Source->Read(Offset, std::span<uint8>(Buffer.GetData(), Take))) return Progress->Fail(TEXT("A bundled disc cannot be read. Reinstall the APK."));
+					Digest.Update(Buffer.GetData(), Take);
+					Offset += Take;
+					Progress->Done.fetch_add(Take);
+				}
+				Digest.Final();
+				uint8 Hash[FSHA1::DigestSize];
+				Digest.GetHash(Hash);
+				if (BytesToHex(Hash, UE_ARRAY_COUNT(Hash)).ToLower() != Entry.Hash) return Progress->Fail(TEXT("A bundled disc failed verification. Reinstall the APK."));
+			}
+			Sources.Add(Entry.Relative, std::move(Source));
+		}
+		int32 Sheets = 0;
+		for (const FBundledFile& Entry : Entries)
+		{
+			if (!Entry.Relative.EndsWith(TEXT(".cue"), ESearchCase::IgnoreCase)) continue;
+			++Sheets;
+			if (Entry.Size > 1024 * 1024) return Progress->Fail(TEXT("A bundled CUE sheet is too large."));
+			TArray<uint8> Text;
+			Text.SetNumUninitialized(static_cast<int32>(Entry.Size) + 1);
+			if (!Sources[Entry.Relative]->Read(0, std::span<uint8>(Text.GetData(), static_cast<size_t>(Entry.Size)))) return Progress->Fail(TEXT("A bundled CUE sheet cannot be read."));
+			Text[static_cast<int32>(Entry.Size)] = 0;
+			const auto Tracks = Weltall::ParseCueSheet(std::string_view(reinterpret_cast<const char*>(Text.GetData()), Entry.Size), NativePath(FPaths::GetPath(Entry.Relative)));
+			if (!Tracks) return Progress->Fail(TEXT("A bundled CUE sheet is invalid."));
+			const auto Track = std::find_if(Tracks->begin(), Tracks->end(), [](const Weltall::FCueTrack& Value) { return !Value.IsAudio(); });
+			if (Track == Tracks->end()) return Progress->Fail(TEXT("A bundled disc has no data track."));
+			const std::string Relative = Track->File.generic_string();
+			const FString Name(UTF8_TO_TCHAR(Relative.c_str()));
+			const auto* Source = SafeRelative(Name) ? Sources.Find(Name) : nullptr;
+			if (!Source) return Progress->Fail(TEXT("A bundled CUE sheet names a file outside its manifest."));
+			auto Image = Weltall::FCdImage::OpenSource(*Source, Track->SectorSize, static_cast<uint64>(Track->StartFrame) * Track->SectorSize);
+			Progress->Library.AddImage(NativePath(Entry.Relative), std::move(Image));
+		}
+		if (Sheets != 2 || !Progress->Library.PlayableDisc(1) || !Progress->Library.PlayableDisc(2))
+			return Progress->Fail(TEXT("Both bundled game discs could not be identified."));
+		std::error_code Error;
+		std::filesystem::create_directories(NativePath(FPaths::GetPath(Marker)), Error);
+		if (Error || (!bVerified && !WriteMarker(Marker, Version))) return Progress->Fail(TEXT("Disc verification status could not be saved."));
+		Progress->Done = Progress->Total;
+		UE_LOG(LogWeltall, Log, TEXT("Both discs opened directly from packaged data; no BIN extraction"));
+		return true;
 	}
 
 	bool Prepare(const TArray<FBundledFile>& BundledFiles, const FString& SourceFolder, const FString& Destination, const FString& Version,
@@ -275,10 +344,28 @@ void FBundledDiscsPreparation::Begin()
 	const FString Destination = GamesFolder();
 	const FString Version = HashText(Text);
 	const FString SourceFolder = BundleSource();
+	// Opt in during qualification. Existing extracted copies remain intact for matched comparisons.
+#if !UE_BUILD_SHIPPING
+	bDirect = FParse::Param(FCommandLine::Get(), TEXT("WeltallDirectDiscs"));
+#endif
+	if (bDirect)
+	{
+		const FString Marker = PlayerDataFolder() / TEXT("BundledDiscs") / Version / TEXT("DirectVerified.txt");
+		Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Version, Marker, Shared = Progress.ToSharedRef()]()
+		{
+			return OpenPackaged(BundledFiles, SourceFolder, Version, Marker, Shared);
+		});
+		return;
+	}
 	Task = Async(EAsyncExecution::ThreadPool, [BundledFiles = MoveTemp(BundledFiles), SourceFolder, Destination, Version, Shared = Progress.ToSharedRef()]()
 	{
 		return Prepare(BundledFiles, SourceFolder, Destination, Version, Shared);
 	});
+}
+
+Weltall::FGameLibrary FBundledDiscsPreparation::TakeLibrary()
+{
+	return Progress && !IsBlocked() ? std::move(Progress->Library) : Weltall::FGameLibrary{};
 }
 
 void FBundledDiscsPreparation::Poll()
@@ -304,7 +391,9 @@ FText FBundledDiscsPreparation::Notice() const
 		return FText::FromString(Progress->Error);
 	}
 	const uint64 Percent = Progress->Total ? 100 * Progress->Done.load() / Progress->Total : 0;
-	return FText::FromString(FString::Printf(TEXT("Preparing both game discs: %llu%%\n\nThis happens on the first launch. Keep the app open."), Percent));
+	return FText::FromString(FString::Printf(bDirect
+		? TEXT("Verifying bundled discs: %llu%%\n\nKeep the app open. The game reads its discs without making another copy.")
+		: TEXT("Preparing both game discs: %llu%%\n\nThis happens on the first launch. Keep the app open."), Percent));
 }
 
 #if WITH_DEV_AUTOMATION_TESTS

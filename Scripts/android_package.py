@@ -234,6 +234,25 @@ def configure_local_discs(project):
                      '+DirectoriesToAlwaysStageAsUFS=(Path="BundledDiscs")\n')
 
 
+def stage_storage_fixtures(project):
+    """Generated test data only; the second stream is deliberately incompressible."""
+    folder = project / "Content/StorageFixtures"
+    folder.mkdir(parents=True, exist_ok=True)
+    size = 3 * 65536 + 17
+    (folder / "Compressed.bin").write_bytes(bytes(i % 251 for i in range(size)))
+    state = 1
+    random = bytearray()
+    for _ in range(size):
+        state = (1664525 * state + 1013904223) & 0xffffffff
+        random.append(state >> 24)
+    (folder / "Raw.bin").write_bytes(random)
+    config = project / "Config/Android/AndroidGame.ini"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    with config.open("a", encoding="utf-8") as output:
+        output.write('\n[/Script/UnrealEd.ProjectPackagingSettings]\n'
+                     '+DirectoriesToAlwaysStageAsUFS=(Path="StorageFixtures")\n')
+
+
 def uat_command(ue_root, project, archive, configuration):
     launcher = "RunUAT.bat" if os.name == "nt" else "RunUAT.sh"
     return [str(Path(ue_root) / "Engine" / "Build" / "BatchFiles" / launcher), "-WaitForUATMutex", "BuildCookRun",
@@ -338,6 +357,8 @@ def main(argv=None):
         if inputs:
             stage_discs(inputs, destination / "Content" / "BundledDiscs")
             configure_local_discs(destination)
+        if args.configuration == "Development":
+            stage_storage_fixtures(destination)
         print("Local export prepared." + (" Both discs will be inside the APK." if inputs else " No discs bundled."))
         if args.prepare_only:
             return 0

@@ -181,62 +181,66 @@ namespace Weltall
 			{
 				continue;
 			}
-			auto Image = FCdImage::Open(Path);
-			if (!Image)
-			{
-				Library.LibraryNotes.push_back({Path, "Cannot be read: " + Image.Error().Message + "."});
-				continue;
-			}
-			const bool bCooked = !Image->IsRaw();
-			auto Disc = FIso9660::Open(std::move(*Image));
-			if (!Disc)
-			{
-				Library.LibraryNotes.push_back({Path, "Not a CD's image the game can read."});
-				continue;
-			}
-			const TResult<FDiscIdentity> Identity = IdentifyDisc(*Disc);
-			if (!Identity)
-			{
-				Library.LibraryNotes.push_back({Path, NotPlayed(*Disc)});
-				continue;
-			}
-			// A patched disc (a fan translation's) plays in place of the original of its release; of two alike, the first found.
-			const auto Existing = Library.Discs.find(Identity->Release);
-			if (Existing != Library.Discs.end() && (!Identity->bPatched || Existing->second.bPatched))
-			{
-				if (!Identity->bPatched && Existing->second.bPatched)
-				{
-					Library.LibraryNotes.push_back({Path, ReplacedByPatch});
-				}
-				continue;
-			}
-			if (!HoldsEveryFile(*Disc))
-			{
-				Library.LibraryNotes.push_back({Path, "Ends too soon: still being copied, or a rip cut short."});
-				continue;
-			}
-			if (Existing != Library.Discs.end())
-			{
-				Library.LibraryNotes.push_back({Existing->second.File, ReplacedByPatch});
-				Library.Discs.erase(Existing);
-			}
-			if (Identity->bPatched)
-			{
-				Library.LibraryNotes.push_back({Path, "A patched copy of disc " + std::to_string(Identity->DiscNumber) + " (a fan translation, for example). It plays in place of the original.", true});
-			}
-			if (bCooked && IsPlayableRelease(Identity->Release))
-			{
-				Library.LibraryNotes.push_back({Path, "Plays, but the movies are silent: an image of the data alone keeps no sound for them. "
-													  "A whole rip (BIN/CUE, or a CHD made from one) has it.",
-					true});
-			}
-			if (!IsPlayableRelease(Identity->Release))
-			{
-				Library.LibraryNotes.push_back({Path, "A Japanese disc: available for asset extraction. Playing requires a USA or supported undub disc."});
-			}
-			Library.Discs.emplace(Identity->Release, FFound{std::make_unique<FIso9660>(std::move(*Disc)), Path, Identity->bPatched});
+			Library.AddImage(Path, FCdImage::Open(Path));
 		}
 		return Library;
+	}
+
+	void FGameLibrary::AddImage(const std::filesystem::path& Path, TResult<FCdImage> Image)
+	{
+		if (!Image)
+		{
+			LibraryNotes.push_back({Path, "Cannot be read: " + Image.Error().Message + "."});
+			return;
+		}
+		const bool bCooked = !Image->IsRaw();
+		auto Disc = FIso9660::Open(std::move(*Image));
+		if (!Disc)
+		{
+			LibraryNotes.push_back({Path, "Not a CD's image the game can read."});
+			return;
+		}
+		const TResult<FDiscIdentity> Identity = IdentifyDisc(*Disc);
+		if (!Identity)
+		{
+			LibraryNotes.push_back({Path, NotPlayed(*Disc)});
+			return;
+		}
+		// A patched disc (a fan translation's) plays in place of the original of its release; of two alike, the first found.
+		const auto Existing = Discs.find(Identity->Release);
+		if (Existing != Discs.end() && (!Identity->bPatched || Existing->second.bPatched))
+		{
+			if (!Identity->bPatched && Existing->second.bPatched)
+			{
+				LibraryNotes.push_back({Path, ReplacedByPatch});
+			}
+			return;
+		}
+		if (!HoldsEveryFile(*Disc))
+		{
+			LibraryNotes.push_back({Path, "Ends too soon: still being copied, or a rip cut short."});
+			return;
+		}
+		if (Existing != Discs.end())
+		{
+			LibraryNotes.push_back({Existing->second.File, ReplacedByPatch});
+			Discs.erase(Existing);
+		}
+		if (Identity->bPatched)
+		{
+			LibraryNotes.push_back({Path, "A patched copy of disc " + std::to_string(Identity->DiscNumber) + " (a fan translation, for example). It plays in place of the original.", true});
+		}
+		if (bCooked && IsPlayableRelease(Identity->Release))
+		{
+			LibraryNotes.push_back({Path, "Plays, but the movies are silent: an image of the data alone keeps no sound for them. "
+												  "A whole rip (BIN/CUE, or a CHD made from one) has it.",
+				true});
+		}
+		if (!IsPlayableRelease(Identity->Release))
+		{
+			LibraryNotes.push_back({Path, "A Japanese disc: available for asset extraction. Playing requires a USA or supported undub disc."});
+		}
+		Discs.emplace(Identity->Release, FFound{std::make_unique<FIso9660>(std::move(*Disc)), Path, Identity->bPatched});
 	}
 
 	const FIso9660* FGameLibrary::Find(EDiscRelease Release) const

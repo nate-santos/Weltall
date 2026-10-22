@@ -137,6 +137,7 @@ def main():
     parser.add_argument("--save", type=Path, required=True, help="checksum-valid 7,936-byte native save, read only")
     parser.add_argument("--actions", type=Path, help="same timed JSON controller actions as the PC runner")
     parser.add_argument("--load-disc", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--disc-reader", choices=("extracted", "packaged"), help="Development-only storage comparison; retains existing disc copies")
     parser.add_argument("--seconds", type=int, default=70)
     parser.add_argument("--every", type=float, default=20, help="periodic capture seconds; 0 retains only the final image for profiling")
     parser.add_argument("--reader", action="store_true")
@@ -177,10 +178,12 @@ def main():
     serial = choose_device(subprocess.check_output([str(args.adb), "devices"], text=True), args.serial)
     root = "files/Weltall/Testing/GameplayReference/" + run_id
     remote_report = EXTERNAL + "/Saved/Automation/" + run_id
+    reader_flag = {None: "", "packaged": "-WeltallDirectDiscs ", "extracted": "-WeltallExtractedDiscs "}[args.disc_reader]
     command = ('-project="../../../Weltall/Weltall.uproject" '
+               + reader_flag +
                f'-ExecCmds="Automation RunTests {TEST}" -WeltallReference={run_id} '
                f'-TestExit="Automation Test Queue Empty" -ReportExportPath="{remote_report}" -unattended\n').encode()
-    summary = {"device": serial, "gameplay_acceptance": "not assessed", "visual_review_required": True}
+    summary = {"device": serial, "disc_reader": args.disc_reader, "gameplay_acceptance": "not assessed", "visual_review_required": True}
     before = None
     written = launched = False
     started = time.monotonic()

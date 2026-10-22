@@ -55,6 +55,9 @@ namespace Weltall
 		/** Opens a .cue sheet (its first data track), a CHD (the same) or a single .bin/.iso/.img file. */
 		WELTALLCORE_API static TResult<FCdImage> Open(const std::filesystem::path& Path);
 
+		/** Opens a random-access data track; zero SectorSize detects a standalone image's format. */
+		WELTALLCORE_API static TResult<FCdImage> OpenSource(std::shared_ptr<const IByteSource> Source, uint32 SectorSize = 0, uint64 TrackOffset = 0);
+
 		/** A data track of SectorSize-byte sectors starting TrackOffset bytes into Source. */
 		WELTALLCORE_API FCdImage(std::shared_ptr<const IByteSource> InSource, uint32 InSectorSize, uint64 InTrackOffset);
 
