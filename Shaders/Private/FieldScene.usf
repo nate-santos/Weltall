@@ -336,21 +336,27 @@ float4 MainPS(
 	float2 TexCoord : TEXCOORD0,
 	float3 Color : COLOR0,
 	nointerpolation uint PolygonIndex : TEXCOORD1,
-	nointerpolation uint ColorFlags : TEXCOORD2,
-	uint Covered : SV_Coverage,
-	out uint Coverage : SV_Coverage) : SV_Target0
+	nointerpolation uint ColorFlags : TEXCOORD2
+#if FIELD_MULTISAMPLED
+	, uint Covered : SV_Coverage
+	, out uint Coverage : SV_Coverage
+#endif
+	) : SV_Target0
 {
 	const FFieldPolygon Polygon = PolygonAt(PolygonIndex);
 	const float2 TexelsAcross = ddx(TexCoord);
 	const float2 TexelsDown = ddy(TexCoord);
 	const float2 Footprint = abs(TexelsAcross) + abs(TexelsDown);
 	float3 Rgb = Color;
+#if FIELD_MULTISAMPLED
 	Coverage = Covered;
+#endif
 	if (Polygon.Texture != PSX_NO_TEXTURE)
 	{
 		const uint PolygonFilter = (Polygon.Flags & FLAG_SPRITE) != 0 ? SpriteFilter : Filter;
 		float3 Texel;
 		bool bDrawn = SampleTexel(TexCoord, Polygon, PolygonFilter, Footprint, Texel);
+#if FIELD_MULTISAMPLED
 		if (SampleCount == MSAA_SAMPLES)
 		{
 			// The shader runs once a pixel, at its centre, but each sample keeps or drops the texel under it: a transparent
@@ -380,6 +386,7 @@ float4 MainPS(
 			}
 			bDrawn = Coverage != 0;
 		}
+#endif
 		if (!bDrawn)
 		{
 			discard;

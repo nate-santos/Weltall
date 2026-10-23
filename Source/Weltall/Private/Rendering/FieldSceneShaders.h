@@ -37,6 +37,8 @@ class FFieldScenePS final : public FGlobalShader
 public:
 	DECLARE_GLOBAL_SHADER(FFieldScenePS);
 	SHADER_USE_PARAMETER_STRUCT(FFieldScenePS, FGlobalShader);
+	class FMultisampled : SHADER_PERMUTATION_BOOL("FIELD_MULTISAMPLED");
+	using FPermutationDomain = TShaderPermutationDomain<FMultisampled>;
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FFieldPolygon>, Polygons)

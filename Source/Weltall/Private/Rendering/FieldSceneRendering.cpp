@@ -361,7 +361,11 @@ namespace
 
 		const FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 		TShaderMapRef<FFieldSceneVS> VertexShader(ShaderMap);
-		TShaderMapRef<FFieldScenePS> PixelShader(ShaderMap);
+		// Single-sample targets do not need a sample-mask interface. Older Adreno
+		// drivers fail to link that interface even when SampleCount makes it unused.
+		FFieldScenePS::FPermutationDomain PixelPermutation;
+		PixelPermutation.Set<FFieldScenePS::FMultisampled>(Samples > 1);
+		TShaderMapRef<FFieldScenePS> PixelShader(ShaderMap, PixelPermutation);
 		// H times the clip units of one pixel of the original screen: its height fills the target's.
 		const float Vertical = Draw.ProjectionDistance * 2.0f / ScreenHeight;
 		const FVector2f ProjectionScale(Vertical * static_cast<float>(Size.Y) / static_cast<float>(Size.X), Vertical);
