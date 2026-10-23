@@ -38,6 +38,7 @@ apply from: 'weltall-native-symbols.gradle'
         runOnUiThread(() -> {
             weltallDiagnosticsBytes = null;
             weltallDiagnosticsBusy = false;
+            org.weltall.game.WeltallDiagnostics.discard(this);
             android.widget.Toast.makeText(getApplicationContext(), message, android.widget.Toast.LENGTH_LONG).show();
         });
     }
@@ -48,6 +49,7 @@ apply from: 'weltall-native-symbols.gradle'
         new Thread(() -> {
             try {
                 weltallDiagnosticsBytes = org.weltall.game.WeltallDiagnostics.create(this, label, logPath);
+                org.weltall.game.WeltallDiagnostics.stage(this, weltallDiagnosticsBytes);
                 runOnUiThread(() -> {
                     try {
                         if (isFinishing() || isDestroyed()) throw new IllegalStateException();
@@ -64,14 +66,15 @@ apply from: 'weltall-native-symbols.gradle'
     }
 
     private void weltallDiagnosticsResult(int result, Intent data) {
-        final byte[] bytes = weltallDiagnosticsBytes;
-        if (result != android.app.Activity.RESULT_OK || data == null || data.getData() == null || bytes == null) {
+        if (result != android.app.Activity.RESULT_OK || data == null || data.getData() == null) {
             weltallDiagnosticsFinished("Diagnostic export cancelled.");
             return;
         }
         final android.net.Uri uri = data.getData();
         new Thread(() -> {
             try (java.io.OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                final byte[] bytes = weltallDiagnosticsBytes != null ? weltallDiagnosticsBytes
+                    : org.weltall.game.WeltallDiagnostics.restore(this);
                 if (output == null) throw new java.io.IOException();
                 output.write(bytes);
                 output.flush();

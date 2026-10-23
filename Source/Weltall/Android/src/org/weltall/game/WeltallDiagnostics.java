@@ -16,6 +16,41 @@ import java.util.Comparator;
 
 /** Explicit local export: bounded metadata/log tail, no save contents or game-data bytes. */
 public final class WeltallDiagnostics {
+    private static android.util.AtomicFile pending(Context context) {
+        return new android.util.AtomicFile(new File(context.getCacheDir(), "weltall-pending-diagnostics.json"));
+    }
+
+    /** The system picker can outlive this process; keep only the bounded report until its result. */
+    public static void stage(Context context, byte[] bytes) throws java.io.IOException {
+        if (bytes.length == 0 || bytes.length > 512 * 1024) throw new java.io.IOException("Invalid report size");
+        android.util.AtomicFile file = pending(context);
+        java.io.FileOutputStream output = file.startWrite();
+        try {
+            output.write(bytes);
+            file.finishWrite(output);
+        } catch (java.io.IOException error) {
+            file.failWrite(output);
+            throw error;
+        }
+    }
+
+    public static byte[] restore(Context context) throws java.io.IOException {
+        try (FileInputStream input = pending(context).openRead()) {
+            java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > 512 * 1024) throw new java.io.IOException("Invalid pending report size");
+                output.write(buffer, 0, count);
+            }
+            byte[] bytes = output.toByteArray();
+            if (bytes.length == 0 || bytes.length > 512 * 1024) throw new java.io.IOException("Invalid pending report size");
+            return bytes;
+        }
+    }
+
+    public static void discard(Context context) { pending(context).delete(); }
+
     private static String hex(byte[] data) {
         final char[] digits = "0123456789abcdef".toCharArray();
         StringBuilder result = new StringBuilder(data.length * 2);

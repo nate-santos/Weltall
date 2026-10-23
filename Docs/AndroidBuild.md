@@ -51,11 +51,23 @@ The project explicitly enables Unreal's `AndroidPermission` plugin only for Andr
 
 The project refresh preserves `Binaries`, `Intermediate`, `Saved` and `DerivedDataCache`. Unchanged committed files keep their modification times, allowing Unreal to reuse compiled engine/game objects. Deleted source and old bundled-disc staging are removed; discs are staged again only when `--include-discs` is supplied. Unreal still runs cooking, staging and packaging normally. Use `--clean-export` when a completely fresh project and engine rebuild is needed. Do not refresh an export while another build of that export is running.
 
+## Private alpha signing and symbols
+
+For the non-debuggable standalone candidate, keep the same signing identity across updates and configure these private values in ignored `local.env`: `WELTALL_RELEASE_KEYSTORE` (absolute keystore path outside the repository), `WELTALL_RELEASE_KEY_ALIAS`, `WELTALL_RELEASE_STORE_PASSWORD` and `WELTALL_RELEASE_KEY_PASSWORD`. Back up that keystore privately. Do not put credentials in committed configuration or share keys/symbols with testers.
+
+```text
+python Scripts/android_package.py --configuration Shipping --distribution --include-discs ../bin
+```
+
+The builder strips debug/static symbol metadata from merged native-library package copies before signing, preserves matching originals in private `native-symbols/` beside the APK and verifies unchanged runtime sections/build IDs, alignment and offline symbol lookup. Keep the archive for that exact APK. Build success still requires package inspection and device qualification before distribution; current completion evidence is in [AndroidStorageProgress.md](AndroidStorageProgress.md).
+
+The Controls menu displays the version/revision and offers **Export diagnostic report** through Android's document picker. Reports contain bounded logs, build/device/storage details and save/settings fingerprints, with no save or disc contents. The owner manually sends a qualified APK and its guide/checksum to testers; packaging performs no upload.
+
 ## First launch
 
-The native game core opens physical files with standard C++ filesystem APIs. Files inside Unreal's APK/pak filesystem cannot be passed to it as ordinary filenames. On Android, a background worker therefore streams bundled files into `Context.getFilesDir()/Weltall/BundledDiscs/<manifest-version>/Games/` in 1 MiB chunks. The startup notice shows percentage complete. Each copied file is checked against its length and SHA-1 transfer hash and moved into place atomically; readiness is published only after all files finish. SHA-1 here checks a local copy, not authenticity or a trusted download.
+Android opens the bundled CUE/BIN data through Unreal's mounted PAK filesystem and the core's random-access byte-source interface. Both discs remain losslessly compressed inside the packaged data. A background worker verifies their complete logical hashes once per manifest and performs normal game identification before publishing the library. Subsequent launches reuse a small verification marker; they do not copy whole BIN files to private storage or load whole discs into RAM.
 
-Game discovery waits for successful preparation. Interrupted `.partial` files are never accepted as discs; the next launch removes abandoned partials, reuses individually verified completed files and checks free space for the remaining files before retrying. A completed version is reused after checking its readiness marker and file sizes. Updating the APK with the same disc manifest reuses the extracted copy. A changed manifest uses a separate version directory; cleanup of obsolete complete versions is not implemented yet.
+Upgrading from the older extracting build verifies both packaged discs before reclaiming matching app-generated disc copies. Cleanup checks ownership markers, full hashes and contained paths, refuses symlinks, and preserves saves/settings, Assets/Mods and unknown neighboring files. Unrecognized or changed copies are retained with a warning. A later launch does not recreate removed copies. Development comparisons can use `-WeltallExtractedDiscs` or retain old copies with `-WeltallKeepDiscCopies`; Shipping ignores these switches. Rollback to the older extracting reader may require space for extraction again.
 
 Android backup rules include only the app's `Weltall/Settings` and `Weltall/Saves` folders, subject to the phone's backup preferences. Bundled discs, imported game files, exported assets and logs are excluded from cloud backup and device transfer. Unreal's Android plugin receipt stages the XML resources and adds their manifest references. The generated APK manifest/resource wiring and an actual restore still need device validation. The formats follow [Android's backup rules](https://developer.android.com/identity/data/autobackup#include-exclude-files).
 
@@ -126,7 +138,7 @@ For repeatable PC/phone comparisons, see [local gameplay reference automation](A
 
 Mobile renderer settings live in `Config/DefaultEngine.ini`, including HDR, forward local lights, the no-static-lighting CSM branch and mobile DBuffer/shading path. The Windows cooker initializes global render caches from its own engine config; Android-only overrides can therefore disagree with shader decisions made during cooking. Keep compile-time mobile choices shared between cooker and runtime. Startup validation remains required after changing them; successful cooking alone does not prove that runtime materials are complete.
 
-Install a Development APK with both discs. Confirm that first launch remains responsive, progress completes, both discs are identified, the opening movie has sound and game startup works. Restart the app and confirm the copy is reused. Interrupt preparation, restart it, and test insufficient space. Install an APK update with the same signing key and confirm that settings and saves survive. Then validate shader cooking/rendering, both landscape directions, touch controls and sustained gameplay on a physical ARM64 phone. No automated packaging test replaces these checks.
+Install a Development APK with both discs. Confirm that first launch remains responsive, progress completes, both discs are identified, the opening movie has sound and game startup works. Restart the app and confirm that BIN copies are not recreated. Exercise interrupted verification and guarded cleanup with the storage fixtures. Install an APK update with the same signing key and confirm that settings and saves survive. Then validate shader cooking/rendering, both landscape directions, touch controls and sustained gameplay on a physical ARM64 phone. No automated packaging test replaces these checks.
 
 ## References
 
