@@ -1,5 +1,22 @@
 # Pixel 5 compatibility and battle validation
 
+## Clean release and save loading (alpha.2.3 / code6)
+
+October 23, 2026: installed signed Shipping source `faf2977`, including the committed launcher icon `ca357e3`, Vulkan compatibility fixes and right-side controls. All source changes were committed before packaging. APK: `out/android/packages/Shipping/20261023T174717Z-0fda4e25/Weltall-Android-Shipping-arm64.apk`, 989,329,130 bytes, SHA-256 `97e3cd61622ccde920f546e6ab2e1b0f0b295819fc392d6f684f24a9faf06570`. Installed bytes match exactly. Manifest code6 / alpha.2.3 is non-debuggable; signature/same-signer, native/ZIP 16KB alignment and actual embedded-pak integrity/both-disc checks pass.
+
+Removed the obsolete ignored shader-experiment build wrapper and its local command file. The normal committed packaging path contains neither the experimental sample-mask replacement nor the extra shader-name/debug-dump settings. No Android PSO diagnostic override is configured, and no `UECommandLine.txt` remains on the device. Development-only test fixtures/hooks are excluded from Shipping. Normal crash-report support and stripped native packaging remain; their private host-side symbol archives are not shipped in the APK. The Linux-specific PSO setting is unrelated and unchanged.
+
+The normal Options → Saves document importer copied three local test checkpoints into confirmed empty Card1 slots 1, 2 and 4 before the signed update. Its preview showed no overwritten slots; the existing No03 checkpoint was retained. All four subsequently load through the release's ordinary Continue, Yes/Finished and Disc2 confirmations:
+
+| Card1 save | Result on code6 |
+| --- | --- |
+| No01, generated initial state / Lahan Village, 0:00:02 | Successful load notice followed by advancing Disc1 opening movie; process remained alive. This is a generated boot-state fixture, not story progression. |
+| No02, Stalactite Cave, 9:44:10 | Field renders Gear, save point, scenery and compass; touch movement changes position/camera. |
+| No03, The Stars Know, 51:15:39 | Existing Disc2 checkpoint loads its field scene, Gears, save point and compass. |
+| No04, Disc2 ship checkpoint, 67:14:53 | Disc2 confirmation succeeds; ship interior, characters and compass render, and touch input responds. No world-map traversal is claimed. |
+
+No process crash or ANR appears in the captured process logs. These are bounded save-load/render/input smoke checks, not a new FPS or whole-game qualification. Evidence is local under `out/testing/pixel5/clean-release/`, `clean-shipping-code6/` and `clean-code6-apk/`; the first ship capture is historically named `cave-gameplay.png` because the original card cursor's Right input advances three slots. The No02/No03 preview captures verify their actual identities. The three added test saves remain available. Temporary picker XML/card download were removed; no new in-game save was written. The Pixel is left playable at No03's field, with right-side controls. The Moto was not changed.
+
 ## Touch layout default (alpha.2.2 / code5)
 
 `06d6b42` enables reserved side areas by default and stacks Select above Start in the right control area. Fresh settings and Reset layout use this arrangement at every device size; saved side-area preferences and custom offsets still load normally. The touch suite passes all 12 cases / 441 assertions, including default placement outside the picture at 1280x720, 1920x1080 and 2400x1080 and retention of an explicitly disabled side-area preference.
