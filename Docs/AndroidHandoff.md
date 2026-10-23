@@ -1,5 +1,9 @@
 # Android port continuation
 
+## Pixel 5 compatibility and battle check — October 23, 2026
+
+The newly available Pixel 5 now runs Shipping source `5339d3d2f9ba`, manifest code4, after the base Android Vulkan preference and single-sample field-shader specialization fixes. See [AndroidPixel5.md](AndroidPixel5.md) for exact APK identity, native/PC validation, limitations and evidence. Its three-minute two-enemy Gear battle/menu sample averages46.225FPS, six windows45.948–46.392; an additional60-second attack/camera workload averages56.188FPS. Complete compositor TimeStats histograms contain only16–33ms bins; sampled thermal statuses/severities are0. These are bounded scene measurements at default quality, not universal60fps. Optional MSAA on the old driver remains unqualified. The phone is left in the ordinary unsaved battle; Card1 No03 is the retained local checkpoint. No test/build/profiler remains running; override removed and original stay-awake setting restored. The Moto's installed alpha.2 and its player data were untouched. Earlier one-device availability statements below are historical; both phones use Adreno GPUs.
+
 ## Current — private Shipping alpha.2 prepared, October 23, 2026
 
 The storage plan's implementation and local friend-alpha delivery are complete. Follow [AndroidStorageProgress.md](AndroidStorageProgress.md) for detailed evidence, [AndroidStorageReductionPlan.md](AndroidStorageReductionPlan.md) for its checked outcome and [AndroidAlphaTesting.md](AndroidAlphaTesting.md) for the tester guide. Older installed identities/extraction/active-build notes below are historical and superseded here. No build or automated input remains running.
