@@ -49,6 +49,8 @@ The project explicitly enables Unreal's `AndroidPermission` plugin only for Andr
 
 `AndroidDeviceProfileSelector` is also enabled only for Android. Unreal's generic Android device profile disables Vulkan; its device selector chooses the appropriate Vulkan profile for supported hardware. Without the selector, a Vulkan-only package can incorrectly fall back to unavailable OpenGL and display an ES 3.1 packaging error even on a supported phone.
 
+The project's `DefaultDeviceProfiles.ini` also enables Vulkan in the base Android profile. The selector alone is insufficient: older Adreno drivers (Pixel 5's Adreno 620, GL V@0490) match Unreal's non-Vulkan profile even with a usable Vulkan driver. Since this port cooks Vulkan only, all Android profiles inherit the Vulkan preference. Actual driver/RHI availability checks remain in force; this does not establish rendering correctness on untested drivers. Version code 4 introduces this correction.
+
 The project refresh preserves `Binaries`, `Intermediate`, `Saved` and `DerivedDataCache`. Unchanged committed files keep their modification times, allowing Unreal to reuse compiled engine/game objects. Deleted source and old bundled-disc staging are removed; discs are staged again only when `--include-discs` is supplied. Unreal still runs cooking, staging and packaging normally. Use `--clean-export` when a completely fresh project and engine rebuild is needed. Do not refresh an export while another build of that export is running.
 
 ## Private alpha signing and symbols
