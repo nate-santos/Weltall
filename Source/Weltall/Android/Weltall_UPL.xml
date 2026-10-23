@@ -4,6 +4,9 @@
         <setBoolIsEqual result="WeltallDevelopmentBuild" arg1="$S(Configuration)" arg2="Development" />
     </init>
     <androidManifestUpdates>
+        <!-- This standalone offline game has no Play purchases or store license flow. -->
+        <removePermission android:name="com.android.vending.BILLING" />
+        <removePermission android:name="com.android.vending.CHECK_LICENSE" />
         <addAttribute tag="application" name="android:fullBackupContent" value="@xml/weltall_backup_rules" />
         <addAttribute tag="application" name="android:dataExtractionRules" value="@xml/weltall_data_extraction_rules" />
         <addElements tag="application">
