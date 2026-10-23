@@ -18,6 +18,13 @@
         </addElements>
     </androidManifestUpdates>
     <resourceCopies>
+        <copyFile src="$S(PluginDir)/res/drawable/icon.png" dst="$S(BuildDir)/res/drawable/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-hdpi/icon.png" dst="$S(BuildDir)/res/drawable-hdpi/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-ldpi/icon.png" dst="$S(BuildDir)/res/drawable-ldpi/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-mdpi/icon.png" dst="$S(BuildDir)/res/drawable-mdpi/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xhdpi/icon.png" dst="$S(BuildDir)/res/drawable-xhdpi/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xxhdpi/icon.png" dst="$S(BuildDir)/res/drawable-xxhdpi/icon.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xxxhdpi/icon.png" dst="$S(BuildDir)/res/drawable-xxxhdpi/icon.png" force="true" />
         <copyFile src="$S(PluginDir)/res/xml/weltall_backup_rules.xml" dst="$S(BuildDir)/res/xml/weltall_backup_rules.xml" />
         <copyFile src="$S(PluginDir)/res/xml/weltall_data_extraction_rules.xml" dst="$S(BuildDir)/res/xml/weltall_data_extraction_rules.xml" />
         <copyFile src="$S(PluginDir)/src/org/weltall/game/WeltallRecoveryActivity.java" dst="$S(BuildDir)/src/org/weltall/game/WeltallRecoveryActivity.java" />
