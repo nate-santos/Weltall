@@ -273,7 +273,8 @@ using isolated save copies, automatic captures and transition summaries.
 
    `--print-plan` validates the input files and shows the output locations without starting a build.
    The directory is a **build-time input on your computer**: the script bundles the discs into the APK,
-   and the phone prepares its private working copy at first launch. It does not access the computer's
+   and the phone verifies the discs once, then reads them directly from packaged data without another
+   full-disc copy. It does not access the computer's
    directory while playing. Omitting `--include-discs` builds a runtime without bundled game data.
 4. Find the APK in the new `out/android/packages/Development/<build-id>/` directory; the script prints
    its exact filename. Build logs are in `out/android/logs/`. Enable USB debugging on the phone, approve
