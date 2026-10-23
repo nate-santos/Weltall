@@ -212,7 +212,7 @@ TEST_CASE("Touch layouts fit the safe area and opacity never changes hit testing
 		FTouchOptions Options;
 		Options.IdleOpacity = 0.0f;
 		Options.PressedOpacity = 0.0f;
-		Options.bReserveSides = true;
+		CHECK(Options.bReserveSides);
 		const FTouchLayout Layout = FTouchLayout::Build(Size.X, Size.Y, Options);
 		for (const FTouchRect& Rect : Layout.Controls)
 		{
@@ -225,6 +225,11 @@ TEST_CASE("Touch layouts fit the safe area and opacity never changes hit testing
 		CHECK(Layout.Picture.X > 0.0f);
 		CHECK(Layout.Picture.Width < Size.X);
 		CHECK(Layout.Picture.Width >= Size.X * 0.5f);
+		const FTouchRect& Select = Layout.Controls[static_cast<std::size_t>(ETouchControl::Select)];
+		const FTouchRect& Start = Layout.Controls[static_cast<std::size_t>(ETouchControl::Start)];
+		CHECK(Select.X >= Layout.Picture.X + Layout.Picture.Width);
+		CHECK(Start.X >= Layout.Picture.X + Layout.Picture.Width);
+		CHECK(Select.Y + Select.Height < Start.Y);
 		for (const FTouchRect& Rect : Layout.Controls)
 		{
 			CHECK((Rect.X + Rect.Width <= Layout.Picture.X || Rect.X >= Layout.Picture.X + Layout.Picture.Width));
@@ -243,6 +248,9 @@ TEST_CASE("Touch layouts fit the safe area and opacity never changes hit testing
 TEST_CASE("Touch appearance and edited positions survive settings reload", "[Settings][Touch]")
 {
 	FPlayerSettings Settings;
+	CHECK(Settings.Touch.bReserveSides);
+	CHECK(ReadPlayerSettings("").Touch.bReserveSides);
+	CHECK_FALSE(ReadPlayerSettings("touch.reserve_sides = false\n").Touch.bReserveSides);
 	Settings.Touch.IdleOpacity = 0.1f;
 	Settings.Touch.PressedOpacity = 0.8f;
 	Settings.Touch.Scale = 1.25f;

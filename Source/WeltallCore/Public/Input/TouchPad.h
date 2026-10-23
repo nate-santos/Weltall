@@ -39,7 +39,7 @@ namespace Weltall
 		float IdleOpacity = 0.25f;
 		float PressedOpacity = 0.55f;
 		float Scale = 1.0f;
-		bool bReserveSides = false;
+		bool bReserveSides = true;
 		/** Normalized offsets from the edge layout, retained across resolution and landscape-side changes. */
 		std::array<FTouchPoint, TouchControlCount> Offsets{};
 		bool operator==(const FTouchOptions&) const = default;

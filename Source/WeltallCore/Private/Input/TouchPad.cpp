@@ -60,10 +60,8 @@ namespace Weltall
 		Place(ETouchControl::L2, Margin + Unit * 2.3f, Margin + Unit * 0.45f, Unit * 1.4f, Unit * 0.9f);
 		Place(ETouchControl::R1, Width - Margin - Unit * 0.7f, Margin + Unit * 0.45f, Unit * 1.4f, Unit * 0.9f);
 		Place(ETouchControl::R2, Width - Margin - Unit * 2.3f, Margin + Unit * 0.45f, Unit * 1.4f, Unit * 0.9f);
-		Place(ETouchControl::Select, Options.bReserveSides ? Left : Width * 0.5f - Unit,
-			Options.bReserveSides ? Height * 0.32f : Height - Margin - Unit * 0.35f, Unit * 1.6f, Unit * 0.7f);
-		Place(ETouchControl::Start, Options.bReserveSides ? Right : Width * 0.5f + Unit,
-			Options.bReserveSides ? Height * 0.32f : Height - Margin - Unit * 0.35f, Unit * 1.6f, Unit * 0.7f);
+		Place(ETouchControl::Select, Right, Height * 0.32f, Unit * 1.6f, Unit * 0.7f);
+		Place(ETouchControl::Start, Right, Height * 0.44f, Unit * 1.6f, Unit * 0.7f);
 		Place(ETouchControl::L3, Margin + Unit * 0.6f, Margin + Unit * 1.5f, Unit * 1.2f, Unit * 0.7f);
 		Place(ETouchControl::R3, Width - Margin - Unit * 0.6f, Margin + Unit * 1.5f, Unit * 1.2f, Unit * 0.7f);
 		const float Side = Options.bReserveSides ? std::min(Width * 0.25f, Unit * 3.0f + Margin * 2.0f) : 0.0f;
