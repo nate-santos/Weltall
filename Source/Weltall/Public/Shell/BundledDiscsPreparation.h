@@ -18,11 +18,16 @@ public:
 	bool IsBlocked() const;
 	FText Notice() const;
 	bool UsesPackagedDiscs() const { return bDirect; }
+	bool HasLibrary() const { return bDirect && !bLibraryTaken && !IsBlocked(); }
 	Weltall::FGameLibrary TakeLibrary();
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend class FBundleLibraryTransferTest;
+#endif
 	TSharedPtr<FBundledDiscsProgress, ESPMode::ThreadSafe> Progress;
 	TFuture<bool> Task;
 	bool bFailed = false;
 	bool bDirect = false;
+	bool bLibraryTaken = false;
 };

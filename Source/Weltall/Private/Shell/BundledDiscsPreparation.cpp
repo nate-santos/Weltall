@@ -450,7 +450,9 @@ void FBundledDiscsPreparation::Begin()
 
 Weltall::FGameLibrary FBundledDiscsPreparation::TakeLibrary()
 {
-	return Progress && !IsBlocked() ? std::move(Progress->Library) : Weltall::FGameLibrary{};
+	if (!Progress || !HasLibrary()) return {};
+	bLibraryTaken = true;
+	return std::move(Progress->Library);
 }
 
 void FBundledDiscsPreparation::Poll()

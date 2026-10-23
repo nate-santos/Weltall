@@ -6,6 +6,20 @@
 #include <iterator>
 #include <array>
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBundleLibraryTransferTest, "Weltall.Storage.BundledDiscs.LibraryTransferOnce", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FBundleLibraryTransferTest::RunTest(const FString&)
+{
+	FBundledDiscsPreparation Preparation;
+	Preparation.bDirect = true;
+	Preparation.Progress = MakeShared<FBundledDiscsProgress, ESPMode::ThreadSafe>();
+	Preparation.Progress->Library.AddImage("diagnostic.cue", Weltall::MakeError("synthetic discovery note"));
+	TestTrue(TEXT("Finished discovery can publish once"), Preparation.HasLibrary());
+	auto Library = Preparation.TakeLibrary();
+	TestEqual(TEXT("Discovery notes are transferred"), static_cast<int32>(Library.Notes().size()), 1);
+	TestFalse(TEXT("Later rescans cannot replace notes with the moved-from library"), Preparation.HasLibrary());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPackagedDiscFixtureTest, "Weltall.Storage.BundledDiscs.PackagedReadFixtures", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 bool FPackagedDiscFixtureTest::RunTest(const FString&)
 {

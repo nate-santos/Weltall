@@ -49,7 +49,11 @@ void UGameDiscsSubsystem::Rescan()
 	Preparation.Poll();
 	if (Preparation.IsBlocked()) return;
 	const std::size_t Before = Discs.Releases().size();
-	Discs.Adopt(Preparation.UsesPackagedDiscs() ? Preparation.TakeLibrary() : Weltall::FGameLibrary::Scan(std::filesystem::path(*GamesFolder())));
+	if (Preparation.UsesPackagedDiscs())
+	{
+		if (Preparation.HasLibrary()) Discs.Adopt(Preparation.TakeLibrary());
+	}
+	else Discs.Adopt(Weltall::FGameLibrary::Scan(std::filesystem::path(*GamesFolder())));
 	if (Discs.Releases().size() != Before)
 	{
 		UE_LOG(LogWeltall, Log, TEXT("Found %d of the game's discs in %s"), static_cast<int32>(Discs.Releases().size()), *GamesFolder());
