@@ -50,6 +50,9 @@ to include in a bug report.
   headphone routing, plus keeping the screen awake during play.
 - **Android build and test tools**, including local bundling of both discs from a directory you
   specify and save-preserving APK updates.
+- **Smaller Android installations**, with stripped native debug metadata and direct reads of both
+  losslessly compressed packaged discs, avoiding another full-disc copy in user data.
+- **Local diagnostic export**, with build/device details and bounded logs for tester reports.
 - **Rendering optimizations** that upload changed texture regions and combine non-overlapping
   translucent draws while preserving their pixel order.
 

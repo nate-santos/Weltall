@@ -1,10 +1,18 @@
 # Private Android alpha testing
 
-This guide is for the owner's manually shared friend-testing APK. The general Android port remains beta. The storage candidate is still undergoing final Shipping qualification; a source build alone is not a qualified distribution. The final delivery folder must include its exact build label, checksum, download size, measured space recommendation and known gaps before it is sent.
+This guide is for the owner's manually shared friend-testing APK. The general Android port remains beta. The limited alpha.2 Shipping APK is prepared for manual friend testing. It includes both storage reductions and keeps the existing signing identity for updates.
+
+Build: **0.8.3-android-alpha.2 (e7eae3009efb)**, Android version code **3**. APK: **989,192,294 bytes** (989 MB / 943.37 MiB). SHA-256:
+
+```text
+0e536c5dba5339a493f733c7251146b76ea54ea05853afb789bb834647b73418
+```
+
+Allow **4 GB free before downloading** as a practical recommendation for the download, installation/update staging and app data. This is headroom derived from the measured package/components, not a tested minimum free-space boundary. The existing Moto reports **1.51 GB total** in Android Settings: **1.09 GB app**, **415 MB user data**, **98.30 kB cache**, rounded by Android. That installation retains historical test data and logs. Saves, caches and driver data can change the total during play; there are no private whole-disc duplicates.
 
 ## Install and update
 
-Use a compatible ARM64 Android phone with Vulkan support. The current project minimum is Android 12; confirm that against the delivered APK's release notes. The Moto G Stylus 2025 is the tested phone. Other phones and GPU families need testing.
+Use a compatible ARM64 Android phone with Vulkan and ASTC support. This APK requires Android 12 or newer (API 31; target API 36). The Moto G Stylus 2025 is the tested phone. Other phones and GPU families need testing.
 
 Download the complete APK, then open it from your download or file-sharing app. If Android asks, allow that particular app to install unknown apps, then return and finish installation. USB debugging and a computer are unnecessary. Keep enough free space for the downloaded APK, installed app and temporary installation/update overhead; use the recommendation accompanying that exact release.
 
@@ -37,4 +45,10 @@ Prioritize crashes, lost saves, blocked progress, stuck controls, audio faults, 
 
 The full game has not been played through on Android. Only the Moto/Adreno GPU and Stadia controller have physical test coverage. Longer progression, a normal competitive Battling match/results and broader phones/controllers remain friend-testing work. Short representative battle comparisons retain original picture quality and show no meaningful slowdown from the smaller storage layout; they do not promise 60 FPS in every scene or on every phone.
 
-The final owner delivery folder should contain only the signed APK, SHA-256 checksum, exact release notes and this guide. Keys, matching private native symbols, standalone discs, player saves and internal captures stay on the development computer.
+The owner delivery folder contains only the signed APK, SHA-256 checksum, exact release notes and this guide. Keys, matching private native symbols, standalone discs, player saves and internal captures stay on the development computer.
+
+## First fresh-device check
+
+Normal installation through Files and an in-place update from version code 2 to 3 passed on the Moto. Its saves/settings were retained at installation. A separate clean Android user or second phone was unavailable; the normal Moto was never wiped. Synthetic clean-initialization fixtures and both real-disc logical verification passed, but a fresh-device first launch of this exact Shipping APK remains a first-tester check under the plan's fallback.
+
+For the first friend: install the complete APK, launch offline, leave verification open until it finishes, then confirm New Game and the opening movie work, save into an empty slot and reload after restarting. Export a diagnostic report for the owner. Confirm that a second launch does not repeat whole-disc preparation. Test ordinary audio at your preferred volume; this final Moto Shipping run stayed muted and verified active audio output without a new listening confirmation.

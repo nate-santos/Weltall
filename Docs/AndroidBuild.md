@@ -145,3 +145,7 @@ Install a Development APK with both discs. Confirm that first launch remains res
 - [Epic Android settings](https://dev.epicgames.com/documentation/unreal-engine/android-settings-in-the-unreal-engine-project-settings)
 - [Epic packaging settings](https://dev.epicgames.com/documentation/unreal-engine/API/Developer/DeveloperToolSettings/UProjectPackagingSettings)
 - [Android app-specific storage](https://developer.android.com/training/data-storage/app-specific)
+
+## Qualified limited friend alpha
+
+The alpha.2 Shipping/code3 artifact is recorded in [AndroidAlphaTesting.md](AndroidAlphaTesting.md) and [AndroidStorageProgress.md](AndroidStorageProgress.md). Its local delivery folder is `out/releases/android-alpha.2-code3/`; only the APK/checksum/guide/release notes are intended for manual sharing. Private native symbols remain beside the original package archive. Android12+/ARM64/Vulkan/ASTC requirements, first-friend fresh-install fallback and save-preserving update procedure are in the guide. Increment StoreVersion for subsequent updates while retaining the signer and package name.

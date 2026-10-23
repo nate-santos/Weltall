@@ -196,3 +196,19 @@ Because a non-debuggable build cannot depend on developer access to private file
 Create an ignored release folder containing only the signed APK, its checksum, the tester guide and concise release notes/known issues. Exclude signing keys, native symbols, standalone ROMs, internal test captures, developer settings and player saves. Keep the both-disc APK local rather than committing it to Git or automatically publishing it to repository releases.
 
 Record the final source revision, version name/code, APK hash, signing fingerprint, symbol archive location, measured installed size and exact validation results in the internal handoff. Update `Docs/AndroidBuild.md` and the alpha notes to describe the new storage behavior and manual update procedure, removing obsolete instructions that require first-run BIN extraction. The final readiness decision is based on this exact artifact: signed and installable, both discs available offline, no unnecessary debug metadata or extracted disc duplicates, preserved saves, useful diagnostics and no meaningful gameplay performance regression in the bounded tests. Sending the APK to friends remains the owner's manual step.
+
+## Implementation outcome — October 23, 2026
+
+The authorized implementation and local private-alpha packaging are finished; exact artifacts, independent savings and test evidence are recorded in [AndroidStorageProgress.md](AndroidStorageProgress.md). This outcome supersedes the original planning-only wording above.
+
+- [x] Strip package-copy native debug/static metadata, retain matching private symbols and verify unchanged runtime sections/build IDs, offline lookup and alignment, including Shipping.
+- [x] Read both losslessly compressed packaged discs directly through shared identification/sector logic; verify real logical contents once per bundle without a second persistent full-disc cache.
+- [x] Qualify guarded, resumable copy reclamation with PC/Moto fixtures and the real upgrade; preserve original saves and unknown neighboring files.
+- [x] Complete bounded same-APK A/B/A/B battle comparison and final Shipping presentation smoke without meaningful regression or quality reduction.
+- [x] Produce retained-key, non-debuggable Shipping alpha.2/code3; qualify actual package/content, normal Files installation and version2→3 save-preserving update.
+- [x] Validate ordinary loading, native save to an empty slot and cold reload, import/export, touch/controller input, landscape surfaces, movies/active audio, resume and diagnostics. Account explicitly for the new test save, its bookmark and user camera writes.
+- [x] Record final installed footprint; update build/alpha/handoff docs and prepare a hash-verified local APK/checksum/guide/release-notes folder with no private keys/symbols or unrelated data.
+- [ ] First friend fresh-device launch/offline/save/restart check: no second phone or isolated user was available, so use the expressly allowed first-tester fallback in [AndroidAlphaTesting.md](AndroidAlphaTesting.md). Normal Moto data was never wiped.
+- [ ] Fresh subjective Shipping audio confirmation: the owner kept the Moto muted. Active audio output and movie progression are verified; the guide asks the first tester to listen at their chosen volume. Earlier Development both-disc listening confirmations remain historical evidence.
+
+The owner manually sending the APK and broader phone/playthrough coverage are subsequent alpha activity. Neither storage task requires additional implementation work at this checkpoint.

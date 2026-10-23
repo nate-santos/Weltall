@@ -1,4 +1,14 @@
-# Limited Moto alpha 1 — October 21, 2026
+# Limited friend alpha.2 — October 23, 2026
+
+The non-debuggable Shipping APK with both storage reductions is prepared locally for manual friend testing. Exact version/code/hash, installation instructions and known gaps are in [AndroidAlphaTesting.md](AndroidAlphaTesting.md); storage/package/device evidence is in [AndroidStorageProgress.md](AndroidStorageProgress.md). The general Android port remains beta.
+
+Source `e7eae3009efb`, version `0.8.3-android-alpha.2`, code3. Local delivery: `out/releases/android-alpha.2-code3/` (APK, checksum, guide and notes only). APK989,192,294bytes,SHA-256 `0e536c5dba5339a493f733c7251146b76ea54ea05853afb789bb834647b73418`. Installed on the Moto using Files; existing saves preserved. The normal empty-slot save/cold-reload test adds Card8 No04 and advances the last-save bookmark; all pre-existing saves are unchanged.
+
+The exact Shipping battle sample averages58.5presentedFPS, no>100msintervals, with original picture quality. Android reports1.51GBtotal on the existing test installation; private whole-disc copies are gone. First-friend fresh initialization and audible Shipping confirmation remain explicitly assigned checks because there was no second phone/profile and the Moto stayed muted. See the guide before sending. Nothing was uploaded automatically.
+
+## Historical Moto alpha.1 fallback
+
+### Limited Moto alpha 1 — October 21, 2026
 
 The frozen both-disc Development build is available for private user testing on the Moto G Stylus 2025. This does not declare the full M4/M5 plan complete. Per the user's bounded-testing decision, broader progression and a normal competitive Battling match move into alpha testing instead of delaying user play. Milestone6 experiments may install a newer comparison build; the current installed identity and live tests are recorded in [AndroidHandoff.md](AndroidHandoff.md). The APK identified below remains the alpha1 fallback.
 
