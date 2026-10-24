@@ -4,7 +4,9 @@
         <setBoolIsEqual result="WeltallDevelopmentBuild" arg1="$S(Configuration)" arg2="Development" />
     </init>
     <androidManifestUpdates>
-        <addAttribute tag="application" name="android:icon" value="@drawable/weltall_launcher" />
+        <!-- APK inspectors read the application PNG; launcher activities use adaptive masks. -->
+        <addAttribute tag="application" name="android:icon" value="@drawable/icon" />
+        <addAttribute tag="activity" name="android:icon" value="@mipmap/weltall_launcher" />
         <!-- This standalone offline game has no Play purchases or store license flow. -->
         <removePermission android:name="com.android.vending.BILLING" />
         <removePermission android:name="com.android.vending.CHECK_LICENSE" />
@@ -19,8 +21,15 @@
         </addElements>
     </androidManifestUpdates>
     <resourceCopies>
-        <copyFile src="$S(PluginDir)/res/drawable/weltall_launcher.xml" dst="$S(BuildDir)/res/drawable/weltall_launcher.xml" force="true" />
-        <copyFile src="$S(PluginDir)/res/drawable-anydpi-v26/weltall_launcher.xml" dst="$S(BuildDir)/res/drawable-anydpi-v26/weltall_launcher.xml" force="true" />
+        <!-- PNG fallbacks also give APK inspectors the approved launcher artwork. -->
+        <copyFile src="$S(PluginDir)/res/drawable/icon.png" dst="$S(BuildDir)/res/mipmap/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-ldpi/icon.png" dst="$S(BuildDir)/res/mipmap-ldpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-mdpi/icon.png" dst="$S(BuildDir)/res/mipmap-mdpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-hdpi/icon.png" dst="$S(BuildDir)/res/mipmap-hdpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xhdpi/icon.png" dst="$S(BuildDir)/res/mipmap-xhdpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xxhdpi/icon.png" dst="$S(BuildDir)/res/mipmap-xxhdpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/drawable-xxxhdpi/icon.png" dst="$S(BuildDir)/res/mipmap-xxxhdpi/weltall_launcher.png" force="true" />
+        <copyFile src="$S(PluginDir)/res/mipmap-anydpi-v26/weltall_launcher.xml" dst="$S(BuildDir)/res/mipmap-anydpi-v26/weltall_launcher.xml" force="true" />
         <copyFile src="$S(PluginDir)/res/drawable/weltall_icon_background.xml" dst="$S(BuildDir)/res/drawable/weltall_icon_background.xml" force="true" />
         <copyFile src="$S(PluginDir)/res/drawable/weltall_icon_foreground.xml" dst="$S(BuildDir)/res/drawable/weltall_icon_foreground.xml" force="true" />
         <copyFile src="$S(PluginDir)/res/drawable-nodpi/weltall_icon_art.png" dst="$S(BuildDir)/res/drawable-nodpi/weltall_icon_art.png" force="true" />

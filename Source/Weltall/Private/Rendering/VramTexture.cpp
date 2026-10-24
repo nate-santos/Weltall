@@ -177,12 +177,14 @@ bool FVramTexture::Follow(const Weltall::FVram& Vram)
 		const bool bUpload = Area.Width() > 0 && Area.Height() > 0;
 		CSV_CUSTOM_STAT(WeltallVram, Updates, bUpload ? 1 : 0, ECsvCustomStatOp::Accumulate);
 		CSV_CUSTOM_STAT(WeltallVram, QueuedTextureBytes, static_cast<double>(Area.Width()) * Area.Height() * (sizeof(uint16) + (Copy->Edges.IsEmpty() ? 0 : 1)), ECsvCustomStatOp::Accumulate);
+#if CSV_PROFILER
 		int32 ChangedTiles = 0;
 		for (uint64 Row : Copy->Changed)
 		{
 			ChangedTiles += std::popcount(Row);
 		}
 		CSV_CUSTOM_STAT(WeltallVram, ChangedTiles, ChangedTiles, ECsvCustomStatOp::Accumulate);
+#endif
 		const FUpdateTextureRegion2D Region(Area.Min.X, Area.Min.Y, 0, 0, Area.Width(), Area.Height());
 		const int32 Offset = Area.Min.Y * Weltall::FVram::Width + Area.Min.X;
 		if (bUpload)

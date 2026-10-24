@@ -55,6 +55,10 @@ The project refresh preserves `Binaries`, `Intermediate`, `Saved` and `DerivedDa
 
 ## Private alpha signing and symbols
 
+The current Android alpha displays `Weltall 0.8.3-alpha` on the title screen and uses Android version code 7. Android Shipping compiles out Unreal logging, console/exec commands, tracing and automation tests. CSV profiling is disabled in Shipping, including the extra per-frame renderer counters. Development builds retain their test and profiling support. Diagnostic export is user-triggered; Shipping reports retain build/device/storage information but do not generate a runtime Unreal log.
+
+The application icon uses `@drawable/icon`, a PNG for APK browsers and installers. Launcher activities override it with `@mipmap/weltall_launcher`, adaptive artwork for modern launchers plus PNG fallbacks at every density. Both use the same lowered emblem and dark circular background. Run `Scripts/android_icons.ps1` in PowerShell after changing the foreground artwork, inset values or background color to regenerate the PNG fallbacks. File managers that only show a generic APK file-type icon control that appearance themselves.
+
 For the non-debuggable standalone candidate, keep the same signing identity across updates and configure these private values in ignored `local.env`: `WELTALL_RELEASE_KEYSTORE` (absolute keystore path outside the repository), `WELTALL_RELEASE_KEY_ALIAS`, `WELTALL_RELEASE_STORE_PASSWORD` and `WELTALL_RELEASE_KEY_PASSWORD`. Back up that keystore privately. Do not put credentials in committed configuration or share keys/symbols with testers.
 
 ```text

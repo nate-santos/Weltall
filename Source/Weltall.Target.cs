@@ -11,9 +11,17 @@ public class WeltallTarget : TargetRules
 
 		if (Target.Configuration == UnrealTargetConfiguration.Shipping)
 		{
-			// The player's builds log the cases play carries past, so a report can name them.
 			BuildEnvironment = TargetBuildEnvironment.Unique;
-			bUseLoggingInShipping = true;
+			// Desktop releases retain reports; Android alphas compile out runtime logging.
+			bUseLoggingInShipping = Target.Platform != UnrealTargetPlatform.Android;
+			if (Target.Platform == UnrealTargetPlatform.Android)
+			{
+				bUseConsoleInShipping = false;
+				bUseExecCommandsInShipping = false;
+				bEnableTrace = false;
+				bForceDisableAutomationTests = true;
+				GlobalDefinitions.Add("CSV_PROFILER_ENABLE_IN_SHIPPING=0");
+			}
 			// A single-player game without navigation: neither the engine's server code nor its navigation meshes.
 			bWithServerCode = false;
 			bCompileRecast = false;

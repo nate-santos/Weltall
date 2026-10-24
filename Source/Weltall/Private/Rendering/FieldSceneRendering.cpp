@@ -420,7 +420,9 @@ namespace
 				VertexParameters.NearPlane = NearPlane;
 				VertexParameters.FloorUp = FloorUp;
 				CSV_SCOPED_TIMING_STAT(WeltallScene, Submit);
+#if CSV_PROFILER
 				uint32 SubmittedDraws = 0;
+#endif
 				for (const FFieldDrawRun& Run : *Runs)
 				{
 					FRunDepthStates Depth;
@@ -465,7 +467,9 @@ namespace
 						PixelParameters.SampleCount = Samples;
 						SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), PixelParameters);
 						RHICmdList.DrawPrimitive(0, Run.VertexCount / 3, 1);
+#if CSV_PROFILER
 						++SubmittedDraws;
+#endif
 					}
 				}
 				CSV_CUSTOM_STAT(WeltallScene, Draws, static_cast<double>(SubmittedDraws), ECsvCustomStatOp::Accumulate);
