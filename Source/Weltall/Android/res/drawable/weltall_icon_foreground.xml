@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 60dp foreground on the 108dp adaptive canvas keeps the emblem inside the mask. -->
-<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="24dp">
+<!-- Keep the 60dp emblem inside the adaptive mask, shifted down 2dp for visual balance. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:insetLeft="24dp" android:insetTop="26dp" android:insetRight="24dp" android:insetBottom="22dp">
     <bitmap android:src="@drawable/weltall_icon_art" android:gravity="fill" />
 </inset>
