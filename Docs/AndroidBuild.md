@@ -13,7 +13,7 @@ python Scripts/android_engine_fix.py --apply
 python Scripts/android_package.py --check-toolchain
 ```
 
-The first command applies a bounded, idempotent one-line correction to the selected UE 5.8 source checkout. Its Android volume receiver must use the thread-safe approximate clock for its timestamp; the original game-thread clock triggers an engine ensure when the phone volume changes. The helper accepts `--ue-root <engine-folder>` or the same `UE_ROOT` setting as the packager. Without `--apply`, it only checks. Review the engine diff if desired, then rebuild; an already corrected checkout is unchanged. Engine source remains in your own installation.
+The first command applies two bounded, idempotent corrections to the selected UE 5.8 source checkout. Its Android volume receiver must use the thread-safe approximate clock for its timestamp; the original game-thread clock triggers an engine ensure when the phone volume changes. Its embedded Android exec handler also needs a `UE_ALLOW_EXEC_COMMANDS` guard so Shipping can compile with developer commands disabled. The helper accepts `--ue-root <engine-folder>` or the same `UE_ROOT` setting as the packager. Without `--apply`, it only checks. Review the engine diff if desired, then rebuild; an already corrected checkout is unchanged. Engine source remains in your own installation.
 
 The prerequisite check reports whether UE 5.8's automation launcher exists and blocks the known uncorrected volume callback. The subsequent Unreal build performs the Android SDK checks; a successful prerequisite check alone does not prove SDK readiness.
 

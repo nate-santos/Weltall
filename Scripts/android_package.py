@@ -31,7 +31,7 @@ import tarfile
 import tempfile
 import uuid
 
-from android_engine_fix import needs_volume_time_fix
+from android_engine_fix import needs_volume_time_fix, needs_exec_commands_fix
 from android_native_symbols import verify_apk
 
 
@@ -316,6 +316,9 @@ def toolchain_problems(ue_root):
             problems.append("UE_ROOT must point to UE 5.8 for this project")
     if needs_volume_time_fix(ue_root):
         problems.append("UE Android volume callback needs the thread-safe clock correction: "
+                        "run python Scripts/android_engine_fix.py --apply, then rebuild")
+    if needs_exec_commands_fix(ue_root):
+        problems.append("UE Android embedded exec needs the Shipping command guard: "
                         "run python Scripts/android_engine_fix.py --apply, then rebuild")
     return problems
 
